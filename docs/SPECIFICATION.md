@@ -1,166 +1,214 @@
-# TalkBuddy - Project Specification
-> *"Your AI Talking Partner. Master English. Ace Your Interviews."*
+# TalkBuddy - Educational Project Specification
+> *"Open-Source AI Conversation Practice for Students and Educators"*
 
 ## Project Overview
-Build TalkBuddy, a real-time voice conversation practice platform designed for dual purposes: English language learning and professional interview preparation. Students can engage in natural conversations with AI personas across various scenarios. The app uses WebSocket streaming for seamless conversation flow and follows a Pure BYOAPI model where users provide their own API keys.
+TalkBuddy is a free, open-source real-time voice conversation practice platform designed for educational use. Students can practice conversations with AI personas across various scenarios, while educators can create custom interview scenarios and conversation contexts. The platform uses a **default-free approach** with browser APIs and open-source models, while allowing users to optionally connect their own commercial API keys for enhanced experiences.
 
-## Core Features
+## Educational Focus & Use Cases
 
-### Real-Time Voice Conversation (MVP Approach)
-- **Push-to-Talk Interface**: User-controlled "Start Talking" / "Stop Talking" buttons
-- WebSocket-based audio transmission for complete audio segments
-- Simple turn-taking: User speaks → AI processes and responds → User speaks again
-- Live audio visualization during recording and AI response playback
+### Primary Use Case: Interview Practice
+- **Multi-discipline interview preparation** across various fields
+- **Educator-created scenarios** for specific courses/programs
+- **Student-generated scenarios** for peer learning
+- **Flexible difficulty levels** adaptable to different academic levels
+- **Practice for academic, professional, and research interviews**
 
-### Dual-Purpose Platform
-**English Language Learning:**
-- Casual conversation practice for everyday situations
-- Academic English for university settings
-- Business English for professional contexts
-- Basic vocabulary and confidence building through natural dialogue
+### Secondary Use Case: Conversation Practice
+- **Language learning support** for international students
+- **Communication skills development** across disciplines
+- **Public speaking confidence building**
+- **Professional presentation practice**
 
-**Professional Interview Preparation:**
-- Job interview simulations across industries
-- Client consultation practice for professionals
-- Patient interaction training for healthcare students
-- Communication skill development
+### Target Users
+- **Students**: All academic levels practicing interview skills
+- **Educators**: Creating custom scenarios for their courses
+- **International Students**: Improving English communication
+- **Career Services**: Supporting student job preparation
+- **Self-learners**: Anyone wanting to practice conversations
 
-### Session Management (Simplified MVP)
-- Multiple conversation scenarios with different AI personas
-- Complete session recording with full transcripts
-- **Simple AI-generated feedback** at session end based on full conversation
-- Basic session history and progress tracking
+## Technology Philosophy
 
-## Technology Stack
+### Default Free Stack (No API Keys Required)
+- **STT**: Web Speech API (browser-native)
+- **LLM**: Hugging Face Inference API (free tier) OR local Ollama server
+- **TTS**: SpeechSynthesis API (browser-native)
+- **Completely functional out-of-the-box experience**
 
-### Core Framework
-- **FastHTML**: Web framework, UI rendering, and WebSocket handling
-- **SQLite**: Database via fastlite
-- **Python 3.9+**: Backend language
+### Optional Commercial Enhancement
+- **User choice**: Upgrade specific components with personal API keys
+- **OpenAI**: Enhanced STT (Whisper), LLM (GPT-4), TTS
+- **ElevenLabs**: Premium TTS quality
+- **Mix-and-match**: Users can upgrade only specific components
 
-### AI Services (Flexible Provider Selection)
+### Open Source & Self-Hosted
+- **MIT License**: Free to use, modify, and redistribute
+- **Docker deployment**: Easy institutional setup
+- **Local Ollama integration**: Full privacy with local LLMs
+- **No vendor dependencies**: Fully functional with free services
 
-**Provider Options (User Choice):**
-- **Browser APIs**: Web Speech API (STT) + SpeechSynthesis API (TTS) - Always available
-- **OpenAI API**: Whisper (STT) + GPT-4 (LLM) + TTS - User-provided API key
-- **ElevenLabs API**: Premium quality TTS - User-provided API key
-- **Hugging Face API**: Free tier LLM - Optional API key or anonymous usage
+## Core Features (Revised)
 
-**Mix-and-Match Support:**
-- Users can combine any STT + LLM + TTS providers
-- Automatic fallbacks when API services fail or reach limits
-- Provider preferences saved per user
-- No service tiers - all features available regardless of provider choice
+### Authentication (Abuse Prevention Only)
+- **Simple email/password** registration
+- **No email verification required** for basic use
+- **Session management** to prevent abuse
+- **Rate limiting**: Reasonable daily conversation limits
+- **Purpose**: Prevent spam/abuse, not monetization
 
-### Frontend
-- **Minimal JavaScript**: Audio capture, WebSocket communication, audio playback
-- **PicoCSS**: Lightweight styling framework
-- **Web Audio API**: Browser audio processing
+### Scenario Management (Individual-Focused with Easy Sharing)
+- **Default interview scenarios** across multiple disciplines:
+  - Technical interviews (CS, Engineering, Data Science)
+  - Academic interviews (Research positions, Graduate programs)
+  - Professional interviews (Business, Healthcare, Education)
+  - Behavioral interviews (Leadership, Teamwork, Problem-solving)
+- **Universal scenario creation**: Any user can create custom scenarios
+- **Flexible sharing model**: Export scenarios as files or shareable links
+- **Import system**: Users import scenarios they want to practice with
+- **Community library**: Optional public sharing for discoverable scenarios
+- **No account management**: Clean separation between creators and users
 
-## Architecture Design
+### Conversation Interface (Simplified)
+- **Push-to-talk design**: Clear turn-taking for reliable processing
+- **Real-time transcript**: Shows conversation as it happens
+- **Session recording**: Full conversation history with timestamps
+- **Simple feedback**: Basic conversation summary and suggestions
+- **Provider indicators**: Shows which AI services are active
 
-### Project Structure
+### Dashboard Features (Individual-Focused)
+- **Conversation history**: Review past practice sessions
+- **My Scenarios**: Created scenarios with sharing options (export/link generation)
+- **Imported Scenarios**: Scenarios obtained from others (file/link import)
+- **Community Library**: Browse and discover publicly shared scenarios
+- **Practice statistics**: Track improvement over time
+- **Session management**: Delete, replay, or continue conversations
+- **Profile management**: Multiple practice personas/contexts
+- **Sharing tools**: Generate shareable links, export files, QR codes
+
+## Updated Architecture
+
+### Project Structure (Educational)
 ```
 talkbuddy/
 ├── main.py                  # FastHTML app entry point
 ├── config/
 │   ├── settings.py          # App configuration
-│   └── providers.py         # Provider configurations
+│   ├── defaults.py          # Default free provider configs
+│   └── scenarios/           # Default scenario definitions
 ├── providers/               # Pluggable provider architecture
-│   ├── asr/
-│   │   ├── base.py          # Abstract base class
-│   │   └── openai_whisper.py # OpenAI Whisper implementation
-│   ├── llm/
-│   │   ├── base.py          # Abstract base class
-│   │   └── openai_gpt.py    # OpenAI GPT-4 implementation
-│   └── tts/
-│       ├── base.py          # Abstract base class
-│       ├── openai_tts.py    # OpenAI TTS implementation
-│       └── elevenlabs.py    # ElevenLabs implementation
+│   ├── free/                # Default free providers
+│   │   ├── browser_stt.py   # Web Speech API
+│   │   ├── browser_tts.py   # SpeechSynthesis API
+│   │   ├── huggingface.py   # HF Inference API
+│   │   └── ollama.py        # Local Ollama integration
+│   ├── commercial/          # Optional paid providers
+│   │   ├── openai.py        # OpenAI services
+│   │   └── elevenlabs.py    # ElevenLabs TTS
+│   └── base.py              # Abstract interfaces
 ├── services/
-│   ├── conversation.py      # Conversation orchestration service
-│   ├── auth.py              # Authentication service
-│   └── user_keys.py         # API key management
+│   ├── conversation.py      # Core conversation logic
+│   ├── scenarios.py         # Scenario CRUD and sharing
+│   ├── sharing.py           # Link generation and import handling
+│   ├── community.py         # Public scenario library
+│   ├── auth.py              # Simple auth for abuse prevention
+│   └── export.py            # File export/import functionality
 ├── models/
-│   ├── user.py              # User data model
-│   ├── session.py           # Conversation session model
-│   └── scenario.py          # Conversation scenario model
-├── websockets/
-│   └── conversation.py      # WebSocket handler for real-time audio
-├── views/
-│   ├── auth.py              # Login/register pages
-│   ├── dashboard.py         # User dashboard
-│   ├── conversation.py      # Conversation interface
-│   └── settings.py          # User settings/API keys
+│   ├── user.py              # Basic user model
+│   ├── session.py           # Conversation sessions
+│   ├── scenario.py          # Interview/conversation scenarios
+│   └── feedback.py          # Session analysis
 ├── static/
-│   ├── css/                 # Custom styles
+│   ├── css/                 # Educational-friendly styling
 │   ├── js/
-│   │   └── conversation.js  # Client-side audio handling
-│   └── audio/               # Audio assets
-├── templates/
-│   ├── scenarios/           # Conversation scenario definitions
-│   └── personas/            # AI conversation partner personas
-└── requirements.txt
+│   │   └── conversation.js  # Browser audio handling
+│   └── scenarios/           # Default scenario files
+├── docker/
+│   ├── Dockerfile           # Container deployment
+│   ├── docker-compose.yml   # Full stack setup
+│   └── ollama.yml           # Local LLM option
+└── docs/
+    ├── deployment.md        # Institutional setup guide
+    ├── scenarios.md         # Creating custom scenarios
+    └── educator-guide.md    # Teaching with TalkBuddy
 ```
 
-### Provider Architecture
-- **Abstract base classes** for ASR, LLM, and TTS providers
-- **Factory pattern** for provider instantiation
-- **Pluggable design** allowing easy addition of new providers
-- **MVP implementation** with OpenAI + ElevenLabs providers
+## Updated Database Schema
 
-### WebSocket Flow (Simplified for MVP)
-1. User selects conversation type (English practice or interview prep)
-2. User clicks "Start Talking" button to begin recording
-3. Client JavaScript records complete audio segment while button is held/active
-4. User clicks "Stop Talking" - complete audio segment sent via WebSocket to server
-5. Server processes complete audio: Audio → STT → LLM (with persona) → TTS → Audio
-6. Server sends back complete AI response audio via WebSocket
-7. Client plays AI conversation partner's full response
-8. Process repeats with clear turn-taking until user ends session
-9. Session automatically saves with transcript and simple AI-generated feedback
-
-## Database Schema
-
-### Users Table
+### Scenarios Table (Enhanced for Individual Sharing)
 ```sql
-CREATE TABLE users (
+CREATE TABLE scenarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    email_verified BOOLEAN DEFAULT FALSE,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,  -- 'technical', 'academic', 'behavioral', 'language', 'custom'
+    discipline TEXT,  -- 'computer_science', 'engineering', 'business', 'healthcare', etc.
+    difficulty_level TEXT,  -- 'undergraduate', 'graduate', 'professional', 'entry_level'
+    interview_type TEXT,  -- 'technical', 'behavioral', 'case_study', 'presentation'
+    persona_prompt TEXT,  -- AI interviewer personality and role
+    context_prompt TEXT,  -- Interview context and guidelines
+    sample_questions TEXT,  -- JSON array of example questions
+    evaluation_criteria TEXT,  -- What to assess in responses
+    learning_objectives TEXT,  -- Educational goals
+    duration_minutes INTEGER,  -- Suggested session length
+    is_default BOOLEAN DEFAULT FALSE,  -- Built-in scenarios
+    is_public BOOLEAN DEFAULT FALSE,   -- Available in community library
+    is_imported BOOLEAN DEFAULT FALSE, -- User imported from others
+    created_by INTEGER,  -- User who created (NULL for defaults)
+    imported_from TEXT,  -- Original source if imported
+    share_token TEXT,    -- Unique token for sharing links
+    download_count INTEGER DEFAULT 0,  -- Track popularity
+    rating_average DECIMAL(3,2),       -- Community rating
+    rating_count INTEGER DEFAULT 0,    -- Number of ratings
+    tags TEXT,          -- JSON array for filtering/search
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users (id)
 );
 ```
 
-### User API Keys Table (Updated for Flexible Providers)
+### Sharing and Import Tracking
 ```sql
-CREATE TABLE user_api_keys (
+CREATE TABLE scenario_shares (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scenario_id INTEGER NOT NULL,
+    share_token TEXT UNIQUE NOT NULL,
+    created_by INTEGER NOT NULL,
+    access_count INTEGER DEFAULT 0,
+    last_accessed TIMESTAMP,
+    expires_at TIMESTAMP,  -- Optional expiration
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (scenario_id) REFERENCES scenarios (id),
+    FOREIGN KEY (created_by) REFERENCES users (id)
+);
+
+CREATE TABLE scenario_imports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    provider TEXT NOT NULL,  -- 'openai', 'elevenlabs', 'huggingface'
-    api_key_encrypted TEXT,  -- NULL for browser APIs or anonymous usage
-    is_valid BOOLEAN DEFAULT NULL,
-    is_preferred BOOLEAN DEFAULT FALSE,  -- User's preferred provider for this service type
-    service_type TEXT NOT NULL,  -- 'stt', 'llm', 'tts'
-    last_validated TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
+    scenario_id INTEGER NOT NULL,
+    imported_from_token TEXT,
+    imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    FOREIGN KEY (scenario_id) REFERENCES scenarios (id)
 );
 ```
 
-### Conversation Sessions Table (Simplified MVP)
+### Enhanced Session Tracking
 ```sql
 CREATE TABLE conversation_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     scenario_id INTEGER NOT NULL,
-    session_type TEXT NOT NULL,  -- 'english_practice', 'interview_prep'
+    session_name TEXT,  -- User-provided session identifier
     transcript TEXT,
-    feedback TEXT,  -- Simple AI-generated session summary
-    duration INTEGER,  -- seconds
-    turn_count INTEGER,  -- number of back-and-forth exchanges
-    status TEXT DEFAULT 'active',  -- 'active', 'completed', 'cancelled'
+    ai_feedback TEXT,   -- Auto-generated session analysis
+    self_reflection TEXT,  -- Student's post-session notes
+    instructor_notes TEXT,  -- Optional educator feedback
+    duration INTEGER,   -- seconds
+    turn_count INTEGER,
+    question_count INTEGER,  -- Number of questions asked
+    providers_used TEXT,  -- JSON of which providers were active
+    performance_metrics TEXT,  -- JSON of conversation analysis
+    shared_with_instructor BOOLEAN DEFAULT FALSE,
+    status TEXT DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id),
@@ -168,216 +216,95 @@ CREATE TABLE conversation_sessions (
 );
 ```
 
-### Scenarios Table (Simplified MVP)
-```sql
-CREATE TABLE scenarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT,
-    category TEXT,  -- 'english_casual', 'english_academic', 'english_business', 'interview_tech', 'interview_general', 'interview_healthcare'
-    session_type TEXT NOT NULL,  -- 'english_practice', 'interview_prep'
-    persona_prompt TEXT,  -- AI conversation partner personality and instructions
-    context_prompt TEXT,  -- Conversation context and guidelines
-    sample_topics TEXT,  -- JSON array of conversation starters
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+## Default Scenario Examples
 
-## Security & Abuse Prevention
+### Computer Science Technical Interview
+- **Persona**: Senior Software Engineer at a tech company
+- **Context**: 45-minute technical interview for new graduate position
+- **Focus**: Data structures, algorithms, system design basics, coding approach
+- **Sample Questions**: "Explain how you would design a URL shortener", "Walk me through reversing a linked list"
+- **Evaluation**: Technical accuracy, communication clarity, problem-solving approach
 
-### Authentication
-- Email/password with bcrypt hashing
-- Email verification required before API key entry
-- Simple session management
+### Graduate School Research Interview
+- **Persona**: Faculty member in student's field of interest
+- **Context**: Graduate program admission interview
+- **Focus**: Research interests, academic background, career goals
+- **Sample Questions**: "What research questions interest you?", "How does our program align with your goals?"
+- **Evaluation**: Research understanding, motivation, fit with program
 
-### Registration Protection (Simplified)
-- Basic email validation and verification
-- Simple registration throttling (max 3 accounts per IP per day)
-- **Session limits**: Maximum 1 concurrent conversation, 2-hour auto-timeout
-- **Daily limits**: Maximum 10 conversation sessions per day per user
+### Business Case Study Interview
+- **Persona**: Management consultant or business analyst
+- **Context**: Case-based interview for business roles
+- **Focus**: Analytical thinking, business acumen, presentation skills
+- **Sample Questions**: Market sizing, profitability analysis, strategic recommendations
+- **Evaluation**: Structured thinking, quantitative skills, business intuition
 
-### Session Protection (Simplified)
-- Maximum 1 concurrent conversation session per user
-- Auto-disconnect sessions after 2 hours of inactivity
-- Maximum 10 conversation sessions per day per user
-- **No real-time rate limiting needed** - user controls audio input timing
+## Educational Workflow (Individual-Focused)
 
-### API Key Security
-- Encrypt API keys in database using Fernet symmetric encryption
-- Validate API keys on first use with test requests
-- Clear error messages for invalid/expired keys
-- Never log or expose API keys in responses
+### Instructor Workflow
+1. **Create custom scenario** using built-in scenario builder
+2. **Test scenario** by practicing with it themselves
+3. **Export/Share**: Generate shareable link or download file
+4. **Distribute**: Post link in LMS, email, or provide file to students
+5. **Optional**: Publish to community library for broader access
 
-## Core Functionality
+### Student Workflow
+1. **Import scenarios**: Click shared links or upload scenario files
+2. **Browse library**: Discover scenarios in personal collection or community
+3. **Practice sessions**: Unlimited practice with any imported scenarios
+4. **Track progress**: Review session history and improvement metrics
+5. **Share creations**: Students can also create and share scenarios
 
-### User Registration & Setup (Free Service with Provider Choice)
-1. User registers with email/password (for abuse prevention only)
-2. Email verification required before accessing conversation features
-3. **Default setup**: Browser APIs enabled by default (no configuration needed)
-4. **Optional enhancement**: Users can add API keys for preferred providers
-5. **Provider selection**: Users choose preferred STT, LLM, and TTS providers
-6. System validates API keys when provided and tests fallback chains
-7. **Flexible configuration**: Save provider preferences and fallback order
+### Community Workflow
+1. **Public library**: Browse scenarios shared by community
+2. **Search/filter**: Find scenarios by discipline, difficulty, type
+3. **Rating system**: Rate scenarios to help others discover quality content
+4. **Contribution**: Anyone can contribute scenarios to public library
 
-### Conversation Flow (Multi-Provider Support)
-1. User selects conversation type and scenario from dashboard
-2. **Active providers displayed**: Shows current STT → LLM → TTS chain
-3. WebSocket connection established with user's configured providers
-4. **User clicks "Start Talking"** - recording begins with visual feedback
-5. **User speaks, then clicks "Stop Talking"** - audio processed by selected providers
-6. Server processes audio using user's preferred provider chain with automatic fallbacks
-7. Client receives and plays AI response using configured TTS provider
-8. **Provider status indicators** show which services are active/failed
-9. Process repeats with fallback handling if any provider fails
-10. Session saved with provider usage information for reliability tracking
+## Deployment Options
 
-### Provider Integration (Flexible Multi-Provider)
-- **STT Pipeline**: 
-  - Browser: Audio → Web Speech API → Text (always available)
-  - OpenAI: Audio → Base64 → Whisper API → Text (if API key provided)
-- **LLM Pipeline**: 
-  - Hugging Face: Text + Context → HF Inference API → Response (free tier)
-  - OpenAI: Text + Context → GPT-4 → Response (if API key provided)
-- **TTS Pipeline**: 
-  - Browser: Response → SpeechSynthesis API → Direct browser audio (always available)
-  - OpenAI: Response → OpenAI TTS → Audio (if API key provided)
-  - ElevenLabs: Response → ElevenLabs → Audio (if API key provided)
-- **Fallback Handling**: Automatic provider switching when services fail or reach limits
+### Quick Start (Free Services)
+1. **Clone repository** and configure environment
+2. **Use default browser APIs** + Hugging Face free tier
+3. **Load default scenarios** for immediate use
+4. **Optional**: Students can add personal API keys for enhancement
 
-## Conversation Scenarios (MVP)
+### Institutional Deployment
+1. **Docker container** deployment on campus infrastructure
+2. **Local Ollama server** for complete privacy
+3. **Custom scenario loading** for specific programs
+4. **LDAP/SSO integration** for seamless access
 
-### English Practice Scenarios
+### Enhanced Setup
+1. **Institutional API keys** for premium experiences
+2. **ElevenLabs integration** for natural TTS
+3. **Custom model fine-tuning** for specific domains
+4. **Advanced analytics** for educational research
 
-#### Casual Conversation (Beginner-Friendly)
-- **Persona**: Friendly native English speaker, patient and encouraging
-- **Topics**: Introductions, hobbies, weather, daily routines, food preferences
-- **Approach**: Simple vocabulary, shorter responses, encouraging feedback
-- **Sample Starters**: "Hi! What's your favorite food?", "Tell me about your hobbies"
+## Success Metrics (Educational)
 
-#### Academic English (Intermediate)
-- **Persona**: University student or teaching assistant, supportive but academic
-- **Topics**: Classroom discussions, study habits, university life, academic interests
-- **Approach**: Academic vocabulary, structured conversations, educational focus
-- **Sample Starters**: "What's your major?", "How do you prefer to study?"
+### Student Engagement
+- **Session completion rates** across different scenarios
+- **Return usage patterns** indicating sustained learning
+- **Scenario diversity** - students exploring multiple interview types
+- **Self-reported confidence improvement** through optional surveys
 
-#### Business English (Professional)
-- **Persona**: Professional colleague, business-focused but friendly
-- **Topics**: Work projects, meetings, networking, professional development
-- **Approach**: Professional communication, workplace vocabulary, career discussions
-- **Sample Starters**: "Tell me about your current project", "What are your career goals?"
+### Educational Effectiveness
+- **Interview performance correlation** with practice frequency
+- **Skill progression tracking** through conversation analysis
+- **Educator adoption** and custom scenario creation
+- **Community contribution** of shared scenarios and improvements
 
-### Interview Preparation Scenarios
-
-#### Software Engineering Interviews
-- **Persona**: Senior software engineer, technical but approachable
-- **Focus**: Technical experience, problem-solving approach, coding discussions
-- **Sample Questions**: "Walk me through a challenging project", "How do you approach debugging?"
-
-#### General Business Interviews
-- **Persona**: HR manager or team lead, professional and encouraging
-- **Focus**: Behavioral questions, teamwork, communication skills, cultural fit
-- **Sample Questions**: "Tell me about yourself", "Describe a time you overcame a challenge"
-
-#### Healthcare/Client-Facing Roles
-- **Persona**: Healthcare professional or client services manager
-- **Focus**: Communication skills, empathy, handling difficult situations
-- **Sample Questions**: "How would you handle an upset patient?", "Describe your communication style"
-
-## Client-Side Audio Handling
-
-### WebSocket Communication (Multi-Provider)
-```javascript
-// Enhanced message types supporting flexible provider combinations:
-{type: 'audio_complete', data: 'base64_audio', provider: 'browser|openai'}  // User → Server
-{type: 'transcript_direct', text: 'text', provider: 'browser'}              // User → Server (browser STT)
-{type: 'transcript', text: 'transcribed_text', provider: 'openai|browser'}  // Server → User  
-{type: 'ai_response', text: 'ai_response', provider: 'openai|huggingface'}  // Server → User
-{type: 'ai_audio_complete', data: 'base64_audio', provider: 'openai|elevenlabs'} // Server → User
-{type: 'ai_speak_browser', text: 'text'}                                    // Server → User (browser TTS)
-{type: 'processing', status: 'transcribing|thinking|speaking', provider: 'string'} // Server → User
-{type: 'provider_status', stt: 'browser', llm: 'openai', tts: 'browser'}   // Server → User (active providers)
-{type: 'fallback_activated', from: 'openai', to: 'browser', service: 'stt'} // Server → User
-{type: 'error', message: 'error_description', provider: 'string'}           // Server → User
-{type: 'session_end', feedback: 'simple_feedback'}                          // Server → User
-```
-
-## Environment Configuration
-
-### Required Environment Variables
-```
-# Database
-DATABASE_URL=sqlite:///voice_interview.db
-
-# Security
-SECRET_KEY=your-secret-key-for-sessions
-ENCRYPTION_KEY=your-fernet-encryption-key
-
-# Email (for verification)
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-
-# Optional: CAPTCHA
-HCAPTCHA_SITE_KEY=your-hcaptcha-site-key
-HCAPTCHA_SECRET_KEY=your-hcaptcha-secret-key
-```
-
-## Development Priorities
-
-### Phase 1: Core MVP (Week 1-2)
-1. Basic FastHTML app structure with simple authentication
-2. User API key management with encryption and validation
-3. **Push-to-talk conversation interface** with clear audio recording/playback
-4. **Simple WebSocket pipeline**: complete audio → STT → LLM → TTS → complete audio response
-5. Basic conversation scenarios (one English, one interview) with clear personas
-6. Session recording with transcript and simple AI feedback
-
-### Phase 2: Enhanced Scenarios (Week 3)
-7. Multiple conversation scenarios across English learning and interview prep
-8. Improved conversation interface with better visual feedback
-9. Session history with basic conversation metrics
-10. **Simple AI feedback generation** based on complete session transcripts
-11. Error handling and graceful fallbacks for API issues
-
-### Phase 3: Polish & Deploy (Week 4)
-12. **Optional future enhancements** planning (silence detection, adaptive conversation)
-13. Performance optimization for faster audio processing
-14. Security review and deployment preparation
-15. User documentation and onboarding flow
-16. **Foundation for advanced features**: infrastructure ready for real-time streaming, fluency scoring, etc.
-
-## Success Metrics
-- **Conversation Latency**: < 3 seconds from speech to AI response
-- **User Engagement**: Natural conversation flow with appropriate turn-taking
-- **Learning Effectiveness**: Measurable improvement in English fluency and interview confidence
-- **User Experience**: Intuitive interface supporting both ESL learners and interview candidates
-- **Technical Reliability**: Graceful handling of API failures and network issues
-- **Accessibility**: Clear interface design suitable for non-native English speakers
-
-## Technical Constraints (Free Service Focus)
-- **Free service model**: No costs to users, registration only for abuse prevention
-- **Flexible provider architecture**: Users choose preferred AI services
-- **SQLite database** (simple deployment)
-- **Push-to-talk interface** (no complex real-time audio streaming)
-- **Complete audio segments** (simplified processing pipeline)
-- **Provider fallbacks** (automatic switching when services fail)
-- **Cross-browser compatibility** (Chrome, Firefox, Safari)
-
-## Future Enhancement Roadmap
-### Phase 2 Enhancements (Post-MVP)
-- **Continuous audio streaming** with silence detection (Voice Activity Detection)
-- **Real-time conversation flow** with natural turn-taking
-- **Adaptive conversation difficulty** based on user performance
-- **Granular fluency scoring** with detailed pronunciation feedback
-- **Advanced LLM prompting** for skill-level adaptation
-
-### Phase 3 Advanced Features
-- **Speech analytics integration** for detailed pronunciation analysis
-- **Multi-language support** for non-English native speakers
-- **Group conversation practice** (multiple users with AI moderator)
-- **Custom scenario creation** by instructors or advanced users
+### Technical Performance
+- **Response latency** under 3 seconds for smooth conversations
+- **Provider fallback reliability** when services are unavailable
+- **Cross-platform compatibility** for diverse student devices
+- **Resource efficiency** for institutional deployments
 
 ---
 
-This specification provides a complete roadmap for building TalkBuddy - a dual-purpose conversational AI platform that serves both English language learners and interview preparation needs with real-time voice processing and a clean, extensible architecture.
+## Updated Value Proposition
+
+**"Free, open-source interview practice platform that puts students first. No costs, no vendor lock-in, no data harvesting - just effective conversation practice powered by modern AI. Educators can create custom scenarios, students can practice unlimited sessions, and institutions can deploy privately while contributing to a shared educational resource."**
+
+This positions TalkBuddy as an educational tool focused on accessibility, privacy, and community contribution rather than a commercial product competing with existing services.
