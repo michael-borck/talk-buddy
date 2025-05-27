@@ -45,6 +45,12 @@ class SessionService {
       metadata: this.metrics,
     };
 
+    // Add user ID if authenticated
+    const userId = pb.authStore.model?.id;
+    if (userId) {
+      (session as any).user = userId;
+    }
+
     try {
       const record = await pb.collection('sessions').create(session);
       this.currentSession = { ...session, id: record.id };
