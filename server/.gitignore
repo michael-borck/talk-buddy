@@ -1,0 +1,19 @@
+# PocketBase binary
+pocketbase
+pocketbase.exe
+
+# PocketBase data
+pb_data/
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# Backups
+pb_backup_*
+
+# OS files
+.DS_Store
+Thumbs.db
