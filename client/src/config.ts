@@ -6,6 +6,7 @@ export const config = {
   piperUrl: import.meta.env.VITE_PIPER_URL || 'http://localhost:8092',
   ollamaUrl: import.meta.env.VITE_OLLAMA_URL || 'http://localhost:11434',
   ollamaApiKey: import.meta.env.VITE_OLLAMA_API_KEY || '',
+  ollamaModel: import.meta.env.VITE_OLLAMA_MODEL || 'granite3.2',
   
   // Feature flags
   features: {

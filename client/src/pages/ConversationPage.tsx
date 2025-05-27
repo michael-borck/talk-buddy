@@ -49,7 +49,7 @@ export function ConversationPage() {
   // Session timer
   useEffect(() => {
     if (!sessionStartRef.current) {
-      sessionStartRef.current = new Date();
+      return; // Don't start timer until conversation begins
     }
 
     const interval = setInterval(() => {
@@ -60,7 +60,7 @@ export function ConversationPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [conversationState]); // Re-run when conversation state changes
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -99,13 +99,17 @@ export function ConversationPage() {
         
         // Transcribe with Whisper
         try {
+          console.log('=== MAIN RECORDING: Sending to Whisper ===');
+          console.log('Audio blob size:', audioBlob.size);
           const transcript = await whisperSTT.transcribeAudio(audioBlob);
           console.log('Whisper transcript:', transcript);
           
           if (transcript && transcript.trim()) {
+            console.log('Adding user message:', transcript);
             conversationService.addUserMessage(transcript);
             processUserInput();
           } else {
+            console.log('No speech detected in recording');
             // No speech detected, go back to idle
             setConversationState('idle');
           }
@@ -126,11 +130,18 @@ export function ConversationPage() {
   };
 
   const stopRecording = () => {
+    console.log('=== STOP RECORDING CALLED ===');
+    console.log('isRecording:', isRecording);
+    console.log('mediaRecorder state:', mediaRecorderRef.current?.state);
+    
     if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      console.log('Stopping media recorder...');
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       setIsRecording(false);
       setConversationState('thinking');
+    } else {
+      console.log('No active recording to stop');
     }
   };
 
@@ -173,6 +184,9 @@ export function ConversationPage() {
   
   const handleStartConversation = () => {
     console.log('Starting conversation, scenario:', scenario);
+    
+    // Start the session timer
+    sessionStartRef.current = new Date();
     
     if (scenario?.initialMessage) {
       setConversationState('speaking');
@@ -268,6 +282,9 @@ export function ConversationPage() {
         isOpen={showWhisperError}
         onClose={() => setShowWhisperError(false)}
       />
+      
+      {/* STT Debugger - uncomment to debug Whisper */}
+      {/* <STTDebugger /> */}
     </>
   );
 }

@@ -1,4 +1,6 @@
 import type { Scenario } from './pocketbase';
+import { ollamaService } from './ollama';
+import { config } from '../config';
 
 interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -9,6 +11,7 @@ interface ConversationMessage {
 export class ConversationService {
   private messages: ConversationMessage[] = [];
   private scenario: Scenario | null = null;
+  private useOllama: boolean = true; // Feature flag for easy toggling
 
   initialize(scenario: Scenario): void {
     this.scenario = scenario;
@@ -37,11 +40,61 @@ export class ConversationService {
       return "I'm not sure what scenario we're practicing. Let's start over.";
     }
 
+    try {
+      if (this.useOllama && config.ollamaUrl && config.ollamaApiKey) {
+        // Use Ollama for intelligent responses
+        console.log('Using Ollama for AI response...');
+        
+        // Prepare conversation history (exclude initial message from history)
+        const conversationHistory = this.messages
+          .slice(1) // Skip the initial message
+          .map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }));
+
+        // Enhance system prompt to encourage brief responses
+        const enhancedSystemPrompt = `${this.scenario.systemPrompt}
+
+IMPORTANT: Keep your responses brief and conversational - typically 1-3 sentences unless more detail is specifically needed. Avoid long explanations or speeches. Respond naturally as a real person would in this situation.`;
+
+        // Generate response with scenario context
+        const response = await ollamaService.generateResponse(
+          enhancedSystemPrompt,
+          conversationHistory,
+          userInput
+        );
+
+        // Add AI response to messages
+        this.messages.push({
+          role: 'assistant',
+          content: response,
+          timestamp: new Date()
+        });
+
+        return response;
+
+      } else {
+        // Fallback to mock responses
+        console.log('Using mock responses (Ollama not configured)');
+        return this.getMockResponse(userInput);
+      }
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      // Fallback to mock responses on error
+      return this.getMockResponse(userInput);
+    }
+  }
+
+  private getMockResponse(userInput: string): string {
+    if (!this.scenario) {
+      return "I'm not sure what scenario we're practicing.";
+    }
+
     // Handle audio placeholder messages gracefully
     const isAudioPlaceholder = userInput.includes('[Audio message');
     
-    // For now, return mock responses based on scenario
-    // TODO: Integrate with actual AI service
+    // Mock responses based on scenario
     const responses = {
       'coffee-shop': [
         "What size would you like for your coffee?",
