@@ -88,6 +88,15 @@ export function UserMenu({ onLogin, onRegister }: UserMenuProps) {
             <button
               onClick={() => {
                 setIsOpen(false);
+                navigate('/scenarios/mine');
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              My Scenarios
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false);
                 navigate('/scenarios');
               }}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -97,7 +106,7 @@ export function UserMenu({ onLogin, onRegister }: UserMenuProps) {
             <button
               onClick={() => {
                 setIsOpen(false);
-                // TODO: Navigate to session history page
+                navigate('/sessions');
               }}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >

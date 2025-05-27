@@ -12,6 +12,8 @@ export interface SessionMetrics {
   conversationSummary?: string;
 }
 
+export type SessionStatus = 'active' | 'paused' | 'completed' | 'abandoned' | 'timeout';
+
 export interface Session {
   id?: string;
   user?: string;
@@ -19,6 +21,9 @@ export interface Session {
   startTime: string;
   endTime?: string;
   duration?: number;
+  status: SessionStatus;
+  currentTurn?: number;
+  pausedAt?: string;
   transcript: any[];
   metadata?: SessionMetrics;
 }
@@ -41,6 +46,8 @@ class SessionService {
     const session: Session = {
       scenario: scenarioId,
       startTime: this.sessionStartTime.toISOString(),
+      status: 'active',
+      currentTurn: 0,
       transcript: [],
       metadata: this.metrics,
     };
@@ -135,6 +142,99 @@ class SessionService {
 
   getCurrentSession(): Session | null {
     return this.currentSession;
+  }
+
+  async pauseSession(): Promise<Session | null> {
+    if (!this.currentSession) return null;
+
+    this.currentSession.status = 'paused';
+    this.currentSession.pausedAt = new Date().toISOString();
+
+    if (this.currentSession.id) {
+      try {
+        await pb.collection('sessions').update(this.currentSession.id, {
+          status: 'paused',
+          pausedAt: this.currentSession.pausedAt,
+          currentTurn: this.currentSession.currentTurn,
+          transcript: this.currentSession.transcript,
+          metadata: this.metrics,
+        });
+        console.log('Session paused:', this.currentSession);
+      } catch (error) {
+        console.error('Failed to pause session:', error);
+      }
+    }
+
+    return this.currentSession;
+  }
+
+  async completeSession(conversationMetrics?: ConversationMetrics): Promise<Session | null> {
+    if (!this.currentSession || !this.sessionStartTime) return null;
+
+    const endTime = new Date();
+    const duration = Math.floor((endTime.getTime() - this.sessionStartTime.getTime()) / 1000);
+
+    this.currentSession.endTime = endTime.toISOString();
+    this.currentSession.duration = duration;
+    this.currentSession.status = 'completed';
+
+    // Add conversation metrics to session metadata
+    if (conversationMetrics) {
+      this.metrics.averageResponseTime = conversationMetrics.averageResponseTime;
+      this.metrics.totalPauses = conversationMetrics.totalPauses;
+      
+      // Store full conversation metrics in metadata
+      this.currentSession.metadata = {
+        ...this.metrics,
+        conversationMetrics
+      };
+    }
+
+    if (this.currentSession.id) {
+      try {
+        await pb.collection('sessions').update(this.currentSession.id, {
+          endTime: this.currentSession.endTime,
+          duration,
+          status: 'completed',
+          metadata: this.currentSession.metadata,
+        });
+        console.log('Session completed:', this.currentSession);
+      } catch (error) {
+        console.error('Failed to complete session:', error);
+      }
+    }
+
+    const completedSession = this.currentSession;
+    this.currentSession = null;
+    this.sessionStartTime = null;
+    
+    return completedSession;
+  }
+
+  async abandonSession(): Promise<Session | null> {
+    if (!this.currentSession) return null;
+
+    this.currentSession.status = 'abandoned';
+    this.currentSession.endTime = new Date().toISOString();
+
+    if (this.currentSession.id) {
+      try {
+        await pb.collection('sessions').update(this.currentSession.id, {
+          status: 'abandoned',
+          endTime: this.currentSession.endTime,
+          metadata: this.metrics,
+        });
+        console.log('Session abandoned:', this.currentSession);
+      } catch (error) {
+        console.error('Failed to abandon session:', error);
+      }
+    }
+
+    const abandonedSession = this.currentSession;
+    this.currentSession = null;
+    this.sessionStartTime = null;
+    
+    return abandonedSession;
   }
 
   updateMetrics(metrics: Partial<SessionMetrics>): void {

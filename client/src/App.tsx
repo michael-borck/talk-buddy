@@ -1,6 +1,10 @@
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { ConversationPage } from './pages/ConversationPage'
 import { ScenariosPage } from './pages/ScenariosPage'
+import { ScenarioFormPage } from './pages/ScenarioFormPage'
+import { MyScenariosPage } from './pages/MyScenariosPage'
+import { SharedScenarioPage } from './pages/SharedScenarioPage'
+import { SessionHistoryPage } from './pages/SessionHistoryPage'
 import { useState } from 'react'
 import { listScenarios } from './services/pocketbase'
 import { AuthProvider } from './contexts/AuthContext'
@@ -15,6 +19,11 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/scenarios" element={<ScenariosPage />} />
+          <Route path="/scenarios/new" element={<ScenarioFormPage />} />
+          <Route path="/scenarios/edit/:scenarioId" element={<ScenarioFormPage />} />
+          <Route path="/scenarios/mine" element={<MyScenariosPage />} />
+          <Route path="/scenarios/shared/:scenarioId" element={<SharedScenarioPage />} />
+          <Route path="/sessions" element={<SessionHistoryPage />} />
           <Route path="/conversation/:scenarioId" element={<ConversationPage />} />
         </Routes>
       </BrowserRouter>

@@ -27,6 +27,7 @@ export function ConversationPage() {
   const [showWhisperError, setShowWhisperError] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [sessionAnalysisData, setSessionAnalysisData] = useState<any>(null);
+  const [showEndOptions, setShowEndOptions] = useState(false);
   const sessionStartRef = useRef<Date | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -194,6 +195,11 @@ export function ConversationPage() {
           setConversationState('idle');
           // Track when AI finishes speaking for response time metrics
           metricsService.onAISpeakingEnd();
+          
+          // Check if conversation has naturally ended
+          if (conversationService.isConversationComplete()) {
+            handleNaturalEnd();
+          }
         },
         (error) => {
           console.error('TTS error:', error);
@@ -261,30 +267,88 @@ export function ConversationPage() {
     }
   };
   
-  const handleEndSession = async () => {
-    if (confirm('Are you sure you want to end this session?')) {
-      // Stop any ongoing speech
-      textToSpeech.stop();
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      }
-      
-      // Get final metrics
-      const conversationMetrics = metricsService.getConversationMetrics();
-      
-      // End and save the session with metrics
-      const completedSession = await sessionService.endSession(conversationMetrics);
-      if (completedSession && conversationMetrics.turns.length > 0) {
-        console.log('Session saved with metrics:', completedSession);
-        // Show analysis instead of navigating away immediately
-        setSessionAnalysisData({ session: completedSession, metrics: conversationMetrics });
-        setShowAnalysis(true);
-      } else {
-        // No turns recorded, just go back
-        conversationService.clear();
-        navigate('/');
-      }
+  const handleNaturalEnd = async () => {
+    // Stop any ongoing speech
+    textToSpeech.stop();
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
+    
+    // Get final metrics
+    const conversationMetrics = metricsService.getConversationMetrics();
+    
+    // Complete the session naturally
+    const completedSession = await sessionService.completeSession(conversationMetrics);
+    if (completedSession && conversationMetrics.turns.length > 0) {
+      console.log('Session completed naturally:', completedSession);
+      // Show analysis
+      setSessionAnalysisData({ session: completedSession, metrics: conversationMetrics });
+      setShowAnalysis(true);
+    } else {
+      // No turns recorded, just go back
+      conversationService.clear();
+      navigate('/');
+    }
+  };
+
+  const handlePauseSession = async () => {
+    // Stop any ongoing speech
+    textToSpeech.stop();
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+    
+    // Update session with current state
+    const stats = conversationService.getStats();
+    const currentMetrics = metricsService.getConversationMetrics();
+    
+    if (sessionService.getCurrentSession()) {
+      sessionService.getCurrentSession()!.currentTurn = conversationService.getCurrentTurn();
+    }
+    
+    await sessionService.updateTranscript(
+      conversationService.getTranscript(),
+      {
+        totalTokensEstimate: stats.totalTokensEstimate,
+        contextCompressed: stats.hasSummary,
+        conversationSummary: stats.summary || undefined,
+        averageResponseTime: currentMetrics.averageResponseTime,
+        totalPauses: currentMetrics.totalPauses
+      }
+    );
+    
+    // Pause the session
+    await sessionService.pauseSession();
+    conversationService.clear();
+    navigate('/');
+  };
+
+  const handleAbandonSession = async () => {
+    // Stop any ongoing speech
+    textToSpeech.stop();
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+    
+    // Get final metrics for whatever we completed
+    const conversationMetrics = metricsService.getConversationMetrics();
+    
+    // Abandon the session
+    const abandonedSession = await sessionService.abandonSession();
+    if (abandonedSession && conversationMetrics.turns.length > 0) {
+      console.log('Session abandoned:', abandonedSession);
+      // Show analysis for what was completed
+      setSessionAnalysisData({ session: abandonedSession, metrics: conversationMetrics });
+      setShowAnalysis(true);
+    } else {
+      // No turns recorded, just go back
+      conversationService.clear();
+      navigate('/');
+    }
+  };
+
+  const handleEndSession = () => {
+    setShowEndOptions(true);
   };
 
   return (
@@ -357,6 +421,49 @@ export function ConversationPage() {
             window.location.reload(); // Reload to restart the scenario
           }}
         />
+      )}
+
+      {/* End Session Options Modal */}
+      {showEndOptions && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4">End Session</h2>
+            <p className="text-gray-600 mb-6">
+              How would you like to end this practice session?
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowEndOptions(false);
+                  handlePauseSession();
+                }}
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors text-left"
+              >
+                <div className="font-medium">⏸️ Pause & Resume Later</div>
+                <div className="text-sm text-blue-100">Save progress and continue from here</div>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowEndOptions(false);
+                  handleAbandonSession();
+                }}
+                className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg hover:bg-orange-700 transition-colors text-left"
+              >
+                <div className="font-medium">🏁 End & Analyze</div>
+                <div className="text-sm text-orange-100">Finish now and see performance report</div>
+              </button>
+              
+              <button
+                onClick={() => setShowEndOptions(false)}
+                className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

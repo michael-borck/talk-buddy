@@ -123,29 +123,48 @@ export function ScenariosPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tabs */}
-        <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-8 max-w-md">
-          <button
-            onClick={() => setActiveTab('public')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'public'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Public Library ({publicScenarios.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('mine')}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'mine'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-            disabled={!isAuthenticated}
-          >
-            My Scenarios ({myScenarios.length})
-          </button>
+        {/* Tabs and Actions */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('public')}
+              className={`py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'public'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Public Library ({publicScenarios.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('mine')}
+              className={`py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'mine'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+              disabled={!isAuthenticated}
+            >
+              My Scenarios ({myScenarios.length})
+            </button>
+          </div>
+
+          {isAuthenticated && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate('/scenarios/mine')}
+                className="text-gray-600 hover:text-gray-800 px-3 py-2 text-sm"
+              >
+                Manage My Scenarios
+              </button>
+              <button
+                onClick={() => navigate('/scenarios/new')}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+              >
+                Create Scenario
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Scenarios Grid */}

@@ -68,7 +68,11 @@ export function SessionAnalysis({ session, metrics, onClose, onPracticeAgain }: 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl">
-        <h2 className="text-3xl font-bold mb-6 text-center">Session Complete! 🎉</h2>
+        <h2 className="text-3xl font-bold mb-6 text-center">
+          {session.status === 'completed' ? 'Session Complete! 🎉' : 
+           session.status === 'abandoned' ? 'Session Ended 📊' : 
+           'Session Analysis 📈'}
+        </h2>
         
         {/* Overall Stats */}
         <div className="grid grid-cols-2 gap-4 mb-6">
