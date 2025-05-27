@@ -55,4 +55,4 @@ env/
 # Project specific
 *.db
 .sesskey
-uv.lock
+uv.lockserver/whisper-venv/

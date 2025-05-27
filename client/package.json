@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.4",
+    "@types/react-router-dom": "^5.3.3",
     "clsx": "^2.1.1",
     "pocketbase": "^0.26.0",
     "react": "^19.1.0",
