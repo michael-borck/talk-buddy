@@ -12,6 +12,7 @@ export class ConversationService {
   private messages: ConversationMessage[] = [];
   private scenario: Scenario | null = null;
   private useOllama: boolean = true; // Feature flag for easy toggling
+  private conversationSummary: string | null = null;
 
   initialize(scenario: Scenario): void {
     this.scenario = scenario;
@@ -45,13 +46,16 @@ export class ConversationService {
         // Use Ollama for intelligent responses
         console.log('Using Ollama for AI response...');
         
-        // Prepare conversation history (exclude initial message from history)
-        const conversationHistory = this.messages
-          .slice(1) // Skip the initial message
-          .map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }));
+        // Get optimized conversation history that fits within context window
+        const optimizedHistory = await this.getOptimizedHistory();
+        const conversationHistory = optimizedHistory.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+
+        // Log context usage
+        const contextTokens = this.getTotalTokens(optimizedHistory);
+        console.log(`Context usage: ~${contextTokens} tokens of ${config.ollamaMaxContext} max`);
 
         // Enhance system prompt to encourage brief responses
         const enhancedSystemPrompt = `${this.scenario.systemPrompt}
@@ -153,9 +157,113 @@ IMPORTANT: Keep your responses brief and conversational - typically 1-3 sentence
     return [...this.messages];
   }
 
+  // Get conversation statistics
+  getStats() {
+    const userMessages = this.messages.filter(m => m.role === 'user');
+    const aiMessages = this.messages.filter(m => m.role === 'assistant');
+    
+    return {
+      totalMessages: this.messages.length,
+      userMessages: userMessages.length,
+      aiMessages: aiMessages.length,
+      totalTokensEstimate: this.getTotalTokens(this.messages),
+      hasSummary: this.conversationSummary !== null,
+      summary: this.conversationSummary
+    };
+  }
+
   clear(): void {
     this.messages = [];
     this.scenario = null;
+    this.conversationSummary = null;
+  }
+
+  // Rough token estimation (4 chars ≈ 1 token)
+  private estimateTokens(text: string): number {
+    return Math.ceil(text.length / 4);
+  }
+
+  // Get total estimated tokens for conversation
+  private getTotalTokens(messages: ConversationMessage[]): number {
+    return messages.reduce((total, msg) => {
+      return total + this.estimateTokens(msg.content);
+    }, 0);
+  }
+
+  // Create a summary of older messages
+  private async summarizeConversation(messages: ConversationMessage[]): Promise<string> {
+    if (!this.useOllama || !config.ollamaUrl) {
+      // Simple fallback summary
+      const exchanges = Math.floor(messages.length / 2);
+      return `Previous conversation included ${exchanges} exchanges about ${this.scenario?.name || 'the topic'}.`;
+    }
+
+    try {
+      // Use Ollama to create a summary
+      const conversationText = messages
+        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .join('\n');
+
+      const summaryPrompt = `Summarize this conversation in 2-3 sentences, focusing on key points and the current topic:
+
+${conversationText}
+
+Summary:`;
+
+      const response = await ollamaService.generateResponse(
+        'You are a helpful assistant that creates concise summaries.',
+        [],
+        summaryPrompt
+      );
+
+      return response;
+    } catch (error) {
+      console.error('Failed to summarize conversation:', error);
+      // Fallback
+      const exchanges = Math.floor(messages.length / 2);
+      return `Previous conversation included ${exchanges} exchanges about ${this.scenario?.name || 'the topic'}.`;
+    }
+  }
+
+  // Get conversation history optimized for context window
+  private async getOptimizedHistory(): Promise<ConversationMessage[]> {
+    const maxContextTokens = config.ollamaMaxContext;
+    const reserveTokens = Math.floor(maxContextTokens * 0.1); // Reserve 10% for system prompt and response
+    const targetTokens = maxContextTokens - reserveTokens;
+
+    // Start with recent messages
+    const recentMessages = this.messages.slice(1); // Skip initial message
+    let currentTokens = this.getTotalTokens(recentMessages);
+
+    // If under limit, return all messages
+    if (currentTokens < targetTokens) {
+      return recentMessages;
+    }
+
+    // Need to compress - keep last 4 messages and summarize the rest
+    const keepRecent = 4;
+    const recentToKeep = recentMessages.slice(-keepRecent);
+    const olderMessages = recentMessages.slice(0, -keepRecent);
+
+    // Create summary of older messages
+    if (olderMessages.length > 0) {
+      this.conversationSummary = await this.summarizeConversation(olderMessages);
+    }
+
+    // Return summary + recent messages
+    const optimizedHistory: ConversationMessage[] = [];
+    
+    if (this.conversationSummary) {
+      optimizedHistory.push({
+        role: 'assistant',
+        content: `[Previous conversation summary: ${this.conversationSummary}]`,
+        timestamp: new Date()
+      });
+    }
+
+    optimizedHistory.push(...recentToKeep);
+    
+    return optimizedHistory;
   }
 }
 

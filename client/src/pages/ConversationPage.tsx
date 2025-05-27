@@ -10,6 +10,7 @@ import { getScenario, type Scenario } from '../services/pocketbase';
 import { textToSpeech } from '../services/speech';
 import { conversationService } from '../services/conversation';
 import { whisperSTT } from '../services/whisper';
+import { sessionService } from '../services/session';
 
 export function ConversationPage() {
   const { scenarioId } = useParams<{ scenarioId: string }>();
@@ -159,6 +160,17 @@ export function ConversationPage() {
       // Get AI response
       const aiResponse = await conversationService.getAIResponse(lastUserMessage.content);
       
+      // Update session with latest transcript and stats
+      const stats = conversationService.getStats();
+      await sessionService.updateTranscript(
+        conversationService.getTranscript(),
+        {
+          totalTokensEstimate: stats.totalTokensEstimate,
+          contextCompressed: stats.hasSummary,
+          conversationSummary: stats.summary || undefined
+        }
+      );
+      
       // Speak the response
       setConversationState('speaking');
       await textToSpeech.speak(
@@ -182,11 +194,16 @@ export function ConversationPage() {
     return isRecording ? 'recording' : 'idle';
   };
   
-  const handleStartConversation = () => {
+  const handleStartConversation = async () => {
     console.log('Starting conversation, scenario:', scenario);
     
     // Start the session timer
     sessionStartRef.current = new Date();
+    
+    // Create a new session in PocketBase
+    if (scenarioId) {
+      await sessionService.createSession(scenarioId);
+    }
     
     if (scenario?.initialMessage) {
       setConversationState('speaking');
@@ -196,9 +213,11 @@ export function ConversationPage() {
         try {
           await textToSpeech.speak(
             scenario.initialMessage,
-            () => {
+            async () => {
               console.log('TTS finished speaking');
               setConversationState('idle');
+              // Save initial message to session
+              await sessionService.updateTranscript(conversationService.getTranscript());
             },
             (error) => {
               console.error('TTS error:', error);
@@ -216,7 +235,7 @@ export function ConversationPage() {
     }
   };
   
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     if (confirm('Are you sure you want to end this session?')) {
       // Stop any ongoing speech
       textToSpeech.stop();
@@ -224,9 +243,11 @@ export function ConversationPage() {
         mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       }
       
-      // TODO: Save session data to PocketBase
-      const transcript = conversationService.getTranscript();
-      console.log('Session transcript:', transcript);
+      // End and save the session
+      const completedSession = await sessionService.endSession();
+      if (completedSession) {
+        console.log('Session saved:', completedSession);
+      }
       
       conversationService.clear();
       navigate('/');
