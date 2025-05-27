@@ -22,11 +22,17 @@ CORS(app, origins=[
     'https://talkbuddy.serveur.au'
 ])
 
-# Path to Piper binary and voice model
+# Path to Piper binary and voice models
 PIPER_BIN = "./piper/piper"
-# Default to female voice, can be changed via environment variable
-VOICE_MODEL = os.environ.get('PIPER_VOICE', 'piper-voices/en_GB-southern_english_female-low.onnx')
-# Alternative male voice: VOICE_MODEL = "piper-voices/en_GB-alan-low.onnx"
+
+# Available voice models
+VOICE_MODELS = {
+    'female': 'piper-voices/en_GB-southern_english_female-low.onnx',
+    'male': 'piper-voices/en_GB-alan-low.onnx'
+}
+
+# Default voice
+DEFAULT_VOICE = os.environ.get('PIPER_DEFAULT_VOICE', 'female')
 
 @app.route('/', methods=['GET'])
 def home():
@@ -35,7 +41,8 @@ def home():
         "server": "piper-tts",
         "version": "1.0.0",
         "timestamp": datetime.now().isoformat(),
-        "voice": VOICE_MODEL
+        "voices": list(VOICE_MODELS.keys()),
+        "defaultVoice": DEFAULT_VOICE
     })
 
 @app.route('/health', methods=['GET'])
@@ -51,6 +58,7 @@ def synthesize():
     Expected JSON payload:
     {
         "text": "Text to synthesize",
+        "voice": "male" or "female" (optional, default: female),
         "format": "wav" (optional, default: wav),
         "speed": 1.0 (optional, speaking rate multiplier)
     }
@@ -65,6 +73,11 @@ def synthesize():
         
         text = data['text']
         speed = data.get('speed', 1.0)
+        voice = data.get('voice', DEFAULT_VOICE)
+        
+        # Validate voice selection
+        if voice not in VOICE_MODELS:
+            voice = DEFAULT_VOICE
         
         # Validate input
         if not text.strip():
@@ -82,7 +95,7 @@ def synthesize():
             # Note: Piper doesn't have a Python API yet, so we use subprocess
             process = subprocess.run([
                 PIPER_BIN,
-                '--model', VOICE_MODEL,
+                '--model', VOICE_MODELS[voice],
                 '--output_file', output_path,
                 '--length_scale', str(1.0 / speed)  # Inverse because length_scale slows down
             ], input=text, text=True, capture_output=True)
@@ -121,6 +134,11 @@ def synthesize_base64():
         
         text = data['text']
         speed = data.get('speed', 1.0)
+        voice = data.get('voice', DEFAULT_VOICE)
+        
+        # Validate voice selection
+        if voice not in VOICE_MODELS:
+            voice = DEFAULT_VOICE
         
         # Create temporary file for audio output
         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
@@ -130,7 +148,7 @@ def synthesize_base64():
             # Run Piper
             process = subprocess.run([
                 PIPER_BIN,
-                '--model', VOICE_MODEL,
+                '--model', VOICE_MODELS[voice],
                 '--output_file', output_path,
                 '--length_scale', str(1.0 / speed)
             ], input=text, text=True, capture_output=True)
@@ -190,11 +208,12 @@ if __name__ == '__main__':
         print("Please run setup-piper.sh first")
         exit(1)
     
-    # Check if voice model exists
-    if not os.path.exists(VOICE_MODEL):
-        print(f"ERROR: Voice model not found: {VOICE_MODEL}")
-        print("Please run setup-piper.sh to download voice models")
-        exit(1)
+    # Check if voice models exist
+    for voice_name, model_path in VOICE_MODELS.items():
+        if not os.path.exists(model_path):
+            print(f"ERROR: Voice model not found: {model_path} for {voice_name} voice")
+            print("Please run setup-piper.sh to download voice models")
+            exit(1)
     
-    print(f"Starting Piper TTS server with voice: {VOICE_MODEL}")
+    print(f"Starting Piper TTS server with voices: {list(VOICE_MODELS.keys())}")
     app.run(host='0.0.0.0', port=38992, debug=False)

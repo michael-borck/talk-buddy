@@ -1,4 +1,5 @@
 import { pb } from './pocketbase';
+import type { ConversationMetrics } from './metrics';
 
 export interface SessionMetrics {
   totalUserMessages: number;
@@ -85,7 +86,7 @@ class SessionService {
     }
   }
 
-  async endSession(): Promise<Session | null> {
+  async endSession(conversationMetrics?: ConversationMetrics): Promise<Session | null> {
     if (!this.currentSession || !this.sessionStartTime) return null;
 
     const endTime = new Date();
@@ -94,14 +95,26 @@ class SessionService {
     this.currentSession.endTime = endTime.toISOString();
     this.currentSession.duration = duration;
 
+    // Add conversation metrics to session metadata
+    if (conversationMetrics) {
+      this.metrics.averageResponseTime = conversationMetrics.averageResponseTime;
+      this.metrics.totalPauses = conversationMetrics.totalPauses;
+      
+      // Store full conversation metrics in metadata
+      this.currentSession.metadata = {
+        ...this.metrics,
+        conversationMetrics
+      };
+    }
+
     if (this.currentSession.id) {
       try {
         await pb.collection('sessions').update(this.currentSession.id, {
           endTime: this.currentSession.endTime,
           duration,
-          metadata: this.metrics,
+          metadata: this.currentSession.metadata,
         });
-        console.log('Session ended:', this.currentSession);
+        console.log('Session ended with metrics:', this.currentSession);
       } catch (error) {
         console.error('Failed to end session:', error);
       }

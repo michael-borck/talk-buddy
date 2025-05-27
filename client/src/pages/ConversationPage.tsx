@@ -5,12 +5,14 @@ import { PushToTalkButton } from '../components/PushToTalkButton';
 import { ScenarioInfoModal } from '../components/ScenarioInfoModal';
 import { EncouragementModal } from '../components/EncouragementModal';
 import { WhisperError } from '../components/WhisperError';
+import { SessionAnalysis } from '../components/SessionAnalysis';
 import type { ConversationState } from '../types/conversation';
 import { getScenario, type Scenario } from '../services/pocketbase';
 import { textToSpeech } from '../services/speech';
 import { conversationService } from '../services/conversation';
 import { whisperSTT } from '../services/whisper';
 import { sessionService } from '../services/session';
+import { metricsService } from '../services/metrics';
 
 export function ConversationPage() {
   const { scenarioId } = useParams<{ scenarioId: string }>();
@@ -23,6 +25,8 @@ export function ConversationPage() {
   const [showEncouragement, setShowEncouragement] = useState(false);
   const [whisperAvailable, setWhisperAvailable] = useState(false);
   const [showWhisperError, setShowWhisperError] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [sessionAnalysisData, setSessionAnalysisData] = useState<any>(null);
   const sessionStartRef = useRef<Date | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -107,10 +111,14 @@ export function ConversationPage() {
           
           if (transcript && transcript.trim()) {
             console.log('Adding user message:', transcript);
+            // Track user metrics with transcript
+            metricsService.onUserStopSpeaking(transcript);
             conversationService.addUserMessage(transcript);
             processUserInput();
           } else {
             console.log('No speech detected in recording');
+            // Track even if no speech detected
+            metricsService.onUserStopSpeaking();
             // No speech detected, go back to idle
             setConversationState('idle');
           }
@@ -124,6 +132,9 @@ export function ConversationPage() {
       mediaRecorder.start();
       setIsRecording(true);
       setConversationState('listening');
+      
+      // Track user starting to speak
+      metricsService.onUserStartSpeaking();
     } catch (error) {
       console.error('Error accessing microphone:', error);
       alert('Please allow microphone access to use this feature.');
@@ -162,12 +173,16 @@ export function ConversationPage() {
       
       // Update session with latest transcript and stats
       const stats = conversationService.getStats();
+      const currentMetrics = metricsService.getConversationMetrics();
+      
       await sessionService.updateTranscript(
         conversationService.getTranscript(),
         {
           totalTokensEstimate: stats.totalTokensEstimate,
           contextCompressed: stats.hasSummary,
-          conversationSummary: stats.summary || undefined
+          conversationSummary: stats.summary || undefined,
+          averageResponseTime: currentMetrics.averageResponseTime,
+          totalPauses: currentMetrics.totalPauses
         }
       );
       
@@ -175,11 +190,16 @@ export function ConversationPage() {
       setConversationState('speaking');
       await textToSpeech.speak(
         aiResponse,
-        () => setConversationState('idle'),
+        () => {
+          setConversationState('idle');
+          // Track when AI finishes speaking for response time metrics
+          metricsService.onAISpeakingEnd();
+        },
         (error) => {
           console.error('TTS error:', error);
           setConversationState('idle');
-        }
+        },
+        scenario?.voice
       );
     } catch (error) {
       console.error('Error processing conversation:', error);
@@ -205,6 +225,9 @@ export function ConversationPage() {
       await sessionService.createSession(scenarioId);
     }
     
+    // Reset metrics for new conversation
+    metricsService.reset();
+    
     if (scenario?.initialMessage) {
       setConversationState('speaking');
       
@@ -218,12 +241,15 @@ export function ConversationPage() {
               setConversationState('idle');
               // Save initial message to session
               await sessionService.updateTranscript(conversationService.getTranscript());
+              // Track AI speaking end for metrics
+              metricsService.onAISpeakingEnd();
             },
             (error) => {
               console.error('TTS error:', error);
               alert('Text-to-speech failed. The AI said: "' + scenario.initialMessage + '"');
               setConversationState('idle');
-            }
+            },
+            scenario.voice
           );
         } catch (error) {
           console.error('TTS error:', error);
@@ -243,14 +269,21 @@ export function ConversationPage() {
         mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       }
       
-      // End and save the session
-      const completedSession = await sessionService.endSession();
-      if (completedSession) {
-        console.log('Session saved:', completedSession);
-      }
+      // Get final metrics
+      const conversationMetrics = metricsService.getConversationMetrics();
       
-      conversationService.clear();
-      navigate('/');
+      // End and save the session with metrics
+      const completedSession = await sessionService.endSession(conversationMetrics);
+      if (completedSession && conversationMetrics.turns.length > 0) {
+        console.log('Session saved with metrics:', completedSession);
+        // Show analysis instead of navigating away immediately
+        setSessionAnalysisData({ session: completedSession, metrics: conversationMetrics });
+        setShowAnalysis(true);
+      } else {
+        // No turns recorded, just go back
+        conversationService.clear();
+        navigate('/');
+      }
     }
   };
 
@@ -306,6 +339,25 @@ export function ConversationPage() {
       
       {/* STT Debugger - uncomment to debug Whisper */}
       {/* <STTDebugger /> */}
+      
+      {/* Session Analysis */}
+      {showAnalysis && sessionAnalysisData && (
+        <SessionAnalysis
+          session={sessionAnalysisData.session}
+          metrics={sessionAnalysisData.metrics}
+          onClose={() => {
+            conversationService.clear();
+            navigate('/');
+          }}
+          onPracticeAgain={() => {
+            setShowAnalysis(false);
+            setSessionAnalysisData(null);
+            conversationService.clear();
+            metricsService.reset();
+            window.location.reload(); // Reload to restart the scenario
+          }}
+        />
+      )}
     </>
   );
 }

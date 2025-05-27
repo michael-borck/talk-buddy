@@ -44,9 +44,12 @@ export function ConversationAvatar({
   };
 
   const getIcon = () => {
-    // Show a robot emoji for the AI avatar
+    // Show gender-specific emoji based on scenario voice setting
+    const voice = scenario?.voice || 'female';
+    const emoji = voice === 'male' ? '👨‍💼' : '👩‍💼';
+    
     return (
-      <span className="text-5xl">🤖</span>
+      <span className="text-5xl">{emoji}</span>
     );
   };
 

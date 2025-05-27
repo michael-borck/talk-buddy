@@ -36,7 +36,7 @@ export class TextToSpeech {
     return this.usePiper || 'speechSynthesis' in window;
   }
 
-  private async synthesizeWithPiper(text: string): Promise<string> {
+  private async synthesizeWithPiper(text: string, voice?: 'male' | 'female'): Promise<string> {
     const response = await fetch(`${config.piperUrl}/synthesize/base64`, {
       method: 'POST',
       headers: {
@@ -44,7 +44,8 @@ export class TextToSpeech {
       },
       body: JSON.stringify({
         text,
-        speed: config.audio.speechRate
+        speed: config.audio.speechRate,
+        voice: voice || 'female'
       })
     });
 
@@ -59,7 +60,8 @@ export class TextToSpeech {
   async speak(
     text: string,
     onEnd?: () => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
+    voice?: 'male' | 'female'
   ): Promise<void> {
     if (!this.isSupported()) {
       onError?.(new Error('Speech synthesis not supported'));
@@ -75,7 +77,7 @@ export class TextToSpeech {
     if (this.usePiper) {
       try {
         // Use Piper TTS
-        const audioUrl = await this.synthesizeWithPiper(text);
+        const audioUrl = await this.synthesizeWithPiper(text, voice);
         
         this.currentAudio = new Audio(audioUrl);
         this.currentAudio.onended = () => {

@@ -17,7 +17,8 @@ const scenarios = [
     systemPrompt: "You are a small business owner (a bakery) who needs a new inventory system. You're not very technical but you know your business needs. You have problems with: tracking ingredients, knowing when to reorder, waste from expired items, and coordinating between your two locations. Be realistic - don't know technical terms, focus on business problems, occasionally misunderstand technical concepts. Ask questions about cost and timeline.",
     initialMessage: "Hi, thanks for meeting with me. I run a bakery business and someone told me you might be able to help with our inventory problems. We're really struggling to keep track of everything, especially now that we have two locations. Where do we even start?",
     tags: ["requirements", "client communication", "business analysis"],
-    isPublic: true
+    isPublic: true,
+    voice: "female"
   },
 
   // HR Manager
@@ -30,7 +31,8 @@ const scenarios = [
     systemPrompt: "You are an employee who has been struggling with time management and missed several deadlines. You're aware of the issues but have been dealing with some personal challenges (sick parent) that you haven't shared. You're motivated to improve but defensive at first. Gradually open up if the manager shows empathy. You have good technical skills but need help with prioritization.",
     initialMessage: "Hi, come in and have a seat. I wanted to have our quarterly check-in today. How are you feeling about your work lately?",
     tags: ["management", "difficult conversations", "performance", "empathy"],
-    isPublic: true
+    isPublic: true,
+    voice: "male"
   },
 
   // Doctor-Patient
@@ -43,7 +45,8 @@ const scenarios = [
     systemPrompt: "You are a 45-year-old patient just diagnosed with Type 2 diabetes. You're shocked and scared. You don't understand medical terms well. You're worried about having to take injections (confusing Type 1 and Type 2). You eat out a lot due to work and don't exercise much. Ask about whether this is reversible, if you'll need insulin, and express concerns about diet changes.",
     initialMessage: "Hello, I'm Dr. Johnson. I've reviewed your test results, and I'd like to discuss them with you. Your blood work shows that you have Type 2 diabetes. I know this might be overwhelming, but we're going to work together to manage this. How are you feeling right now?",
     tags: ["patient communication", "diagnosis delivery", "health education", "empathy"],
-    isPublic: true
+    isPublic: true,
+    voice: "female"
   },
 
   // Technical Job Interview

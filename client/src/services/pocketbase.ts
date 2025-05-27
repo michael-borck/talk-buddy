@@ -15,6 +15,8 @@ export interface Scenario {
   initialMessage: string;
   tags: string[];
   isPublic: boolean;
+  voice?: 'male' | 'female';
+  createdBy?: string;
   created: string;
   updated: string;
 }
