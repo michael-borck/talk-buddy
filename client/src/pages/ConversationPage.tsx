@@ -150,7 +150,7 @@ export function ConversationPage() {
       
       // Speak the response
       setConversationState('speaking');
-      textToSpeech.speak(
+      await textToSpeech.speak(
         aiResponse,
         () => setConversationState('idle'),
         (error) => {
@@ -178,19 +178,24 @@ export function ConversationPage() {
       setConversationState('speaking');
       
       // Small delay to ensure user interaction is registered
-      setTimeout(() => {
-        textToSpeech.speak(
-          scenario.initialMessage,
-          () => {
-            console.log('TTS finished speaking');
-            setConversationState('idle');
-          },
-          (error) => {
-            console.error('TTS error:', error);
-            alert('Text-to-speech failed. The AI said: "' + scenario.initialMessage + '"');
-            setConversationState('idle');
-          }
-        );
+      setTimeout(async () => {
+        try {
+          await textToSpeech.speak(
+            scenario.initialMessage,
+            () => {
+              console.log('TTS finished speaking');
+              setConversationState('idle');
+            },
+            (error) => {
+              console.error('TTS error:', error);
+              alert('Text-to-speech failed. The AI said: "' + scenario.initialMessage + '"');
+              setConversationState('idle');
+            }
+          );
+        } catch (error) {
+          console.error('TTS error:', error);
+          setConversationState('idle');
+        }
       }, 100);
     } else {
       setConversationState('idle');

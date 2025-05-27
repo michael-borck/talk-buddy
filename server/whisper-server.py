@@ -13,7 +13,12 @@ import base64
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for browser requests
+# Enable CORS for browser requests from allowed origins
+CORS(app, origins=[
+    'http://localhost:5173',
+    'http://localhost:3000', 
+    'https://talkbuddy.serveur.au'
+])
 
 # Load Whisper model (base model is a good balance of speed/accuracy)
 # Models: tiny, base, small, medium, large
@@ -21,6 +26,14 @@ CORS(app)  # Enable CORS for browser requests
 print("Loading Whisper model...")
 model = whisper.load_model("base")
 print("Whisper model loaded!")
+
+@app.route('/', methods=['GET'])
+def home():
+    """Health check endpoint"""
+    return jsonify({
+        "server": "whisper",
+        "timestamp": datetime.now().isoformat()
+    })
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -102,5 +115,5 @@ def list_models():
     })
 
 if __name__ == '__main__':
-    # Run on a different port than PocketBase (8090)
-    app.run(host='0.0.0.0', port=8091, debug=False)
+    # Run on a different port than PocketBase (38990)
+    app.run(host='0.0.0.0', port=38991, debug=False)

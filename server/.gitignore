@@ -8,6 +8,23 @@ pb_data/
 *.db-shm
 *.db-wal
 
+# Python virtual environments
+whisper-venv/
+piper-venv/
+__pycache__/
+*.pyc
+
+# Whisper models (downloaded during setup)
+whisper-models/
+
+# Piper files
+piper/
+piper-voices/
+
+# Environment files
+.env
+.env.local
+
 # Logs
 *.log
 
@@ -17,3 +34,7 @@ pb_backup_*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
