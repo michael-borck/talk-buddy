@@ -2,31 +2,23 @@
 migrate((app) => {
   const collection = app.findCollectionByNameOrId("pbc_4145231549");
 
-  // add voice field
-  collection.fields.push({
+  // add voice field only (createdBy and isPublic already exist)
+  collection.fields.addAt(11, new Field({
     "hidden": false,
-    "id": "text1234567890",
-    "maxSize": 0,
-    "minSize": 0,
+    "id": "text" + Date.now(),
     "name": "voice",
-    "pattern": "",
     "presentable": false,
-    "primaryKey": false,
     "required": false,
     "system": false,
     "type": "text"
-  });
+  }));
 
   return app.save(collection);
 }, (app) => {
   const collection = app.findCollectionByNameOrId("pbc_4145231549");
   
   // remove voice field
-  const field = collection.fields.find(f => f.name === "voice");
-  if (field) {
-    const index = collection.fields.indexOf(field);
-    collection.fields.splice(index, 1);
-  }
+  collection.fields.removeByName("voice");
 
   return app.save(collection);
 })

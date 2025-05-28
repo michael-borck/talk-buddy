@@ -1,142 +1,131 @@
-# TalkBuddy
+# TalkBuddy Desktop
 
-AI-powered conversation practice application with real-time speech recognition and synthesis. Practice real-world conversations with an AI partner in a safe, supportive environment.
+AI-powered conversation practice desktop application with real-time speech recognition and synthesis. Practice real-world conversations with an AI partner in a safe, supportive environment - all running locally on your computer.
 
 ## 🌟 Features
 
-- **Real-time Speech Recognition** - Powered by OpenAI Whisper
-- **Natural Text-to-Speech** - Using Piper TTS for consistent voice across browsers
+- **Real-time Speech Recognition** - Powered by Speaches API
+- **Natural Text-to-Speech** - High-quality voice synthesis
 - **AI Conversation Partners** - Contextual responses via Ollama
 - **Practice Scenarios** - Coffee shop, hotel check-in, restaurant, and more
-- **Audio-First Design** - Simple, accessible interface focused on speaking
-- **Self-Hosted** - Complete privacy with all processing on your servers
+- **Local Data Storage** - All your data stays on your computer
+- **Cross-Platform** - Works on Windows, macOS, and Linux
+- **No Authentication Required** - Simple, privacy-focused design
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   React     │────▶│  PocketBase  │     │   Whisper    │     │    Piper     │
-│  Frontend   │     │   Backend    │     │  STT Server  │     │  TTS Server  │
-│  (Vite)     │◀────│  Database    │     │   (Flask)    │     │   (Flask)    │
-└─────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
-                            │                                           │
-                            └─────────────────┬─────────────────────────┘
-                                              │
-                                       ┌──────────────┐
-                                       │    Ollama    │
-                                       │  AI Service  │
-                                       └──────────────┘
+┌─────────────────┐     ┌──────────────┐     ┌──────────────┐
+│  React + Electron│────▶│   SQLite     │     │  Speaches    │
+│    Desktop App   │     │  Local DB    │     │  STT + TTS   │
+│                  │◀────│              │     │   Server     │
+└─────────────────┘     └──────────────┘     └──────────────┘
+                               │                      │
+                               └──────────┬───────────┘
+                                          │
+                                   ┌──────────────┐
+                                   │    Ollama    │
+                                   │  AI Service  │
+                                   └──────────────┘
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- Python 3.8+
-- 4GB+ RAM (8GB recommended for Whisper)
 
-### Setup
+Before running TalkBuddy Desktop, you need these external services:
 
-1. **Clone the repository**
+1. **[Speaches](https://github.com/anthropics/speaches)** - Speech-to-text and text-to-speech
    ```bash
-   git clone https://github.com/yourusername/talk-buddy.git
-   cd talk-buddy
+   # Install and run Speaches (default: http://localhost:8000)
    ```
 
-2. **Set up the backend services**
+2. **[Ollama](https://ollama.ai)** - Local AI models
    ```bash
-   cd server
-   
-   # Download PocketBase
-   ./setup-pocketbase.sh
-   
-   # Set up Whisper STT
-   ./setup-whisper.sh
-   
-   # Set up Piper TTS
-   ./setup-piper.sh
-   
-   # Import initial scenarios
-   ./import-scenarios.sh
+   # Install Ollama and pull a model
+   ollama pull llama2
    ```
 
-3. **Configure the frontend**
-   ```bash
-   cd ../client
-   npm install
-   
-   # Copy and edit environment variables
-   cp .env.example .env
-   # Edit .env with your server URLs
-   ```
+### Installation
 
-4. **Start all services**
-   ```bash
-   cd ../server
-   ./start-all.sh
-   ```
+#### Option 1: Download Release (Recommended)
+1. Go to [Releases](https://github.com/yourusername/talk-buddy/releases)
+2. Download the installer for your platform
+3. Install and run TalkBuddy
 
-5. **Start the frontend**
-   ```bash
-   cd ../client
-   npm run dev
-   ```
+#### Option 2: Build from Source
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/talk-buddy.git
+cd talk-buddy
 
-6. **Open the app**
-   - Development: http://localhost:5173
-   - Production: Configure your domain
+# Install dependencies
+npm install
+
+# Run in development mode
+npm run dev
+
+# Build for your platform
+npm run dist
+```
 
 ## 📁 Project Structure
 
 ```
-talk-buddy/
-├── client/                 # React frontend application
-│   ├── src/
-│   │   ├── components/     # UI components
-│   │   ├── pages/          # Page components
-│   │   ├── services/       # API and service layers
-│   │   └── config.ts       # Configuration
-│   └── .env.example        # Environment template
-│
-├── server/                 # Backend services
-│   ├── pb_migrations/      # PocketBase schema
-│   ├── whisper-server.py   # Speech-to-text API
-│   ├── piper-server.py     # Text-to-speech API
-│   ├── start-all.sh        # Start all services
-│   └── scenarios-export.json # Initial conversation scenarios
-│
-└── docs/                   # Documentation
-    └── SPECIFICATION-V2.md # Detailed technical spec
+talkbuddy-desktop/
+├── public/                 # Electron main process
+│   ├── electron.js         # Main process entry
+│   └── preload.js          # Preload script for IPC
+├── src/                    # React application
+│   ├── components/         # UI components
+│   ├── pages/              # Page components
+│   ├── services/           # API services
+│   │   ├── sqlite.ts       # Local database
+│   │   ├── speaches.ts     # STT/TTS service
+│   │   └── ollama.ts       # AI service
+│   └── storage/            # Database setup
+├── assets/                 # Application icons
+└── dist/                  # Built applications
 ```
 
 ## 🔧 Configuration
 
-### Environment Variables
+Configure external services in Settings:
+- **Speaches URL**: Default `http://localhost:8000`
+- **Ollama URL**: Default `http://localhost:11434`
+- **Ollama Model**: Default `llama2`
+- **Voice**: Male or Female
 
-Create `.env` in the client folder:
-```env
-VITE_POCKETBASE_URL=https://your-pocketbase-url
-VITE_WHISPER_URL=https://your-whisper-url
-VITE_PIPER_URL=https://your-piper-url
-VITE_OLLAMA_URL=https://your-ollama-url
-VITE_OLLAMA_API_KEY=your-api-key
+## 💾 Data Storage
+
+All data is stored locally:
+- **Windows**: `%APPDATA%/talkbuddy/talkbuddy.db`
+- **macOS**: `~/Library/Application Support/talkbuddy/talkbuddy.db`
+- **Linux**: `~/.config/talkbuddy/talkbuddy.db`
+
+## 🚀 Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run development mode
+npm run dev
+
+# Build React app
+npm run build
+
+# Package for current platform
+npm run dist
+
+# Package for all platforms
+npm run dist-all
 ```
-
-### Service Ports
-
-Default ports (configurable):
-- PocketBase: 8090
-- Whisper STT: 8091
-- Piper TTS: 8092
-- React Dev: 5173
 
 ## 📚 Documentation
 
-- [Server Setup Guide](server/README.md) - Detailed backend setup
-- [Database Setup](server/DATABASE_SETUP.md) - PocketBase configuration
-- [Whisper Setup](server/WHISPER_SETUP.md) - STT configuration
-- [Technical Specification](docs/SPECIFICATION-V2.md) - Full architecture details
-- [Development Roadmap](TODO.md) - Feature progress tracking
+- [Migration Notes](MIGRATION_NOTES.md) - Changes from web version
+- [Original Web Version](v1-archive/) - Previous architecture
 
 ## 🤝 Contributing
 
@@ -148,12 +137,12 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 
-- [PocketBase](https://pocketbase.io/) - Backend framework
-- [OpenAI Whisper](https://github.com/openai/whisper) - Speech recognition
-- [Piper TTS](https://github.com/rhasspy/piper) - Text-to-speech
+- [Electron](https://www.electronjs.org/) - Desktop framework
+- [React](https://react.dev/) - UI framework
+- [Speaches](https://github.com/anthropics/speaches) - Speech services
 - [Ollama](https://ollama.ai/) - Local AI models
 
 ## Version History
 
-- v2.0 - React + PocketBase architecture (current)
-- v1.0 - FastHTML version (see v1-archive branch)
+- v2.0 - Electron + React desktop app (current)
+- v1.0 - Web version with PocketBase (see v1-archive/)

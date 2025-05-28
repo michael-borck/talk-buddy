@@ -3,6 +3,17 @@ node_modules/
 .pnp
 .pnp.js
 
+# v1-archive exclusions
+v1-archive/client/node_modules/
+v1-archive/client/dist/
+v1-archive/client/.env
+v1-archive/server/pb_data/
+v1-archive/server/pocketbase
+v1-archive/server/whisper-venv/
+v1-archive/server/piper-venv/
+v1-archive/server/piper/
+v1-archive/server/piper-voices/
+
 # Testing
 coverage/
 
@@ -17,42 +28,26 @@ dist/
 .env.test.local
 .env.production.local
 
-# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
-.pnpm-debug.log*
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
 .idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+.vscode
+*.swp
+*.swo
+*~
 
-# PocketBase
-server/pocketbase
-server/pb_data/
-server/*.db
-server/*.db-shm
-server/*.db-wal
+# Electron
+electron-builder.yml
+dist_electron/
 
-# Python (from v1)
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-.env
-.venv
-
-# Project specific
+# SQLite databases
 *.db
-.sesskey
-uv.lockserver/whisper-venv/
+*.sqlite
+*.sqlite3
+
+# OS
+Thumbs.db
