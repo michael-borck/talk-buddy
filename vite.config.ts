@@ -8,11 +8,11 @@ export default defineConfig({
   base: './',
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(__dirname, './src/renderer'),
     },
   },
   build: {
-    outDir: 'build',
+    outDir: 'dist',
     sourcemap: false,
   },
   server: {

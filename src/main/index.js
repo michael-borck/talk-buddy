@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
-const isDev = require('electron-is-dev');
+const isDev = process.argv.includes('--dev') || require('electron-is-dev');
 const Database = require('better-sqlite3');
 
 let mainWindow;
@@ -95,7 +95,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, '../assets/icon.png'),
+    icon: path.join(__dirname, '../../assets/icon.png'),
     titleBarStyle: 'default',
     show: false
   });
@@ -103,7 +103,7 @@ function createWindow() {
   mainWindow.loadURL(
     isDev
       ? 'http://localhost:3000'
-      : `file://${path.join(__dirname, '../build/index.html')}`
+      : `file://${path.join(__dirname, '../../dist/index.html')}`
   );
 
   mainWindow.once('ready-to-show', () => {
