@@ -23,11 +23,37 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      # Build the Electron app
-      - name: Build Electron app
-        run: npm run dist
+      # Build Electron app for Windows
+      - name: Build Electron app (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npm run electron:build -- --win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build Electron app for macOS (DMG)
+      - name: Build Electron app (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npm run electron:build -- --mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MAC_CERTS }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+
+      # Build Electron app for macOS (MAS)
+      - name: Build Electron app (MAS)
+        if: matrix.os == 'macos-latest'
+        run: npm run electron:build -- --mac mas
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MAC_CERTS }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+
+      # Build Electron app for Linux
+      - name: Build Electron app (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run electron:build -- --linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -37,9 +63,12 @@ jobs:
         with:
           files: |
             dist/*.exe
+            dist/*.msi
             dist/*.dmg
+            dist/*.pkg
             dist/*.AppImage
             dist/*.deb
             dist/*.rpm
+            dist/*.snap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
