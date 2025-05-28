@@ -161,7 +161,7 @@ app.whenReady().then(() => {
     );
 
     INSERT OR IGNORE INTO user_preferences (key, value) VALUES 
-      ('speachesUrl', 'http://localhost:8000'),
+      ('speachesUrl', 'https://speaches.serveur.au'),
       ('ollamaUrl', 'http://localhost:11434'),
       ('ollamaModel', 'llama2'),
       ('voice', 'male');

@@ -5,7 +5,7 @@ import { TranscriptionResult, SpeechGenerationOptions } from '../types';
 // Get the Speaches server URL from preferences
 async function getSpeachesUrl(): Promise<string> {
   const url = await getPreference('speachesUrl');
-  return url || 'http://localhost:8000';
+  return url || 'https://speaches.serveur.au';
 }
 
 // Speech-to-Text using Speaches API
@@ -41,7 +41,16 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionRes
 // Text-to-Speech using Speaches API
 export async function generateSpeech(options: SpeechGenerationOptions): Promise<Blob> {
   const baseUrl = await getSpeachesUrl();
-  const voice = await getPreference('voice') || 'male';
+  const preferredVoice = await getPreference('voice') || 'male';
+  
+  // Map our simple male/female to actual voice names
+  // You may need to call /v1/audio/speech/voices to get actual voice names
+  const voiceMap: Record<string, string> = {
+    'male': 'alloy',    // or 'echo', 'fable', 'onyx'
+    'female': 'nova'    // or 'shimmer'
+  };
+  
+  const voice = voiceMap[options.voice || preferredVoice] || 'alloy';
   
   try {
     const response = await fetch(`${baseUrl}/v1/audio/speech`, {
@@ -52,8 +61,9 @@ export async function generateSpeech(options: SpeechGenerationOptions): Promise<
       body: JSON.stringify({
         model: 'tts-1',
         input: options.text,
-        voice: options.voice || voice, // Speaches maps male/female to specific voices
-        speed: options.speed || 1.0
+        voice: voice,
+        speed: options.speed || 1.0,
+        response_format: 'mp3' // or 'opus', 'aac', 'flac'
       }),
     });
 
@@ -65,6 +75,24 @@ export async function generateSpeech(options: SpeechGenerationOptions): Promise<
   } catch (error) {
     console.error('Speech generation error:', error);
     throw new Error('Failed to generate speech. Make sure Speaches server is running.');
+  }
+}
+
+// Get available voices from Speaches
+export async function getAvailableVoices(): Promise<string[]> {
+  try {
+    const baseUrl = await getSpeachesUrl();
+    const response = await fetch(`${baseUrl}/v1/audio/speech/voices`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch voices');
+    }
+    
+    const data = await response.json();
+    return data.voices || [];
+  } catch (error) {
+    console.error('Failed to get voices:', error);
+    return ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']; // Default OpenAI voices
   }
 }
 

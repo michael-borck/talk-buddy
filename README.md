@@ -33,12 +33,12 @@ AI-powered conversation practice desktop application with real-time speech recog
 
 ### Prerequisites
 
-Before running TalkBuddy Desktop, you need these external services:
+Before running TalkBuddy Desktop, you need:
 
-1. **[Speaches](https://github.com/anthropics/speaches)** - Speech-to-text and text-to-speech
-   ```bash
-   # Install and run Speaches (default: http://localhost:8000)
-   ```
+1. **Speaches API** - Speech-to-text and text-to-speech
+   - Cloud service available at: https://speaches.serveur.au
+   - No installation needed! (unless you want to self-host)
+   - [API Documentation](https://speaches.serveur.au/docs)
 
 2. **[Ollama](https://ollama.ai)** - Local AI models
    ```bash
@@ -91,10 +91,10 @@ talkbuddy-desktop/
 ## 🔧 Configuration
 
 Configure external services in Settings:
-- **Speaches URL**: Default `http://localhost:8000`
-- **Ollama URL**: Default `http://localhost:11434`
+- **Speaches URL**: Default `https://speaches.serveur.au` (cloud-hosted)
+- **Ollama URL**: Default `http://localhost:11434` (local)
 - **Ollama Model**: Default `llama2`
-- **Voice**: Male or Female
+- **Voice**: Male or Female (mapped to OpenAI-compatible voices)
 
 ## 💾 Data Storage
 

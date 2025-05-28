@@ -4,7 +4,7 @@ import { Save, ExternalLink, Download, Upload } from 'lucide-react';
 
 export function SettingsPage() {
   const [preferences, setPreferences] = useState({
-    speachesUrl: 'http://localhost:8000',
+    speachesUrl: 'https://speaches.serveur.au',
     ollamaUrl: 'http://localhost:11434',
     ollamaModel: 'llama2',
     voice: 'male' as 'male' | 'female'
@@ -20,7 +20,7 @@ export function SettingsPage() {
     try {
       const prefs = await getAllPreferences();
       setPreferences({
-        speachesUrl: prefs.speachesUrl || 'http://localhost:8000',
+        speachesUrl: prefs.speachesUrl || 'https://speaches.serveur.au',
         ollamaUrl: prefs.ollamaUrl || 'http://localhost:11434',
         ollamaModel: prefs.ollamaModel || 'llama2',
         voice: (prefs.voice || 'male') as 'male' | 'female'
@@ -94,7 +94,7 @@ export function SettingsPage() {
                 value={preferences.speachesUrl}
                 onChange={(e) => setPreferences({ ...preferences, speachesUrl: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="http://localhost:8000"
+                placeholder="https://speaches.serveur.au"
               />
               <p className="mt-1 text-sm text-gray-600">
                 URL for the Speaches server (provides STT and TTS)
@@ -199,12 +199,12 @@ export function SettingsPage() {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                window.electronAPI.shell.openExternal('https://github.com/anthropics/speaches');
+                window.electronAPI.shell.openExternal('https://speaches.serveur.au/docs');
               }}
               className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
             >
               <ExternalLink size={16} />
-              Speaches Documentation
+              Speaches API Documentation
             </a>
             <a
               href="#"
