@@ -3,17 +3,6 @@ node_modules/
 .pnp
 .pnp.js
 
-# v1-archive exclusions
-v1-archive/client/node_modules/
-v1-archive/client/dist/
-v1-archive/client/.env
-v1-archive/server/pb_data/
-v1-archive/server/pocketbase
-v1-archive/server/whisper-venv/
-v1-archive/server/piper-venv/
-v1-archive/server/piper/
-v1-archive/server/piper-voices/
-
 # Testing
 coverage/
 
