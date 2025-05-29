@@ -6,8 +6,8 @@ const Database = require('better-sqlite3');
 let mainWindow;
 let db;
 
-// Seed scenarios data
-const seedScenarios = [
+// Default scenarios data - kept separately for restoration
+const DEFAULT_SCENARIOS = [
   {
     name: "Coffee Shop Order",
     description: "Practice ordering coffee and snacks at a coffee shop. Learn common phrases for customizing drinks and handling payment.",
@@ -17,7 +17,7 @@ const seedScenarios = [
     systemPrompt: "You are a friendly barista at a coffee shop. Help the customer order their drink, suggest add-ons or food items, and process their payment. Be conversational and helpful.",
     initialMessage: "Good morning! Welcome to The Daily Grind. What can I get started for you today?",
     tags: ["ordering", "food", "drinks", "payment"],
-    isPublic: true,
+    isDefault: true,
     voice: "female"
   },
   {
@@ -29,7 +29,7 @@ const seedScenarios = [
     systemPrompt: "You are conducting a job interview for a software developer position. Ask about their experience, technical skills, past projects, and behavioral questions. Be professional but friendly.",
     initialMessage: "Hello! Thank you for coming in today. I'm the hiring manager for the software developer position. Could you start by telling me a bit about yourself and your experience?",
     tags: ["interview", "job", "technology", "professional"],
-    isPublic: true,
+    isDefault: true,
     voice: "male"
   },
   {
@@ -41,7 +41,7 @@ const seedScenarios = [
     systemPrompt: "You are a hotel receptionist. Help the guest check in, provide information about hotel amenities, WiFi, breakfast times, and answer any questions they have about their stay.",
     initialMessage: "Good evening! Welcome to the Grand Plaza Hotel. Do you have a reservation with us?",
     tags: ["hotel", "travel", "check-in", "hospitality"],
-    isPublic: true,
+    isDefault: true,
     voice: "female"
   },
   {
@@ -53,7 +53,7 @@ const seedScenarios = [
     systemPrompt: "You are a restaurant host taking phone reservations. Be helpful and accommodating, ask about party size, preferred time, and any special requests or dietary restrictions.",
     initialMessage: "Thank you for calling Bella Vista Restaurant. How may I help you today?",
     tags: ["restaurant", "reservation", "phone", "booking"],
-    isPublic: true,
+    isDefault: true,
     voice: "female"
   }
 ];
@@ -62,11 +62,11 @@ function insertSeedScenarios(db) {
   const insertStmt = db.prepare(`
     INSERT OR IGNORE INTO scenarios (
       id, name, description, category, difficulty, estimatedMinutes,
-      systemPrompt, initialMessage, tags, isPublic, voice
+      systemPrompt, initialMessage, tags, isDefault, voice
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  seedScenarios.forEach((scenario, index) => {
+  DEFAULT_SCENARIOS.forEach((scenario, index) => {
     const id = `seed_scenario_${index + 1}`;
     insertStmt.run(
       id,
@@ -78,7 +78,7 @@ function insertSeedScenarios(db) {
       scenario.systemPrompt,
       scenario.initialMessage,
       JSON.stringify(scenario.tags),
-      scenario.isPublic ? 1 : 0,
+      scenario.isDefault ? 1 : 0,
       scenario.voice
     );
   });
@@ -136,7 +136,7 @@ app.whenReady().then(() => {
       systemPrompt TEXT,
       initialMessage TEXT,
       tags TEXT,
-      isPublic BOOLEAN DEFAULT 1,
+      isDefault BOOLEAN DEFAULT 0,
       voice TEXT,
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -162,9 +162,18 @@ app.whenReady().then(() => {
 
     INSERT OR IGNORE INTO user_preferences (key, value) VALUES 
       ('speachesUrl', 'https://speaches.serveur.au'),
-      ('ollamaUrl', 'http://localhost:11434'),
+      ('sttUrl', 'https://speaches.serveur.au'),
+      ('ttsUrl', 'https://speaches.serveur.au'),
+      ('sttApiKey', ''),
+      ('ttsApiKey', ''),
+      ('ollamaUrl', 'https://ollama.serveur.au'),
+      ('ollamaApiKey', ''),
       ('ollamaModel', 'llama2'),
-      ('voice', 'male');
+      ('voice', 'male'),
+      ('sttModel', 'Systran/faster-distil-whisper-small.en'),
+      ('ttsModel', 'speaches-ai/Kokoro-82M-v1.0-ONNX-int8'),
+      ('maleVoice', 'am_echo'),
+      ('femaleVoice', 'af_heart');
   `);
   
   // Insert seed data if no scenarios exist
@@ -244,4 +253,46 @@ ipcMain.handle('app:getVersion', () => {
 
 ipcMain.handle('app:getPath', (event, name) => {
   return app.getPath(name);
+});
+
+// Restore default scenarios
+ipcMain.handle('scenarios:restoreDefaults', async () => {
+  try {
+    // Get existing scenario names to avoid duplicates
+    const existing = db.prepare('SELECT name FROM scenarios').all();
+    const existingNames = new Set(existing.map(s => s.name));
+    
+    let restoredCount = 0;
+    const insertStmt = db.prepare(`
+      INSERT INTO scenarios (
+        id, name, description, category, difficulty, estimatedMinutes,
+        systemPrompt, initialMessage, tags, isDefault, voice
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    DEFAULT_SCENARIOS.forEach((scenario, index) => {
+      // Only restore if it doesn't already exist
+      if (!existingNames.has(scenario.name)) {
+        const id = `restored_${Date.now()}_${index}`;
+        insertStmt.run(
+          id,
+          scenario.name,
+          scenario.description,
+          scenario.category,
+          scenario.difficulty,
+          scenario.estimatedMinutes,
+          scenario.systemPrompt,
+          scenario.initialMessage,
+          JSON.stringify(scenario.tags),
+          1, // isDefault = true
+          scenario.voice
+        );
+        restoredCount++;
+      }
+    });
+    
+    return { success: true, restoredCount };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });

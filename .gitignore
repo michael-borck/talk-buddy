@@ -40,3 +40,6 @@ dist_electron/
 
 # OS
 Thumbs.db
+
+# Log files
+*.log

@@ -367,3 +367,9 @@ export async function importData(fileContent: string): Promise<void> {
     throw new Error('Invalid import file format');
   }
 }
+
+// Restore default scenarios
+export async function restoreDefaultScenarios(): Promise<{ success: boolean, restoredCount?: number, error?: string }> {
+  const result = await window.electronAPI.scenarios.restoreDefaults();
+  return result;
+}

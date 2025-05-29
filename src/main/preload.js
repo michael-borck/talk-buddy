@@ -27,5 +27,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Platform info
-  platform: process.platform
+  platform: process.platform,
+
+  // Scenarios
+  scenarios: {
+    restoreDefaults: () => ipcRenderer.invoke('scenarios:restoreDefaults')
+  }
 });

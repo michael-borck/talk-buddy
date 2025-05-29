@@ -8,7 +8,7 @@ export interface Scenario {
   systemPrompt: string;
   initialMessage: string;
   tags: string[];
-  isPublic: boolean;
+  isDefault?: boolean;  // true for default scenarios, false/undefined for custom
   voice?: 'male' | 'female';
   created: string;
   updated: string;

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getScenario, createSession, updateSession } from '../services/sqlite';
 import { transcribeAudio, generateSpeech } from '../services/speaches';
-import { generateResponse } from '../services/ollama';
+import { generateResponse } from '../services/chat';
 import { Scenario, Session, ConversationMessage } from '../types';
 import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
 

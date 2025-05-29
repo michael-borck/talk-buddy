@@ -1,8 +1,7 @@
-import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { ConversationPage } from './pages/ConversationPage';
 import { ScenariosPage } from './pages/ScenariosPage';
 import { ScenarioFormPage } from './pages/ScenarioFormPage';
-import { LocalScenariosPage } from './pages/LocalScenariosPage';
 import { SessionHistoryPage } from './pages/SessionHistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useState, useEffect } from 'react';
@@ -20,7 +19,7 @@ function App() {
             <Route path="/scenarios" element={<ScenariosPage />} />
             <Route path="/scenarios/new" element={<ScenarioFormPage />} />
             <Route path="/scenarios/edit/:scenarioId" element={<ScenarioFormPage />} />
-            <Route path="/scenarios/local" element={<LocalScenariosPage />} />
+            <Route path="/scenarios/local" element={<Navigate to="/scenarios" replace />} />
             <Route path="/sessions" element={<SessionHistoryPage />} />
             <Route path="/conversation/:scenarioId" element={<ConversationPage />} />
             <Route path="/settings" element={<SettingsPage />} />
@@ -45,8 +44,7 @@ function Sidebar() {
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
-    { path: '/scenarios', icon: BookOpen, label: 'Browse Scenarios' },
-    { path: '/scenarios/local', icon: MessageSquare, label: 'My Scenarios' },
+    { path: '/scenarios', icon: BookOpen, label: 'Scenarios' },
     { path: '/sessions', icon: History, label: 'Session History' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];

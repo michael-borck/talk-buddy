@@ -92,7 +92,7 @@ talkbuddy-desktop/
 
 Configure external services in Settings:
 - **Speaches URL**: Default `https://speaches.serveur.au` (cloud-hosted)
-- **Ollama URL**: Default `http://localhost:11434` (local)
+- **Ollama URL**: Default `https://ollama.serveur.au` (cloud-hosted)
 - **Ollama Model**: Default `llama2`
 - **Voice**: Male or Female (mapped to OpenAI-compatible voices)
 
