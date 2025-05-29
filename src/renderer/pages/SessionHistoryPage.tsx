@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { listSessions, getScenario } from '../services/sqlite';
+import { listSessions, getScenario, deleteSession } from '../services/sqlite';
 import { Session, Scenario } from '../types';
-import { Calendar, Clock, MessageSquare, TrendingUp } from 'lucide-react';
+import { Calendar, Clock, MessageSquare, TrendingUp, Trash2 } from 'lucide-react';
 
 interface SessionWithScenario extends Session {
   scenarioData?: Scenario;
@@ -11,6 +11,7 @@ export function SessionHistoryPage() {
   const [sessions, setSessions] = useState<SessionWithScenario[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSessions();
@@ -34,6 +35,25 @@ export function SessionHistoryPage() {
       console.error('Failed to load sessions:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to delete this session?')) {
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      await deleteSession(id);
+      await loadSessions();
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      alert('Failed to delete session. Please try again.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -122,7 +142,15 @@ export function SessionHistoryPage() {
                       </div>
                     </div>
                     
-                    <div className="ml-4">
+                    <div className="ml-4 flex items-center gap-2">
+                      <button
+                        onClick={(e) => handleDelete(session.id, e)}
+                        disabled={deletingId === session.id}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete session"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                       <svg
                         className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         fill="none"

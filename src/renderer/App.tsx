@@ -143,13 +143,6 @@ function HomePage() {
             Choose from job interviews, customer service, and more scenarios
           </p>
         </div>
-        
-        <div className="mt-12 p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            <strong>Note:</strong> Make sure Speaches and Ollama services are running. 
-            Check Settings to configure service URLs.
-          </p>
-        </div>
       </div>
     </div>
   );

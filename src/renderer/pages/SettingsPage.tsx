@@ -7,12 +7,14 @@ function ApiKeyInput({
   value, 
   onChange, 
   placeholder = "sk-... or leave empty",
-  envPlaceholder = "env:API_KEY_NAME" 
+  envPlaceholder = "env:API_KEY_NAME",
+  fieldName 
 }: { 
   value: string; 
   onChange: (value: string) => void;
   placeholder?: string;
   envPlaceholder?: string;
+  fieldName: string;
 }) {
   const isEnvVar = value?.startsWith('env:');
   
@@ -22,7 +24,7 @@ function ApiKeyInput({
         <label className="flex items-center">
           <input
             type="radio"
-            name={`apiKeySource-${placeholder}`}
+            name={`apiKeySource-${fieldName}`}
             value="manual"
             checked={!isEnvVar}
             onChange={() => onChange('')}
@@ -33,7 +35,7 @@ function ApiKeyInput({
         <label className="flex items-center">
           <input
             type="radio"
-            name={`apiKeySource-${placeholder}`}
+            name={`apiKeySource-${fieldName}`}
             value="env"
             checked={isEnvVar}
             onChange={() => onChange(envPlaceholder)}
@@ -189,6 +191,7 @@ export function SettingsPage() {
                 onChange={(value) => setPreferences({ ...preferences, sttApiKey: value })}
                 placeholder="Leave empty if not required"
                 envPlaceholder="env:WHISPER_API_KEY"
+                fieldName="sttApiKey"
               />
               <p className="mt-1 text-sm text-gray-600">
                 {preferences.sttApiKey?.startsWith('env:') 
@@ -244,6 +247,7 @@ export function SettingsPage() {
                 onChange={(value) => setPreferences({ ...preferences, ttsApiKey: value })}
                 placeholder="Leave empty if not required"
                 envPlaceholder="env:TTS_API_KEY"
+                fieldName="ttsApiKey"
               />
               <p className="mt-1 text-sm text-gray-600">
                 {preferences.ttsApiKey?.startsWith('env:') 
@@ -299,6 +303,7 @@ export function SettingsPage() {
                 onChange={(value) => setPreferences({ ...preferences, ollamaApiKey: value })}
                 placeholder="sk-... or leave empty"
                 envPlaceholder="env:OPENAI_API_KEY"
+                fieldName="chatApiKey"
               />
               <p className="mt-1 text-sm text-gray-600">
                 {preferences.ollamaApiKey?.startsWith('env:') 

@@ -264,6 +264,17 @@ export async function listSessions(scenarioId?: string): Promise<Session[]> {
   }));
 }
 
+export async function deleteSession(id: string): Promise<void> {
+  const result = await window.electronAPI.database.run(
+    'DELETE FROM sessions WHERE id = ?',
+    [id]
+  );
+  
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to delete session');
+  }
+}
+
 // User preferences functions
 export async function getPreference(key: string): Promise<string | null> {
   const result = await window.electronAPI.database.query(

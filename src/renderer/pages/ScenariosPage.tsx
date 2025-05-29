@@ -235,7 +235,10 @@ export function ScenariosPage() {
             >
               <div className="p-6">
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-semibold text-gray-800">{scenario.name}</h3>
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    <span className="mr-2">{scenario.voice === 'female' ? '👩' : '👨'}</span>
+                    {scenario.name}
+                  </h3>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(scenario.difficulty)}`}>
                     {scenario.difficulty}
                   </span>
@@ -307,7 +310,10 @@ export function ScenariosPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-800">{scenario.name}</h3>
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        <span className="mr-2">{scenario.voice === 'female' ? '👩' : '👨'}</span>
+                        {scenario.name}
+                      </h3>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(scenario.difficulty)}`}>
                         {scenario.difficulty}
                       </span>
