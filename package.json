@@ -2,6 +2,7 @@
   "name": "talkbuddy-desktop",
   "version": "2.0.0",
   "description": "TalkBuddy - AI-powered conversation practice desktop app",
+  "author": "Michael Borck",
   "main": "src/main/index.js",
   "homepage": "./",
   "private": true,
