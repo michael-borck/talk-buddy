@@ -6,7 +6,7 @@ import { SessionHistoryPage } from './pages/SessionHistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useState, useEffect } from 'react';
 import { listScenarios } from './services/sqlite';
-import { Home, MessageSquare, BookOpen, History, Settings, Plus } from 'lucide-react';
+import { Home, MessageSquare, BookOpen, History, Settings, Plus, Menu, X, Mic } from 'lucide-react';
 
 function App() {
   return (
@@ -33,6 +33,8 @@ function App() {
 function Sidebar() {
   const navigate = useNavigate();
   const [currentPath, setCurrentPath] = useState(window.location.hash.slice(1) || '/');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [appVersion, setAppVersion] = useState('');
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -40,6 +42,15 @@ function Sidebar() {
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    // Get app version
+    if (window.electronAPI?.app?.getVersion) {
+      window.electronAPI.app.getVersion().then(version => {
+        setAppVersion(version);
+      });
+    }
   }, []);
 
   const navItems = [
@@ -50,42 +61,72 @@ function Sidebar() {
   ];
 
   return (
-    <nav className="w-64 bg-white border-r border-gray-200 p-4">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">TalkBuddy</h1>
-        <p className="text-sm text-gray-600">Desktop Edition</p>
+    <nav className={`${isCollapsed ? 'w-16' : 'w-64'} bg-gray-800 border-r border-gray-700 flex flex-col transition-all duration-300 h-full`}>
+      <div className="p-4 flex-1 flex flex-col">
+        {/* Header with collapse button */}
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} mb-8`}>
+          {!isCollapsed && (
+            <div className="flex items-center gap-2">
+              <Mic size={24} className="text-blue-400" />
+              <div>
+                <h1 className="text-xl font-bold text-white">TalkBuddy</h1>
+                <p className="text-xs text-gray-400">Desktop Edition</p>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded-lg transition-colors"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <Menu size={20} /> : <X size={20} />}
+          </button>
+        </div>
+        
+        {/* Navigation items */}
+        <div className="space-y-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPath === item.path;
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                } ${isCollapsed ? 'justify-center' : ''}`}
+                title={isCollapsed ? item.label : ''}
+              >
+                <Icon size={20} />
+                {!isCollapsed && <span className="font-medium">{item.label}</span>}
+              </button>
+            );
+          })}
+        </div>
+        
+        {/* New Scenario button */}
+        <div className="mt-8 pt-8 border-t border-gray-700">
+          <button
+            onClick={() => navigate('/scenarios/new')}
+            className={`w-full flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
+              isCollapsed ? 'justify-center' : 'justify-center'
+            }`}
+            title={isCollapsed ? 'New Scenario' : ''}
+          >
+            <Plus size={20} />
+            {!isCollapsed && <span className="font-medium">New Scenario</span>}
+          </button>
+        </div>
       </div>
       
-      <div className="space-y-2">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPath === item.path;
-          return (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <Icon size={20} />
-              <span className="font-medium">{item.label}</span>
-            </button>
-          );
-        })}
-      </div>
-      
-      <div className="mt-8 pt-8 border-t border-gray-200">
-        <button
-          onClick={() => navigate('/scenarios/new')}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          <span className="font-medium">New Scenario</span>
-        </button>
-      </div>
+      {/* Version info at bottom */}
+      {!isCollapsed && appVersion && (
+        <div className="mt-auto p-4 text-center">
+          <p className="text-xs text-gray-400">v{appVersion}</p>
+        </div>
+      )}
     </nav>
   );
 }
