@@ -5,34 +5,45 @@ on:
     tags:
       - 'v*'
 
-jobs:
-  release:
-    runs-on: ${{ matrix.os }}
+permissions:
+  contents: write
 
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: win
 
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Install dependencies
         run: npm ci
 
-      # Build Electron app for Windows
+      - name: Build Vite app
+        run: npm run build
+
       - name: Build Electron app (Windows)
         if: matrix.os == 'windows-latest'
         run: npm run electron:build -- --win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build Electron app for macOS (DMG)
       - name: Build Electron app (macOS)
         if: matrix.os == 'macos-latest'
         run: npm run electron:build -- --mac
@@ -41,34 +52,87 @@ jobs:
           CSC_LINK: ${{ secrets.MAC_CERTS }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
 
-      # Build Electron app for macOS (MAS)
-      - name: Build Electron app (MAS)
-        if: matrix.os == 'macos-latest'
-        run: npm run electron:build -- --mac mas
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.MAC_CERTS }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
-
-      # Build Electron app for Linux
       - name: Build Electron app (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: npm run electron:build -- --linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload the built app to GitHub Release
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v1
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: |
+          name: ${{ matrix.platform }}-distributables
+          path: |
             dist/*.exe
             dist/*.msi
             dist/*.dmg
             dist/*.pkg
             dist/*.AppImage
             dist/*.deb
-            dist/*.rpm
             dist/*.snap
+            dist/*.yml
+            dist/*.yaml
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "TalkBuddy ${{ github.ref_name }}" \
+            --notes "## TalkBuddy Release ${{ github.ref_name }}
+            
+            ### Downloads
+            
+            #### Windows
+            - \`TalkBuddy-Setup-*.exe\` - Windows installer
+            
+            #### macOS
+            - \`TalkBuddy-*.dmg\` - macOS installer
+            
+            #### Linux
+            - \`TalkBuddy-*.AppImage\` - Universal Linux app
+            - \`TalkBuddy-*.deb\` - Debian/Ubuntu package
+            
+            ### Installation Instructions
+            
+            **Windows:** Download and run the .exe installer
+            
+            **macOS:** Download the .dmg file, open it, and drag TalkBuddy to Applications
+            
+            **Linux:** 
+            - AppImage: Make executable with \`chmod +x\` and run
+            - DEB: Install with \`sudo dpkg -i TalkBuddy-*.deb\`
+            
+            ### Requirements
+            - Microphone access for speech recognition
+            - Internet connection for AI services
+            - Speaches server for text-to-speech (configurable)
+            - Ollama or OpenAI API for conversation AI (configurable)
+            
+            ### What's New
+            - Collapsible dark-themed sidebar
+            - Resume in-progress sessions
+            - Improved TTS with gender-specific models
+            - Better error handling for STT/TTS services
+            - Configurable speech speed
+            - Many UI/UX improvements"
+
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Upload all artifacts to the release
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" \) -exec gh release upload "${{ github.ref_name }}" {} \;
