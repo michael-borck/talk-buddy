@@ -92,18 +92,26 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionRes
 export async function generateSpeech(options: SpeechGenerationOptions): Promise<Blob> {
   const baseUrl = await getTTSUrl();
   const preferredVoice = await getPreference('voice') || 'male';
-  const ttsModel = await getPreference('ttsModel') || 'speaches-ai/Kokoro-82M-v1.0-ONNX-int8';
-  const maleVoice = await getPreference('maleVoice') || 'am_echo';
-  const femaleVoice = await getPreference('femaleVoice') || 'af_heart';
-  const apiKey = await getTTSApiKey();
+  const isMale = (options.voice || preferredVoice) === 'male';
   
-  // Use the configured voice IDs
-  const voice = (options.voice || preferredVoice) === 'male' ? maleVoice : femaleVoice;
+  // Get gender-specific model and voice
+  const maleTTSModel = await getPreference('maleTTSModel') || 'speaches-ai/piper-en_GB-alan-low';
+  const femaleTTSModel = await getPreference('femaleTTSModel') || 'speaches-ai/piper-en_US-amy-low';
+  const maleVoice = await getPreference('maleVoice') || 'alan';
+  const femaleVoice = await getPreference('femaleVoice') || 'amy';
+  const ttsSpeed = parseFloat(await getPreference('ttsSpeed') || '1.25');
+  
+  // Use the appropriate model and voice based on gender
+  const ttsModel = isMale ? maleTTSModel : femaleTTSModel;
+  const voice = isMale ? maleVoice : femaleVoice;
+  
+  const apiKey = await getTTSApiKey();
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
-  if (apiKey) {
+  // Only add Authorization header if API key exists to avoid CORS preflight
+  if (apiKey && apiKey.trim() !== '') {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
   
@@ -115,8 +123,8 @@ export async function generateSpeech(options: SpeechGenerationOptions): Promise<
         model: ttsModel,
         input: options.text,
         voice: voice,
-        speed: options.speed || 1.0,
-        response_format: 'mp3' // or 'opus', 'aac', 'flac'
+        speed: options.speed || ttsSpeed,
+        response_format: 'mp3'
       }),
     });
 

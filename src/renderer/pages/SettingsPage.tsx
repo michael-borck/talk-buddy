@@ -69,8 +69,11 @@ export function SettingsPage() {
     voice: 'male' as 'male' | 'female',
     sttModel: 'Systran/faster-distil-whisper-small.en',
     ttsModel: 'speaches-ai/Kokoro-82M-v1.0-ONNX-int8',
-    maleVoice: 'am_echo',
-    femaleVoice: 'af_heart'
+    maleTTSModel: 'speaches-ai/piper-en_GB-alan-low',
+    femaleTTSModel: 'speaches-ai/piper-en_US-amy-low',
+    maleVoice: 'alan',
+    femaleVoice: 'amy',
+    ttsSpeed: '1.25'
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -94,8 +97,11 @@ export function SettingsPage() {
         voice: (prefs.voice || 'male') as 'male' | 'female',
         sttModel: prefs.sttModel || 'Systran/faster-distil-whisper-small.en',
         ttsModel: prefs.ttsModel || 'speaches-ai/Kokoro-82M-v1.0-ONNX-int8',
-        maleVoice: prefs.maleVoice || 'am_echo',
-        femaleVoice: prefs.femaleVoice || 'af_heart'
+        maleTTSModel: prefs.maleTTSModel || 'speaches-ai/piper-en_GB-alan-low',
+        femaleTTSModel: prefs.femaleTTSModel || 'speaches-ai/piper-en_US-amy-low',
+        maleVoice: prefs.maleVoice || 'alan',
+        femaleVoice: prefs.femaleVoice || 'amy',
+        ttsSpeed: prefs.ttsSpeed || '1.25'
       });
     } catch (error) {
       console.error('Failed to load preferences:', error);
@@ -117,8 +123,11 @@ export function SettingsPage() {
       await setPreference('voice', preferences.voice);
       await setPreference('sttModel', preferences.sttModel);
       await setPreference('ttsModel', preferences.ttsModel);
+      await setPreference('maleTTSModel', preferences.maleTTSModel);
+      await setPreference('femaleTTSModel', preferences.femaleTTSModel);
       await setPreference('maleVoice', preferences.maleVoice);
       await setPreference('femaleVoice', preferences.femaleVoice);
+      await setPreference('ttsSpeed', preferences.ttsSpeed);
       setMessage('Settings saved successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
@@ -218,9 +227,9 @@ export function SettingsPage() {
           </div>
         </section>
 
-        {/* Text-to-Speech Service */}
+        {/* Text-to-Speech Service & Voice Settings */}
         <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Text-to-Speech (TTS) Service</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Text-to-Speech (TTS) & Voice Settings</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -256,20 +265,119 @@ export function SettingsPage() {
               </p>
             </div>
 
+            <div className="border-t pt-4 mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Default Voice
+              </label>
+              <div className="flex gap-4 mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="male"
+                    checked={preferences.voice === 'male'}
+                    onChange={(e) => setPreferences({ ...preferences, voice: e.target.value as 'male' | 'female' })}
+                    className="mr-2"
+                  />
+                  <span>Male</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="female"
+                    checked={preferences.voice === 'female'}
+                    onChange={(e) => setPreferences({ ...preferences, voice: e.target.value as 'male' | 'female' })}
+                    className="mr-2"
+                  />
+                  <span>Female</span>
+                </label>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                TTS Model
+                TTS Speed
               </label>
               <input
-                type="text"
-                value={preferences.ttsModel}
-                onChange={(e) => setPreferences({ ...preferences, ttsModel: e.target.value })}
+                type="number"
+                step="0.05"
+                min="0.5"
+                max="2.0"
+                value={preferences.ttsSpeed}
+                onChange={(e) => setPreferences({ ...preferences, ttsSpeed: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="speaches-ai/Kokoro-82M-v1.0-ONNX-int8"
+                placeholder="1.25"
               />
               <p className="mt-1 text-sm text-gray-600">
-                Text-to-speech model for voice synthesis
+                Speech synthesis speed (0.5 = slower, 1.0 = normal, 2.0 = faster)
               </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Male TTS Model
+                </label>
+                <input
+                  type="text"
+                  value={preferences.maleTTSModel}
+                  onChange={(e) => setPreferences({ ...preferences, maleTTSModel: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="speaches-ai/piper-en_GB-alan-low"
+                />
+                <p className="mt-1 text-sm text-gray-600">
+                  Model for male voice synthesis
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Male Voice ID
+                </label>
+                <input
+                  type="text"
+                  value={preferences.maleVoice}
+                  onChange={(e) => setPreferences({ ...preferences, maleVoice: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="alan"
+                />
+                <p className="mt-1 text-sm text-gray-600">
+                  Voice ID for the male model
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Female TTS Model
+                </label>
+                <input
+                  type="text"
+                  value={preferences.femaleTTSModel}
+                  onChange={(e) => setPreferences({ ...preferences, femaleTTSModel: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="speaches-ai/piper-en_US-amy-low"
+                />
+                <p className="mt-1 text-sm text-gray-600">
+                  Model for female voice synthesis
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Female Voice ID
+                </label>
+                <input
+                  type="text"
+                  value={preferences.femaleVoice}
+                  onChange={(e) => setPreferences({ ...preferences, femaleVoice: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="amy"
+                />
+                <p className="mt-1 text-sm text-gray-600">
+                  Voice ID for the female model
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -336,71 +444,6 @@ export function SettingsPage() {
           </div>
         </section>
 
-        {/* Voice Settings */}
-        <section className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Voice Settings</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Default Voice
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="male"
-                    checked={preferences.voice === 'male'}
-                    onChange={(e) => setPreferences({ ...preferences, voice: e.target.value as 'male' | 'female' })}
-                    className="mr-2"
-                  />
-                  <span>Male</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="female"
-                    checked={preferences.voice === 'female'}
-                    onChange={(e) => setPreferences({ ...preferences, voice: e.target.value as 'male' | 'female' })}
-                    className="mr-2"
-                  />
-                  <span>Female</span>
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Male Voice ID
-              </label>
-              <input
-                type="text"
-                value={preferences.maleVoice}
-                onChange={(e) => setPreferences({ ...preferences, maleVoice: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="am_echo"
-              />
-              <p className="mt-1 text-sm text-gray-600">
-                Voice ID for male TTS synthesis
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Female Voice ID
-              </label>
-              <input
-                type="text"
-                value={preferences.femaleVoice}
-                onChange={(e) => setPreferences({ ...preferences, femaleVoice: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="af_heart"
-              />
-              <p className="mt-1 text-sm text-gray-600">
-                Voice ID for female TTS synthesis
-              </p>
-            </div>
-          </div>
-        </section>
 
         {/* Data Management */}
         <section className="bg-white rounded-lg shadow p-6">

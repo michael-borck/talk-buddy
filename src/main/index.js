@@ -172,8 +172,11 @@ app.whenReady().then(() => {
       ('voice', 'male'),
       ('sttModel', 'Systran/faster-distil-whisper-small.en'),
       ('ttsModel', 'speaches-ai/Kokoro-82M-v1.0-ONNX-int8'),
-      ('maleVoice', 'am_echo'),
-      ('femaleVoice', 'af_heart');
+      ('maleTTSModel', 'speaches-ai/piper-en_GB-alan-low'),
+      ('femaleTTSModel', 'speaches-ai/piper-en_US-amy-low'),
+      ('maleVoice', 'alan'),
+      ('femaleVoice', 'amy'),
+      ('ttsSpeed', '1.25');
   `);
   
   // Insert seed data if no scenarios exist
@@ -253,6 +256,58 @@ ipcMain.handle('app:getVersion', () => {
 
 ipcMain.handle('app:getPath', (event, name) => {
   return app.getPath(name);
+});
+
+// Proxy for external API requests to bypass CORS
+ipcMain.handle('api:fetch', async (event, { url, options }) => {
+  try {
+    const { net } = require('electron');
+    const request = net.request({
+      method: options.method || 'GET',
+      url: url,
+    });
+
+    // Set headers
+    if (options.headers) {
+      Object.entries(options.headers).forEach(([key, value]) => {
+        request.setHeader(key, value);
+      });
+    }
+
+    // Send body if present
+    if (options.body) {
+      request.write(options.body);
+    }
+
+    return new Promise((resolve, reject) => {
+      let data = [];
+      
+      request.on('response', (response) => {
+        response.on('data', (chunk) => {
+          data.push(chunk);
+        });
+        
+        response.on('end', () => {
+          const buffer = Buffer.concat(data);
+          resolve({
+            ok: response.statusCode >= 200 && response.statusCode < 300,
+            status: response.statusCode,
+            statusText: response.statusMessage,
+            headers: response.headers,
+            data: buffer
+          });
+        });
+      });
+      
+      request.on('error', (error) => {
+        reject(error);
+      });
+      
+      request.end();
+    });
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
 });
 
 // Restore default scenarios

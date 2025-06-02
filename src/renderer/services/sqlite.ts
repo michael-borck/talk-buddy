@@ -19,6 +19,7 @@ interface ElectronAPI {
     getPath: (name: string) => Promise<string>;
   };
   platform: string;
+  fetch: (params: { url: string; options: any }) => Promise<{ ok: boolean; status?: number; statusText?: string; headers?: any; data?: any; error?: string }>;
 }
 
 declare global {
@@ -224,7 +225,7 @@ export async function updateSession(id: string, updates: Partial<Session>): Prom
 
 export async function getSession(id: string): Promise<Session | null> {
   const result = await window.electronAPI.database.query(
-    'SELECT * FROM sessions WHERE id = ?',
+    'SELECT id, scenario_id as scenario, startTime, endTime, duration, transcript, metadata, created, updated FROM sessions WHERE id = ?',
     [id]
   );
   
@@ -241,7 +242,7 @@ export async function getSession(id: string): Promise<Session | null> {
 }
 
 export async function listSessions(scenarioId?: string): Promise<Session[]> {
-  let query = 'SELECT * FROM sessions';
+  let query = 'SELECT id, scenario_id as scenario, startTime, endTime, duration, transcript, metadata, created, updated FROM sessions';
   const params: any[] = [];
   
   if (scenarioId) {

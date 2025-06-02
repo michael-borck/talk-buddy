@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { listSessions, getScenario, deleteSession } from '../services/sqlite';
 import { Session, Scenario } from '../types';
-import { Calendar, Clock, MessageSquare, TrendingUp, Trash2 } from 'lucide-react';
+import { Calendar, Clock, MessageSquare, TrendingUp, Trash2, Play } from 'lucide-react';
 
 interface SessionWithScenario extends Session {
   scenarioData?: Scenario;
 }
 
 export function SessionHistoryPage() {
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<SessionWithScenario[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
@@ -143,6 +145,18 @@ export function SessionHistoryPage() {
                     </div>
                     
                     <div className="ml-4 flex items-center gap-2">
+                      {!session.endTime && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/conversation/${session.scenario}?sessionId=${session.id}`);
+                          }}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Resume session"
+                        >
+                          <Play size={18} />
+                        </button>
+                      )}
                       <button
                         onClick={(e) => handleDelete(session.id, e)}
                         disabled={deletingId === session.id}

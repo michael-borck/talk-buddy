@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getScenario, createSession, updateSession } from '../services/sqlite';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { getScenario, createSession, updateSession, getSession } from '../services/sqlite';
 import { transcribeAudio, generateSpeech } from '../services/speaches';
 import { generateResponse } from '../services/chat';
 import { Scenario, Session, ConversationMessage } from '../types';
@@ -11,6 +11,8 @@ type ConversationState = 'not-started' | 'idle' | 'listening' | 'thinking' | 'sp
 export function ConversationPage() {
   const { scenarioId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const resumeSessionId = searchParams.get('sessionId');
   
   // State
   const [scenario, setScenario] = useState<Scenario | null>(null);
@@ -39,6 +41,13 @@ export function ConversationPage() {
       loadScenario();
     }
   }, [scenarioId]);
+  
+  // Resume session if provided
+  useEffect(() => {
+    if (resumeSessionId && scenario) {
+      resumeSession();
+    }
+  }, [resumeSessionId, scenario]);
 
   // Timer
   useEffect(() => {
@@ -62,6 +71,20 @@ export function ConversationPage() {
       }
     };
   }, [conversationState, sessionComplete]);
+  
+  // Save transcript on unmount if session exists
+  useEffect(() => {
+    return () => {
+      // Cleanup function runs on unmount
+      if (session && messages.length > 0 && !sessionComplete) {
+        // Save current transcript state
+        updateSession(session.id, {
+          transcript: messages,
+          duration: elapsedTime
+        }).catch(err => console.error('Failed to save transcript on unmount:', err));
+      }
+    };
+  }, [session, messages, elapsedTime, sessionComplete]);
 
   const loadScenario = async () => {
     if (!scenarioId) return;
@@ -82,6 +105,25 @@ export function ConversationPage() {
     }
   };
 
+  const resumeSession = async () => {
+    try {
+      const existingSession = await getSession(resumeSessionId!);
+      if (existingSession && !existingSession.endTime) {
+        setSession(existingSession);
+        setMessages(existingSession.transcript || []);
+        setConversationState('idle');
+        
+        // Calculate elapsed time from start
+        const startTime = new Date(existingSession.startTime);
+        const elapsed = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
+        setElapsedTime(elapsed);
+        startTimeRef.current = startTime;
+      }
+    } catch (err) {
+      console.error('Failed to resume session:', err);
+    }
+  };
+
   const startConversation = async () => {
     if (!scenario) return;
     
@@ -99,6 +141,11 @@ export function ConversationPage() {
           timestamp: new Date().toISOString()
         };
         setMessages([initialMsg]);
+        
+        // Save initial transcript
+        await updateSession(newSession.id, {
+          transcript: [initialMsg]
+        });
         
         // Speak initial message
         if (audioEnabled) {
@@ -202,13 +249,13 @@ export function ConversationPage() {
       }
     } catch (err) {
       console.error('Failed to process audio:', err);
-      setError('Failed to process your speech. Please try again.');
+      setError('Speech-to-text failed. The STT server may not have models loaded. Consider using Web Speech API in settings.');
       setConversationState('idle');
+      setTimeout(() => setError(null), 5000);
     }
   };
 
   const speakText = async (text: string) => {
-    setConversationState('speaking');
     try {
       const audioBlob = await generateSpeech({
         text,
@@ -218,9 +265,19 @@ export function ConversationPage() {
       const audioUrl = URL.createObjectURL(audioBlob);
       audioRef.current = new Audio(audioUrl);
       
+      // Set speaking state when audio actually starts playing
+      audioRef.current.onplay = () => {
+        setConversationState('speaking');
+      };
+      
       audioRef.current.onended = () => {
         setConversationState('idle');
         URL.revokeObjectURL(audioUrl);
+      };
+      
+      audioRef.current.onerror = () => {
+        console.error('Audio playback error');
+        setConversationState('idle');
       };
       
       await audioRef.current.play();
@@ -232,13 +289,27 @@ export function ConversationPage() {
 
   const checkForNaturalEnding = (response: string): boolean => {
     const endingPhrases = [
-      'goodbye', 'bye', 'have a nice day', 'take care', 
-      'see you', 'thank you for coming', 'thanks for calling',
-      'anything else', 'is there anything else', 'have a great'
+      'goodbye', 'bye bye', 'have a nice day', 'take care', 
+      'see you later', 'thank you for coming', 'thanks for calling',
+      'have a great day', 'have a great evening', 'have a wonderful day'
+    ];
+    
+    const strictEndingPhrases = [
+      'is there anything else i can help you with today',
+      'anything else i can help you with',
+      'will that be all for today'
     ];
     
     const lowerResponse = response.toLowerCase();
-    return endingPhrases.some(phrase => lowerResponse.includes(phrase));
+    
+    // Check for strict phrases that need more context
+    const hasStrictEnding = strictEndingPhrases.some(phrase => lowerResponse.includes(phrase));
+    
+    // Check for definite goodbye phrases
+    const hasGoodbye = endingPhrases.some(phrase => lowerResponse.includes(phrase));
+    
+    // Only end if we have a clear goodbye or a strict ending phrase with sufficient conversation
+    return hasGoodbye || (hasStrictEnding && messages.length > 4);
   };
 
   const handleEndSession = () => {
@@ -397,21 +468,31 @@ export function ConversationPage() {
         <div className="text-center max-w-2xl">
           {/* Conversation Avatar/Status */}
           <div className="mb-8">
-            <div className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center ${
-              conversationState === 'listening' ? 'bg-red-100' :
-              conversationState === 'thinking' ? 'bg-yellow-100' :
-              conversationState === 'speaking' ? 'bg-green-100' :
-              'bg-gray-100'
-            }`}>
-              <div className={`text-4xl ${
-                conversationState === 'listening' ? 'animate-pulse' :
-                conversationState === 'thinking' ? 'animate-spin' :
-                ''
+            <div className="relative w-32 h-32 mx-auto">
+              <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all ${
+                conversationState === 'listening' ? 'bg-red-100 animate-pulse' :
+                conversationState === 'thinking' ? 'bg-yellow-100' :
+                conversationState === 'speaking' ? 'bg-green-100 animate-pulse' :
+                'bg-gray-100'
               }`}>
-                {conversationState === 'listening' ? '🎤' :
-                 conversationState === 'thinking' ? '🤔' :
-                 conversationState === 'speaking' ? '🗣️' :
-                 '😊'}
+                <div className={`${
+                  conversationState === 'thinking' ? 'animate-spin' :
+                  ''
+                }`}>
+                  {conversationState === 'listening' ? (
+                    <div className="text-4xl">🎤</div>
+                  ) : conversationState === 'thinking' ? (
+                    <div className="text-4xl">🤔</div>
+                  ) : conversationState === 'speaking' ? (
+                    <div className="text-4xl">
+                      {scenario?.voice === 'female' ? '👩' : '👨'}
+                    </div>
+                  ) : (
+                    <div className="text-4xl">
+                      {scenario?.voice === 'female' ? '👩' : '👨'}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -425,8 +506,15 @@ export function ConversationPage() {
              'Your turn to speak'}
           </p>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
           {/* Action Buttons */}
-          {conversationState === 'not-started' ? (
+          {conversationState === 'not-started' && !session ? (
             <button
               onClick={startConversation}
               className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-medium"
@@ -451,12 +539,14 @@ export function ConversationPage() {
                 {conversationState === 'listening' ? 'Release to Stop' : 'Hold to Speak'}
               </button>
               
-              <button
-                onClick={handleEndSession}
-                className="text-gray-600 hover:text-gray-800"
-              >
-                End Session
-              </button>
+              <div className="mt-6">
+                <button
+                  onClick={handleEndSession}
+                  className="text-gray-600 hover:text-gray-800 text-sm"
+                >
+                  End Session
+                </button>
+              </div>
             </div>
           )}
         </div>

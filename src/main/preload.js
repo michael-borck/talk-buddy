@@ -32,5 +32,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Scenarios
   scenarios: {
     restoreDefaults: () => ipcRenderer.invoke('scenarios:restoreDefaults')
-  }
+  },
+
+  // API proxy to bypass CORS
+  fetch: ({ url, options }) => ipcRenderer.invoke('api:fetch', { url, options })
 });
