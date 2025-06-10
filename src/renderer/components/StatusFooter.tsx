@@ -26,10 +26,20 @@ export function StatusFooter() {
     ollamaApiKey: ''
   });
 
+  const [appVersion, setAppVersion] = useState('');
+
   useEffect(() => {
     loadPreferencesAndCheckStatus();
     // Check status every 30 seconds
     const interval = setInterval(checkAllStatuses, 30000);
+    
+    // Get app version
+    if (window.electronAPI?.app?.getVersion) {
+      window.electronAPI.app.getVersion().then(version => {
+        setAppVersion(version);
+      });
+    }
+    
     return () => clearInterval(interval);
   }, []);
 
@@ -220,7 +230,7 @@ export function StatusFooter() {
         </div>
 
         <div className="text-gray-400 text-xs">
-          ChatterBox v2.0.0
+          ChatterBox {appVersion ? `v${appVersion}` : 'v2.0.0'}
         </div>
       </div>
     </footer>

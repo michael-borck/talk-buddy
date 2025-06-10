@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { ConversationPage } from './pages/ConversationPage';
 import { ScenariosPage } from './pages/ScenariosPage';
 import { ScenarioFormPage } from './pages/ScenarioFormPage';
@@ -8,9 +8,11 @@ import { ConversationAnalysisPage } from './pages/ConversationAnalysisPage';
 import { PracticePacksPage } from './pages/PracticePacksPage';
 import { PackDetailPage } from './pages/PackDetailPage';
 import { ArchivePage } from './pages/ArchivePage';
+import { AboutPage } from './pages/AboutPage';
+import { LicensePage } from './pages/LicensePage';
 import { useState, useEffect } from 'react';
 import { listScenarios, listPacks, startStandaloneSession } from './services/sqlite';
-import { Home, MessageSquare, BookOpen, History, Settings, Menu, X, Mic, Package, ChevronRight, Archive } from 'lucide-react';
+import { Home, MessageSquare, BookOpen, History, Settings, Menu, X, Mic, Package, ChevronRight, Archive, Info } from 'lucide-react';
 import { StatusFooter } from './components/StatusFooter';
 
 function App() {
@@ -33,6 +35,8 @@ function App() {
               <Route path="/conversation/:scenarioId" element={<ConversationPage />} />
               <Route path="/analysis/:sessionId" element={<ConversationAnalysisPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/license" element={<LicensePage />} />
             </Routes>
           </main>
         </div>
@@ -44,16 +48,9 @@ function App() {
 
 function Sidebar() {
   const navigate = useNavigate();
-  const [currentPath, setCurrentPath] = useState(window.location.hash.slice(1) || '/');
+  const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [appVersion, setAppVersion] = useState('');
-  useEffect(() => {
-    const handleHashChange = () => {
-      setCurrentPath(window.location.hash.slice(1) || '/');
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
 
   useEffect(() => {
     // Get app version
@@ -71,6 +68,7 @@ function Sidebar() {
     { path: '/sessions', icon: History, label: 'Session History' },
     { path: '/archive', icon: Archive, label: 'Archive' },
     { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/about', icon: Info, label: 'About' },
   ];
 
   return (
@@ -79,13 +77,26 @@ function Sidebar() {
         {/* Header with collapse button */}
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} mb-8`}>
           {!isCollapsed && (
-            <div className="flex items-center gap-2">
+            <button 
+              onClick={() => navigate('/about')}
+              className="flex items-center gap-2 hover:bg-gray-700 p-2 rounded-lg transition-colors"
+              title="About ChatterBox"
+            >
               <Mic size={24} className="text-blue-400" />
               <div>
                 <h1 className="text-xl font-bold text-white">ChatterBox</h1>
                 <p className="text-xs text-gray-400">Desktop Edition</p>
               </div>
-            </div>
+            </button>
+          )}
+          {isCollapsed && (
+            <button 
+              onClick={() => navigate('/about')}
+              className="text-blue-400 hover:bg-gray-700 p-2 rounded-lg transition-colors mb-2"
+              title="About ChatterBox"
+            >
+              <Mic size={20} />
+            </button>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -101,8 +112,9 @@ function Sidebar() {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.path === '/' 
-              ? currentPath === '/' 
-              : currentPath.startsWith(item.path);
+              ? location.pathname === '/' 
+              : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+            
             return (
               <button
                 key={item.path}
@@ -125,7 +137,13 @@ function Sidebar() {
       {/* Version info at bottom */}
       {!isCollapsed && appVersion && (
         <div className="mt-auto p-4 text-center">
-          <p className="text-xs text-gray-400">v{appVersion}</p>
+          <button
+            onClick={() => navigate('/about')}
+            className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+            title="About ChatterBox"
+          >
+            v{appVersion}
+          </button>
         </div>
       )}
     </nav>

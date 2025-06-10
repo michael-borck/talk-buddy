@@ -219,8 +219,8 @@ function insertSeedScenarios(db) {
   const insertStmt = db.prepare(`
     INSERT OR IGNORE INTO scenarios (
       id, name, description, category, difficulty, estimatedMinutes,
-      systemPrompt, initialMessage, tags, isDefault, voice, archived
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      systemPrompt, initialMessage, tags, isPublic, isDefault, voice, archived
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   DEFAULT_SCENARIOS.forEach((scenario, index) => {
@@ -235,6 +235,7 @@ function insertSeedScenarios(db) {
       scenario.systemPrompt,
       scenario.initialMessage,
       JSON.stringify(scenario.tags),
+      1, // isPublic = true (defaults)
       scenario.isDefault ? 1 : 0,
       scenario.voice,
       0  // archived = false
@@ -282,6 +283,13 @@ app.whenReady().then(() => {
   const dbPath = path.join(app.getPath('userData'), 'chatterbox.db');
   db = new Database(dbPath);
   
+  // Add missing columns to existing databases
+  try {
+    db.exec('ALTER TABLE scenarios ADD COLUMN isPublic BOOLEAN DEFAULT 1');
+  } catch (e) {
+    // Column already exists, ignore error
+  }
+
   // Create tables if they don't exist
   db.exec(`
     CREATE TABLE IF NOT EXISTS scenarios (
@@ -294,6 +302,7 @@ app.whenReady().then(() => {
       systemPrompt TEXT,
       initialMessage TEXT,
       tags TEXT,
+      isPublic BOOLEAN DEFAULT 1,
       isDefault BOOLEAN DEFAULT 0,
       voice TEXT,
       archived BOOLEAN DEFAULT 0,
@@ -540,8 +549,8 @@ ipcMain.handle('scenarios:restoreDefaults', async () => {
     const insertStmt = db.prepare(`
       INSERT INTO scenarios (
         id, name, description, category, difficulty, estimatedMinutes,
-        systemPrompt, initialMessage, tags, isDefault, voice, archived
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        systemPrompt, initialMessage, tags, isPublic, isDefault, voice, archived
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     DEFAULT_SCENARIOS.forEach((scenario, index) => {
@@ -556,6 +565,7 @@ ipcMain.handle('scenarios:restoreDefaults', async () => {
         scenario.systemPrompt,
         scenario.initialMessage,
         JSON.stringify(scenario.tags),
+        1, // isPublic = true
         1, // isDefault = true
         scenario.voice,
         0  // archived = false

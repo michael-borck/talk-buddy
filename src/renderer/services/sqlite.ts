@@ -447,7 +447,9 @@ export async function importFromFile(fileContent: string): Promise<{ success: bo
         if (!data.scenario) {
           throw new Error('No scenario data found in file');
         }
-        const scenario = await createScenario(data.scenario);
+        // Strip fields that should be auto-generated and any extra fields
+        const { id, created, updated, isDefault, archived, ...cleanScenarioData } = data.scenario;
+        const scenario = await createScenario(cleanScenarioData);
         imported = { type: 'scenario', scenario };
         return { success: true, message: `Imported scenario: ${scenario.name}`, imported };
 
@@ -458,7 +460,9 @@ export async function importFromFile(fileContent: string): Promise<{ success: bo
         const importedScenarios = [];
         for (const scenarioData of data.scenarios) {
           try {
-            const scenario = await createScenario(scenarioData);
+            // Strip fields that should be auto-generated and any extra fields
+            const { id, created, updated, isDefault, archived, ...cleanScenarioData } = scenarioData;
+            const scenario = await createScenario(cleanScenarioData);
             importedScenarios.push(scenario);
           } catch (error) {
             console.warn(`Failed to import scenario ${scenarioData.name}:`, error);
@@ -494,11 +498,16 @@ export async function importFromFile(fileContent: string): Promise<{ success: bo
           for (let i = 0; i < packData.scenarios.length; i++) {
             const scenarioData = packData.scenarios[i];
             try {
-              const scenario = await createScenario(scenarioData);
+              // Strip fields that should be auto-generated and any extra fields
+              const { id, created, updated, isDefault, archived, ...cleanScenarioData } = scenarioData;
+              console.log('Importing scenario:', cleanScenarioData.name, 'Data:', cleanScenarioData);
+              const scenario = await createScenario(cleanScenarioData);
+              console.log('Created scenario:', scenario.id);
               await addScenarioToPack(pack.id, scenario.id, i);
+              console.log('Added scenario to pack:', pack.id);
               importedPackScenarios.push(scenario);
             } catch (error) {
-              console.warn(`Failed to import scenario ${scenarioData.name}:`, error);
+              console.error(`Failed to import scenario ${scenarioData.name}:`, error);
             }
           }
         }
