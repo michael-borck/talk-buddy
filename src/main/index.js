@@ -279,7 +279,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   // Initialize SQLite database
-  const dbPath = path.join(app.getPath('userData'), 'talkbuddy.db');
+  const dbPath = path.join(app.getPath('userData'), 'chatterbox.db');
   db = new Database(dbPath);
   
   // Create tables if they don't exist

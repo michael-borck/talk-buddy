@@ -1,7 +1,7 @@
 {
-  "name": "talkbuddy-desktop",
+  "name": "chatterbox-desktop",
   "version": "2.0.0",
-  "description": "TalkBuddy - AI-powered conversation practice desktop app",
+  "description": "ChatterBox - AI-powered conversation practice desktop app",
   "author": "Michael Borck",
   "main": "src/main/index.js",
   "homepage": "./",
@@ -46,8 +46,8 @@
     "@testing-library/user-event": "^14.5.2"
   },
   "build": {
-    "appId": "com.talkbuddy.desktop",
-    "productName": "TalkBuddy",
+    "appId": "com.chatterbox.desktop",
+    "productName": "ChatterBox",
     "directories": {
       "output": "dist"
     },

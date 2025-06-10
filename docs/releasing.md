@@ -1,6 +1,6 @@
-# Releasing TalkBuddy Desktop
+# Releasing ChatterBox Desktop
 
-This guide explains how to create a new release of TalkBuddy that automatically builds for all platforms.
+This guide explains how to create a new release of ChatterBox that automatically builds for all platforms.
 
 ## Prerequisites
 
@@ -38,9 +38,9 @@ This guide explains how to create a new release of TalkBuddy that automatically 
 3. **Find your release**:
    - Go to the Releases page on GitHub
    - You'll see a new release with all the installers:
-     - `TalkBuddy-Setup-2.0.1.exe` (Windows)
-     - `TalkBuddy-2.0.1.dmg` (macOS)
-     - `TalkBuddy-2.0.1.AppImage` (Linux)
+     - `ChatterBox-Setup-2.0.1.exe` (Windows)
+     - `ChatterBox-2.0.1.dmg` (macOS)
+     - `ChatterBox-2.0.1.AppImage` (Linux)
 
 ## How It Works
 

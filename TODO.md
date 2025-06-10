@@ -1,4 +1,4 @@
-# TalkBuddy - Todo List
+# ChatterBox - Todo List
 
 
 ☐ Design and implement Project concept - allow grouping scenarios and conversations with optional membership

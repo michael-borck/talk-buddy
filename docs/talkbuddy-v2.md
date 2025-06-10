@@ -1,4 +1,4 @@
-The TalkBuddy V2 system will incorporate a user registration and login system, providing authenticated access to personalized features.
+The ChatterBox V2 system will incorporate a user registration and login system, providing authenticated access to personalized features.
 
 ### User Dashboard Enhancements
 

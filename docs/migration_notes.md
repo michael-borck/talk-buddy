@@ -1,9 +1,9 @@
-# TalkBuddy Migration Notes: Web to Desktop
+# ChatterBox Migration Notes: Web to Desktop
 
 ## Migration Date: 2025-01-28
 
 ## Overview
-This document tracks the migration of TalkBuddy from a web-based architecture (React + PocketBase + Flask servers) to a desktop application (React + Electron) with simplified external service dependencies.
+This document tracks the migration of ChatterBox from a web-based architecture (React + PocketBase + Flask servers) to a desktop application (React + Electron) with simplified external service dependencies.
 
 ## Architecture Changes
 

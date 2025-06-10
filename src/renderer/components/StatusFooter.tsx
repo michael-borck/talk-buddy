@@ -220,7 +220,7 @@ export function StatusFooter() {
         </div>
 
         <div className="text-gray-400 text-xs">
-          TalkBuddy v2.0.0
+          ChatterBox v2.0.0
         </div>
       </div>
     </footer>

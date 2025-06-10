@@ -82,7 +82,7 @@ function Sidebar() {
             <div className="flex items-center gap-2">
               <Mic size={24} className="text-blue-400" />
               <div>
-                <h1 className="text-xl font-bold text-white">TalkBuddy</h1>
+                <h1 className="text-xl font-bold text-white">ChatterBox</h1>
                 <p className="text-xs text-gray-400">Desktop Edition</p>
               </div>
             </div>
