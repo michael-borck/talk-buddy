@@ -10,9 +10,10 @@ import { PackDetailPage } from './pages/PackDetailPage';
 import { ArchivePage } from './pages/ArchivePage';
 import { AboutPage } from './pages/AboutPage';
 import { LicensePage } from './pages/LicensePage';
+import { HelpPage } from './pages/HelpPage';
 import { useState, useEffect } from 'react';
 import { listScenarios, listPacks, startStandaloneSession } from './services/sqlite';
-import { Home, MessageSquare, BookOpen, History, Settings, Menu, X, Mic, Package, ChevronRight, Archive, Info } from 'lucide-react';
+import { Home, MessageSquare, BookOpen, History, Settings, Menu, X, Mic, Package, ChevronRight, Archive, Info, HelpCircle } from 'lucide-react';
 import { StatusFooter } from './components/StatusFooter';
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/license" element={<LicensePage />} />
+              <Route path="/help" element={<HelpPage />} />
             </Routes>
           </main>
         </div>
@@ -68,6 +70,7 @@ function Sidebar() {
     { path: '/sessions', icon: History, label: 'Session History' },
     { path: '/archive', icon: Archive, label: 'Archive' },
     { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/help', icon: HelpCircle, label: 'Help' },
     { path: '/about', icon: Info, label: 'About' },
   ];
 
