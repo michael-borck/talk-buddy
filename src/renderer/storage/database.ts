@@ -60,6 +60,7 @@ export function initDatabase(): Database.Database {
       tags TEXT, -- JSON array stored as text
       isPublic BOOLEAN DEFAULT 1,
       voice TEXT,
+      archived BOOLEAN DEFAULT 0,
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -105,6 +106,7 @@ export function initDatabase(): Database.Database {
       difficulty TEXT CHECK(difficulty IN ('beginner', 'intermediate', 'advanced')),
       estimatedMinutes INTEGER,
       order_index INTEGER DEFAULT 0,
+      archived BOOLEAN DEFAULT 0,
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP
     );

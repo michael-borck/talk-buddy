@@ -11,6 +11,7 @@ export interface Scenario {
   isDefault?: boolean;  // true for default scenarios, false/undefined for custom
   isPublic?: boolean;   // for backward compatibility
   voice?: 'male' | 'female';
+  archived?: boolean;
   created: string;
   updated: string;
 }
@@ -92,6 +93,7 @@ export interface Pack {
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
   estimatedMinutes?: number;
   orderIndex: number;
+  archived?: boolean;
   created: string;
   updated: string;
 }

@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { 
   listPacksWithScenarios, 
   deletePack,
-  createPack 
+  createPack,
+  archivePack,
+  exportPackage,
+  importFromFile
 } from '../services/sqlite';
 import { PackWithScenarios } from '../types';
 import { 
@@ -14,7 +17,10 @@ import {
   Users, 
   Clock,
   Target,
-  BookOpen
+  BookOpen,
+  Archive,
+  Download,
+  Upload
 } from 'lucide-react';
 
 export function PracticePacksPage() {
@@ -43,7 +49,7 @@ export function PracticePacksPage() {
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!confirm('Are you sure you want to delete this practice pack?')) {
+    if (!confirm('Are you sure you want to permanently delete this practice pack? This action cannot be undone.')) {
       return;
     }
 
@@ -59,6 +65,21 @@ export function PracticePacksPage() {
     }
   };
 
+  const handleArchive = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    setDeletingId(id);
+    try {
+      await archivePack(id);
+      await loadPacks();
+    } catch (error) {
+      console.error('Failed to archive pack:', error);
+      alert('Failed to archive pack. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleCreatePack = async (packData: any) => {
     try {
       await createPack(packData);
@@ -68,6 +89,41 @@ export function PracticePacksPage() {
       console.error('Failed to create pack:', error);
       alert('Failed to create pack. Please try again.');
     }
+  };
+
+  const handleExportPack = async (packId: string) => {
+    try {
+      await exportPackage(packId);
+    } catch (error) {
+      console.error('Failed to export pack:', error);
+      alert('Failed to export pack. Please try again.');
+    }
+  };
+
+  const handleImport = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const content = await file.text();
+        const result = await importFromFile(content);
+        
+        if (result.success) {
+          alert(result.message);
+          await loadPacks();
+        } else {
+          alert(`Import failed: ${result.message}`);
+        }
+      } catch (error) {
+        console.error('Import error:', error);
+        alert('Failed to import file. Please check the file format.');
+      }
+    };
+    input.click();
   };
 
   if (loading) {
@@ -88,13 +144,22 @@ export function PracticePacksPage() {
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Practice Packs</h1>
           <p className="text-gray-600">Organize scenarios into themed learning collections</p>
         </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          Create Pack
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleImport}
+            className="flex items-center gap-2 px-4 py-2 text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
+          >
+            <Upload size={20} />
+            Import
+          </button>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={20} />
+            Create Pack
+          </button>
+        </div>
       </div>
 
       {packs.length === 0 ? (
@@ -130,14 +195,34 @@ export function PracticePacksPage() {
                       {pack.name}
                     </h3>
                   </div>
-                  <button
-                    onClick={(e) => handleDelete(pack.id, e)}
-                    disabled={deletingId === pack.id}
-                    className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                    title="Delete pack"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleExportPack(pack.id);
+                      }}
+                      className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                      title="Export pack"
+                    >
+                      <Download size={16} />
+                    </button>
+                    <button
+                      onClick={(e) => handleArchive(pack.id, e)}
+                      disabled={deletingId === pack.id}
+                      className="p-1 text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
+                      title="Archive pack"
+                    >
+                      <Archive size={16} />
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(pack.id, e)}
+                      disabled={deletingId === pack.id}
+                      className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                      title="Delete permanently"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
                 
                 {pack.description && (

@@ -51,7 +51,7 @@ export async function getScenario(id: string): Promise<Scenario | null> {
 }
 
 export async function listScenarios(filter?: { category?: string; difficulty?: string }): Promise<Scenario[]> {
-  let query = 'SELECT * FROM scenarios WHERE 1=1';
+  let query = 'SELECT * FROM scenarios WHERE archived = 0';
   const params: any[] = [];
   
   if (filter?.category) {
@@ -75,7 +75,8 @@ export async function listScenarios(filter?: { category?: string; difficulty?: s
   return result.data.map((scenario: any) => ({
     ...scenario,
     tags: scenario.tags ? JSON.parse(scenario.tags) : [],
-    isPublic: Boolean(scenario.isPublic)
+    isPublic: Boolean(scenario.isPublic),
+    archived: Boolean(scenario.archived)
   }));
 }
 
@@ -241,11 +242,13 @@ export async function listSessions(scenarioId?: string): Promise<Session[]> {
                s.startTime, s.endTime, s.duration, s.transcript, s.metadata, s.status, 
                s.created, s.updated, sp.name as packName
                FROM sessions s
-               LEFT JOIN session_packs sp ON s.session_pack_id = sp.id`;
+               LEFT JOIN session_packs sp ON s.session_pack_id = sp.id
+               LEFT JOIN packs p ON sp.pack_id = p.id
+               WHERE (s.session_pack_id IS NULL OR p.archived = 0)`;
   const params: any[] = [];
   
   if (scenarioId) {
-    query += ' WHERE s.scenario_id = ?';
+    query += ' AND s.scenario_id = ?';
     params.push(scenarioId);
   }
   
@@ -319,7 +322,208 @@ export async function getAllPreferences(): Promise<Record<string, string>> {
   return preferences;
 }
 
-// Import/Export functions
+// Import/Export functions for individual scenarios and packages
+export async function exportScenario(scenarioId: string, fileName?: string): Promise<void> {
+  const scenario = await getScenario(scenarioId);
+  if (!scenario) {
+    throw new Error('Scenario not found');
+  }
+
+  const exportData = {
+    formatVersion: "2.0",
+    type: "scenario",
+    metadata: {
+      exportedBy: "TalkBuddy v2.0.0",
+      exportDate: new Date().toISOString(),
+      title: scenario.name
+    },
+    scenario
+  };
+
+  const defaultFileName = fileName || `${scenario.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.json`;
+  const result = await window.electronAPI.dialog.saveFile(defaultFileName);
+  
+  if (!result.canceled && result.filePath) {
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = defaultFileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
+export async function exportScenarios(scenarioIds: string[], fileName?: string): Promise<void> {
+  const scenarios = await Promise.all(scenarioIds.map(id => getScenario(id)));
+  const validScenarios = scenarios.filter(s => s !== null) as Scenario[];
+
+  const exportData = {
+    formatVersion: "2.0",
+    type: "scenarios",
+    metadata: {
+      exportedBy: "TalkBuddy v2.0.0",
+      exportDate: new Date().toISOString(),
+      title: `${validScenarios.length} Scenarios`,
+      count: validScenarios.length
+    },
+    scenarios: validScenarios
+  };
+
+  const defaultFileName = fileName || `scenarios-${new Date().toISOString().split('T')[0]}.json`;
+  const result = await window.electronAPI.dialog.saveFile(defaultFileName);
+  
+  if (!result.canceled && result.filePath) {
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = defaultFileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
+export async function exportPackage(packId: string, fileName?: string): Promise<void> {
+  const pack = await getPack(packId);
+  if (!pack) {
+    throw new Error('Package not found');
+  }
+
+  const scenarios = await getPackScenarios(packId);
+
+  const exportData = {
+    formatVersion: "2.0",
+    type: "skill_package",
+    metadata: {
+      exportedBy: "TalkBuddy v2.0.0",
+      exportDate: new Date().toISOString(),
+      title: pack.name,
+      description: pack.description,
+      scenarioCount: scenarios.length
+    },
+    package: {
+      name: pack.name,
+      description: pack.description,
+      color: pack.color,
+      icon: pack.icon,
+      difficulty: pack.difficulty,
+      estimatedMinutes: pack.estimatedMinutes,
+      scenarios
+    }
+  };
+
+  const defaultFileName = fileName || `${pack.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.json`;
+  const result = await window.electronAPI.dialog.saveFile(defaultFileName);
+  
+  if (!result.canceled && result.filePath) {
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = defaultFileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
+export async function importFromFile(fileContent: string): Promise<{ success: boolean; message: string; imported: any }> {
+  try {
+    const data = JSON.parse(fileContent);
+    
+    // Validate format
+    if (!data.formatVersion || !data.type) {
+      throw new Error('Invalid TalkBuddy export file format');
+    }
+
+    if (data.formatVersion !== "2.0") {
+      throw new Error(`Unsupported format version: ${data.formatVersion}`);
+    }
+
+    let imported: any = {};
+
+    switch (data.type) {
+      case 'scenario':
+        if (!data.scenario) {
+          throw new Error('No scenario data found in file');
+        }
+        const scenario = await createScenario(data.scenario);
+        imported = { type: 'scenario', scenario };
+        return { success: true, message: `Imported scenario: ${scenario.name}`, imported };
+
+      case 'scenarios':
+        if (!data.scenarios || !Array.isArray(data.scenarios)) {
+          throw new Error('No scenarios data found in file');
+        }
+        const importedScenarios = [];
+        for (const scenarioData of data.scenarios) {
+          try {
+            const scenario = await createScenario(scenarioData);
+            importedScenarios.push(scenario);
+          } catch (error) {
+            console.warn(`Failed to import scenario ${scenarioData.name}:`, error);
+          }
+        }
+        imported = { type: 'scenarios', scenarios: importedScenarios };
+        return { 
+          success: true, 
+          message: `Imported ${importedScenarios.length} of ${data.scenarios.length} scenarios`, 
+          imported 
+        };
+
+      case 'skill_package':
+        if (!data.package) {
+          throw new Error('No package data found in file');
+        }
+        
+        // Create the pack
+        const packData = data.package;
+        const pack = await createPack({
+          name: packData.name,
+          description: packData.description,
+          color: packData.color || '#3B82F6',
+          icon: packData.icon || 'BookOpen',
+          difficulty: packData.difficulty,
+          estimatedMinutes: packData.estimatedMinutes,
+          orderIndex: 0
+        });
+
+        // Import scenarios and add to pack
+        const importedPackScenarios = [];
+        if (packData.scenarios && Array.isArray(packData.scenarios)) {
+          for (let i = 0; i < packData.scenarios.length; i++) {
+            const scenarioData = packData.scenarios[i];
+            try {
+              const scenario = await createScenario(scenarioData);
+              await addScenarioToPack(pack.id, scenario.id, i);
+              importedPackScenarios.push(scenario);
+            } catch (error) {
+              console.warn(`Failed to import scenario ${scenarioData.name}:`, error);
+            }
+          }
+        }
+
+        imported = { type: 'skill_package', pack, scenarios: importedPackScenarios };
+        return { 
+          success: true, 
+          message: `Imported skill package "${pack.name}" with ${importedPackScenarios.length} scenarios`, 
+          imported 
+        };
+
+      default:
+        throw new Error(`Unknown export type: ${data.type}`);
+    }
+  } catch (error) {
+    console.error('Import error:', error);
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Failed to import file',
+      imported: null
+    };
+  }
+}
+
+// Legacy export function for full data export
 export async function exportData(): Promise<void> {
   const scenarios = await listScenarios();
   const sessions = await listSessions();
@@ -406,7 +610,7 @@ export async function getPack(id: string): Promise<Pack | null> {
 
 export async function listPacks(): Promise<Pack[]> {
   const result = await window.electronAPI.database.query(
-    'SELECT * FROM packs ORDER BY order_index, name',
+    'SELECT * FROM packs WHERE archived = 0 ORDER BY order_index, name',
     []
   );
   
@@ -416,7 +620,8 @@ export async function listPacks(): Promise<Pack[]> {
   
   return result.data.map((pack: any) => ({
     ...pack,
-    orderIndex: pack.order_index
+    orderIndex: pack.order_index,
+    archived: Boolean(pack.archived)
   }));
 }
 
@@ -654,7 +859,10 @@ export async function getSessionPack(id: string): Promise<SessionPack | null> {
 
 export async function listSessionPacks(): Promise<SessionPack[]> {
   const result = await window.electronAPI.database.query(
-    'SELECT * FROM session_packs ORDER BY updated DESC',
+    `SELECT sp.* FROM session_packs sp
+     JOIN packs p ON sp.pack_id = p.id
+     WHERE p.archived = 0
+     ORDER BY sp.updated DESC`,
     []
   );
   
@@ -800,4 +1008,118 @@ export async function startStandaloneSession(scenarioId: string): Promise<Sessio
     created: now,
     updated: now
   };
+}
+
+// Archive functions
+export async function listArchivedScenarios(): Promise<Scenario[]> {
+  const result = await window.electronAPI.database.query(
+    'SELECT * FROM scenarios WHERE archived = 1 ORDER BY name',
+    []
+  );
+  
+  if (!result.success || !result.data) {
+    return [];
+  }
+  
+  return result.data.map((scenario: any) => ({
+    ...scenario,
+    tags: scenario.tags ? JSON.parse(scenario.tags) : [],
+    isPublic: Boolean(scenario.isPublic),
+    archived: Boolean(scenario.archived)
+  }));
+}
+
+export async function listArchivedPacks(): Promise<Pack[]> {
+  const result = await window.electronAPI.database.query(
+    'SELECT * FROM packs WHERE archived = 1 ORDER BY name',
+    []
+  );
+  
+  if (!result.success || !result.data) {
+    return [];
+  }
+  
+  return result.data.map((pack: any) => ({
+    ...pack,
+    orderIndex: pack.order_index,
+    archived: Boolean(pack.archived)
+  }));
+}
+
+export async function archiveScenario(id: string): Promise<void> {
+  const now = new Date().toISOString();
+  const result = await window.electronAPI.database.run(
+    'UPDATE scenarios SET archived = 1, updated = ? WHERE id = ?',
+    [now, id]
+  );
+  
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to archive scenario');
+  }
+}
+
+export async function unarchiveScenario(id: string): Promise<void> {
+  const now = new Date().toISOString();
+  const result = await window.electronAPI.database.run(
+    'UPDATE scenarios SET archived = 0, updated = ? WHERE id = ?',
+    [now, id]
+  );
+  
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to unarchive scenario');
+  }
+}
+
+export async function archivePack(id: string): Promise<void> {
+  const now = new Date().toISOString();
+  const result = await window.electronAPI.database.run(
+    'UPDATE packs SET archived = 1, updated = ? WHERE id = ?',
+    [now, id]
+  );
+  
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to archive pack');
+  }
+}
+
+export async function unarchivePack(id: string): Promise<void> {
+  const now = new Date().toISOString();
+  const result = await window.electronAPI.database.run(
+    'UPDATE packs SET archived = 0, updated = ? WHERE id = ?',
+    [now, id]
+  );
+  
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to unarchive pack');
+  }
+}
+
+export async function bulkArchiveScenarios(ids: string[]): Promise<void> {
+  const now = new Date().toISOString();
+  
+  for (const id of ids) {
+    const result = await window.electronAPI.database.run(
+      'UPDATE scenarios SET archived = 1, updated = ? WHERE id = ?',
+      [now, id]
+    );
+    
+    if (!result.success) {
+      throw new Error(result.error || `Failed to archive scenario ${id}`);
+    }
+  }
+}
+
+export async function bulkArchivePacks(ids: string[]): Promise<void> {
+  const now = new Date().toISOString();
+  
+  for (const id of ids) {
+    const result = await window.electronAPI.database.run(
+      'UPDATE packs SET archived = 1, updated = ? WHERE id = ?',
+      [now, id]
+    );
+    
+    if (!result.success) {
+      throw new Error(result.error || `Failed to archive pack ${id}`);
+    }
+  }
 }

@@ -5,7 +5,11 @@ import {
   deleteScenario, 
   restoreDefaultScenarios,
   getScenarioPacks,
-  startStandaloneSession
+  startStandaloneSession,
+  archiveScenario,
+  exportScenario,
+  exportScenarios,
+  importFromFile
 } from '../services/sqlite';
 import { Scenario, Pack } from '../types';
 import { 
@@ -21,7 +25,12 @@ import {
   RefreshCw,
   Search,
   Package,
-  X
+  X,
+  Archive,
+  Download,
+  Upload,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 
 interface ScenarioWithPacks extends Scenario {
@@ -42,6 +51,8 @@ export function ScenariosPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [selectedScenarios, setSelectedScenarios] = useState<string[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     loadScenarios();
@@ -111,7 +122,7 @@ export function ScenariosPage() {
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!confirm('Are you sure you want to delete this scenario?')) {
+    if (!confirm('Are you sure you want to permanently delete this scenario? This action cannot be undone.')) {
       return;
     }
 
@@ -122,6 +133,21 @@ export function ScenariosPage() {
     } catch (error) {
       console.error('Failed to delete scenario:', error);
       alert('Failed to delete scenario. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleArchive = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    setDeletingId(id);
+    try {
+      await archiveScenario(id);
+      await loadScenarios();
+    } catch (error) {
+      console.error('Failed to archive scenario:', error);
+      alert('Failed to archive scenario. Please try again.');
     } finally {
       setDeletingId(null);
     }
@@ -160,6 +186,88 @@ export function ScenariosPage() {
     }
   };
 
+  const handleExportScenario = async (scenarioId: string) => {
+    try {
+      setIsExporting(true);
+      await exportScenario(scenarioId);
+    } catch (error) {
+      console.error('Failed to export scenario:', error);
+      alert('Failed to export scenario. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportSelected = async () => {
+    if (selectedScenarios.length === 0) return;
+    
+    try {
+      setIsExporting(true);
+      await exportScenarios(selectedScenarios);
+      setSelectedScenarios([]);
+    } catch (error) {
+      console.error('Failed to export scenarios:', error);
+      alert('Failed to export scenarios. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      const result = await window.electronAPI.dialog.openFile();
+      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+        return;
+      }
+
+      const filePath = result.filePaths[0];
+      
+      // For now, we'll use a file input approach since we can't directly read files
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        try {
+          const content = await file.text();
+          const result = await importFromFile(content);
+          
+          if (result.success) {
+            alert(result.message);
+            await loadScenarios();
+          } else {
+            alert(`Import failed: ${result.message}`);
+          }
+        } catch (error) {
+          console.error('Import error:', error);
+          alert('Failed to import file. Please check the file format.');
+        }
+      };
+      input.click();
+    } catch (error) {
+      console.error('Failed to open import dialog:', error);
+      alert('Failed to open import dialog.');
+    }
+  };
+
+  const toggleScenarioSelection = (scenarioId: string) => {
+    setSelectedScenarios(prev => 
+      prev.includes(scenarioId)
+        ? prev.filter(id => id !== scenarioId)
+        : [...prev, scenarioId]
+    );
+  };
+
+  const selectAllScenarios = () => {
+    if (selectedScenarios.length === filteredScenarios.length) {
+      setSelectedScenarios([]);
+    } else {
+      setSelectedScenarios(filteredScenarios.map(s => s.id));
+    }
+  };
+
   const categories = [...new Set(scenarios.map(s => s.category))].filter(Boolean);
   const difficulties = ['beginner', 'intermediate', 'advanced'];
 
@@ -183,6 +291,13 @@ export function ScenariosPage() {
           <p className="text-gray-600">Browse and manage conversation practice scenarios</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleImport}
+            className="flex items-center gap-2 px-4 py-2 text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
+          >
+            <Upload size={20} />
+            Import
+          </button>
           <button
             onClick={handleRestore}
             disabled={restoring}
@@ -301,6 +416,41 @@ export function ScenariosPage() {
         </div>
       </div>
 
+      {/* Bulk Selection Controls */}
+      {filteredScenarios.length > 0 && (
+        <div className="mb-4 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={selectAllScenarios}
+              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
+            >
+              {selectedScenarios.length === filteredScenarios.length ? (
+                <CheckSquare size={16} />
+              ) : (
+                <Square size={16} />
+              )}
+              {selectedScenarios.length === filteredScenarios.length ? 'Deselect All' : 'Select All'}
+            </button>
+            {selectedScenarios.length > 0 && (
+              <span className="text-sm text-gray-600">
+                {selectedScenarios.length} scenario{selectedScenarios.length > 1 ? 's' : ''} selected
+              </span>
+            )}
+          </div>
+          
+          {selectedScenarios.length > 0 && (
+            <button
+              onClick={handleExportSelected}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
+            >
+              <Download size={16} />
+              Export Selected ({selectedScenarios.length})
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Scenarios List */}
       {filteredScenarios.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
@@ -345,8 +495,12 @@ export function ScenariosPage() {
               scenario={scenario}
               viewMode={viewMode}
               onDelete={handleDelete}
+              onArchive={handleArchive}
               onEdit={(id) => navigate(`/scenarios/edit/${id}`)}
               onStart={handleStartScenario}
+              onExport={handleExportScenario}
+              onToggleSelect={toggleScenarioSelection}
+              isSelected={selectedScenarios.includes(scenario.id)}
               deletingId={deletingId}
             />
           ))}
@@ -360,8 +514,12 @@ interface ScenarioCardProps {
   scenario: ScenarioWithPacks;
   viewMode: 'grid' | 'list';
   onDelete: (id: string, e: React.MouseEvent) => void;
+  onArchive: (id: string, e: React.MouseEvent) => void;
   onEdit: (id: string) => void;
   onStart: (id: string) => void;
+  onExport: (id: string) => void;
+  onToggleSelect: (id: string) => void;
+  isSelected: boolean;
   deletingId: string | null;
 }
 
@@ -369,8 +527,12 @@ function ScenarioCard({
   scenario, 
   viewMode, 
   onDelete, 
+  onArchive,
   onEdit, 
   onStart, 
+  onExport,
+  onToggleSelect,
+  isSelected,
   deletingId 
 }: ScenarioCardProps) {
   const getDifficultyColor = (difficulty: string) => {
@@ -393,7 +555,18 @@ function ScenarioCard({
   if (viewMode === 'list') {
     return (
       <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start gap-4">
+          <button
+            onClick={() => onToggleSelect(scenario.id)}
+            className="mt-1"
+          >
+            {isSelected ? (
+              <CheckSquare size={20} className="text-blue-600" />
+            ) : (
+              <Square size={20} className="text-gray-400" />
+            )}
+          </button>
+          
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-lg font-semibold text-gray-800">{scenario.name}</h3>
@@ -461,10 +634,25 @@ function ScenarioCard({
               <Edit size={18} />
             </button>
             <button
+              onClick={() => onExport(scenario.id)}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+              title="Export scenario"
+            >
+              <Download size={18} />
+            </button>
+            <button
+              onClick={(e) => onArchive(scenario.id, e)}
+              disabled={deletingId === scenario.id}
+              className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-50"
+              title="Archive scenario"
+            >
+              <Archive size={18} />
+            </button>
+            <button
               onClick={(e) => onDelete(scenario.id, e)}
               disabled={deletingId === scenario.id}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-              title="Delete scenario"
+              title="Delete permanently"
             >
               <Trash2 size={18} />
             </button>
@@ -479,6 +667,16 @@ function ScenarioCard({
       <div className="p-6">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2 flex-1 pr-2">
+            <button
+              onClick={() => onToggleSelect(scenario.id)}
+              className="mr-2"
+            >
+              {isSelected ? (
+                <CheckSquare size={20} className="text-blue-600" />
+              ) : (
+                <Square size={20} className="text-gray-400" />
+              )}
+            </button>
             <h3 className="text-lg font-semibold text-gray-800">{scenario.name}</h3>
             <span className="text-lg" title={`${scenario.voice || 'default'} voice`}>
               {getGenderIcon(scenario.voice)}
@@ -493,10 +691,25 @@ function ScenarioCard({
               <Edit size={16} />
             </button>
             <button
+              onClick={() => onExport(scenario.id)}
+              className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+              title="Export"
+            >
+              <Download size={16} />
+            </button>
+            <button
+              onClick={(e) => onArchive(scenario.id, e)}
+              disabled={deletingId === scenario.id}
+              className="p-1 text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
+              title="Archive"
+            >
+              <Archive size={16} />
+            </button>
+            <button
               onClick={(e) => onDelete(scenario.id, e)}
               disabled={deletingId === scenario.id}
               className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-              title="Delete"
+              title="Delete permanently"
             >
               <Trash2 size={16} />
             </button>

@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "electron": "electron .",
     "electron-dev": "electron .",
+    "electron:prod": "NODE_ENV=production electron .",
     "electron:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:3000 && electron . --dev\"",
     "electron:dev-nosandbox": "concurrently -k \"npm run dev\" \"wait-on tcp:3000 && electron . --dev --no-sandbox\"",
     "electron:build": "npm run build && electron-builder",

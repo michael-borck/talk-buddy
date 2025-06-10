@@ -7,30 +7,36 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ConversationAnalysisPage } from './pages/ConversationAnalysisPage';
 import { PracticePacksPage } from './pages/PracticePacksPage';
 import { PackDetailPage } from './pages/PackDetailPage';
+import { ArchivePage } from './pages/ArchivePage';
 import { useState, useEffect } from 'react';
 import { listScenarios, listPacks, startStandaloneSession } from './services/sqlite';
-import { Home, MessageSquare, BookOpen, History, Settings, Plus, Menu, X, Mic, Package, ChevronRight } from 'lucide-react';
+import { Home, MessageSquare, BookOpen, History, Settings, Menu, X, Mic, Package, ChevronRight, Archive } from 'lucide-react';
+import { StatusFooter } from './components/StatusFooter';
 
 function App() {
   return (
     <HashRouter>
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <main className="flex-1 overflow-auto">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/scenarios" element={<ScenariosPage />} />
-            <Route path="/scenarios/new" element={<ScenarioFormPage />} />
-            <Route path="/scenarios/edit/:scenarioId" element={<ScenarioFormPage />} />
-            <Route path="/scenarios/local" element={<Navigate to="/scenarios" replace />} />
-            <Route path="/packs" element={<PracticePacksPage />} />
-            <Route path="/packs/:packId" element={<PackDetailPage />} />
-            <Route path="/sessions" element={<SessionHistoryPage />} />
-            <Route path="/conversation/:scenarioId" element={<ConversationPage />} />
-            <Route path="/analysis/:sessionId" element={<ConversationAnalysisPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
-        </main>
+      <div className="flex flex-col h-screen bg-gray-50">
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-auto">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/scenarios" element={<ScenariosPage />} />
+              <Route path="/scenarios/new" element={<ScenarioFormPage />} />
+              <Route path="/scenarios/edit/:scenarioId" element={<ScenarioFormPage />} />
+              <Route path="/scenarios/local" element={<Navigate to="/scenarios" replace />} />
+              <Route path="/packs" element={<PracticePacksPage />} />
+              <Route path="/packs/:packId" element={<PackDetailPage />} />
+              <Route path="/sessions" element={<SessionHistoryPage />} />
+              <Route path="/archive" element={<ArchivePage />} />
+              <Route path="/conversation/:scenarioId" element={<ConversationPage />} />
+              <Route path="/analysis/:sessionId" element={<ConversationAnalysisPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </main>
+        </div>
+        <StatusFooter />
       </div>
     </HashRouter>
   );
@@ -63,6 +69,7 @@ function Sidebar() {
     { path: '/scenarios', icon: BookOpen, label: 'Scenarios' },
     { path: '/packs', icon: Package, label: 'Practice Packs' },
     { path: '/sessions', icon: History, label: 'Session History' },
+    { path: '/archive', icon: Archive, label: 'Archive' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
@@ -112,21 +119,6 @@ function Sidebar() {
               </button>
             );
           })}
-        </div>
-        
-        
-        {/* New Scenario button */}
-        <div className="mt-8 pt-8 border-t border-gray-700">
-          <button
-            onClick={() => navigate('/scenarios/new')}
-            className={`w-full flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
-              isCollapsed ? 'justify-center' : 'justify-center'
-            }`}
-            title={isCollapsed ? 'New Scenario' : ''}
-          >
-            <Plus size={20} />
-            {!isCollapsed && <span className="font-medium">New Scenario</span>}
-          </button>
         </div>
       </div>
       
