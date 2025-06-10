@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createScenario, updateScenario, getScenario } from '../services/sqlite';
-import { Scenario } from '../types';
-import { Save, X, Plus, Trash2 } from 'lucide-react';
+import { 
+  createScenario, 
+  updateScenario, 
+  getScenario,
+  listPacks,
+  getScenarioPacks,
+  addScenarioToPack,
+  removeScenarioFromPack
+} from '../services/sqlite';
+import { Scenario, Pack } from '../types';
+import { Save, X, Plus, Trash2, Package } from 'lucide-react';
 
 export function ScenarioFormPage() {
   const navigate = useNavigate();
@@ -12,6 +20,9 @@ export function ScenarioFormPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [availablePacks, setAvailablePacks] = useState<Pack[]>([]);
+  const [selectedPacks, setSelectedPacks] = useState<string[]>([]);
+  const [originalPacks, setOriginalPacks] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -27,10 +38,20 @@ export function ScenarioFormPage() {
   });
 
   useEffect(() => {
+    loadPacks();
     if (isEditing && scenarioId) {
       loadScenario();
     }
   }, [scenarioId]);
+
+  const loadPacks = async () => {
+    try {
+      const packs = await listPacks();
+      setAvailablePacks(packs);
+    } catch (error) {
+      console.error('Failed to load packs:', error);
+    }
+  };
 
   const loadScenario = async () => {
     if (!scenarioId) return;
@@ -51,6 +72,12 @@ export function ScenarioFormPage() {
           isPublic: scenario.isPublic,
           voice: scenario.voice || 'male'
         });
+        
+        // Load scenario's current packs
+        const scenarioPacks = await getScenarioPacks(scenarioId);
+        const packIds = scenarioPacks.map(p => p.id);
+        setSelectedPacks(packIds);
+        setOriginalPacks(packIds);
       } else {
         alert('Scenario not found');
         navigate('/scenarios/local');
@@ -74,18 +101,48 @@ export function ScenarioFormPage() {
 
     setSaving(true);
     try {
+      let savedScenarioId: string;
+      
       if (isEditing && scenarioId) {
         await updateScenario(scenarioId, formData);
+        savedScenarioId = scenarioId;
       } else {
-        await createScenario(formData);
+        const newScenario = await createScenario(formData);
+        savedScenarioId = newScenario.id;
       }
-      navigate('/scenarios/local');
+      
+      // Update pack assignments
+      await updatePackAssignments(savedScenarioId);
+      
+      navigate('/scenarios');
     } catch (error) {
       console.error('Failed to save scenario:', error);
       alert('Failed to save scenario. Please try again.');
     } finally {
       setSaving(false);
     }
+  };
+
+  const updatePackAssignments = async (scenarioId: string) => {
+    // Remove from packs that are no longer selected
+    const packsToRemove = originalPacks.filter(packId => !selectedPacks.includes(packId));
+    for (const packId of packsToRemove) {
+      await removeScenarioFromPack(packId, scenarioId);
+    }
+    
+    // Add to newly selected packs
+    const packsToAdd = selectedPacks.filter(packId => !originalPacks.includes(packId));
+    for (const packId of packsToAdd) {
+      await addScenarioToPack(packId, scenarioId);
+    }
+  };
+
+  const togglePackSelection = (packId: string) => {
+    setSelectedPacks(prev => 
+      prev.includes(packId) 
+        ? prev.filter(id => id !== packId)
+        : [...prev, packId]
+    );
   };
 
   const addTag = () => {
@@ -268,6 +325,42 @@ export function ScenarioFormPage() {
           </div>
         </div>
 
+        {/* Practice Packs */}
+        {availablePacks.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6 space-y-4">
+            <h2 className="text-xl font-semibold text-gray-800">Practice Packs</h2>
+            <p className="text-sm text-gray-600">Select which practice packs this scenario should belong to</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {availablePacks.map((pack) => (
+                <label
+                  key={pack.id}
+                  className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                    selectedPacks.includes(pack.id)
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPacks.includes(pack.id)}
+                    onChange={() => togglePackSelection(pack.id)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <div className="w-3 h-3 rounded" style={{ backgroundColor: pack.color }}></div>
+                  <Package size={16} className="text-gray-600" />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-800">{pack.name}</div>
+                    {pack.description && (
+                      <div className="text-xs text-gray-600">{pack.description}</div>
+                    )}
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Tags */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h2 className="text-xl font-semibold text-gray-800">Tags</h2>
@@ -314,7 +407,7 @@ export function ScenarioFormPage() {
         <div className="flex justify-end gap-4">
           <button
             type="button"
-            onClick={() => navigate('/scenarios/local')}
+            onClick={() => navigate('/scenarios')}
             className="px-6 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
           >
             Cancel

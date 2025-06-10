@@ -1,13 +1,39 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listScenarios, deleteScenario, restoreDefaultScenarios } from '../services/sqlite';
-import { Scenario } from '../types';
-import { Play, Clock, Trophy, Filter, Plus, Edit, Trash2, Grid, List, RefreshCw } from 'lucide-react';
+import { 
+  listScenarios, 
+  deleteScenario, 
+  restoreDefaultScenarios,
+  getScenarioPacks,
+  startStandaloneSession
+} from '../services/sqlite';
+import { Scenario, Pack } from '../types';
+import { 
+  Play, 
+  Clock, 
+  Trophy, 
+  Filter, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Grid, 
+  List, 
+  RefreshCw,
+  Search,
+  Package,
+  X
+} from 'lucide-react';
+
+interface ScenarioWithPacks extends Scenario {
+  packs?: Pack[];
+}
 
 export function ScenariosPage() {
   const navigate = useNavigate();
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [scenarios, setScenarios] = useState<ScenarioWithPacks[]>([]);
+  const [filteredScenarios, setFilteredScenarios] = useState<ScenarioWithPacks[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState({ 
     category: '', 
     difficulty: '',
@@ -19,25 +45,26 @@ export function ScenariosPage() {
 
   useEffect(() => {
     loadScenarios();
-  }, [filter]);
+  }, []);
+
+  useEffect(() => {
+    filterScenarios();
+  }, [scenarios, searchTerm, filter]);
 
   const loadScenarios = async () => {
     setLoading(true);
     try {
-      const data = await listScenarios({ 
-        category: filter.category, 
-        difficulty: filter.difficulty 
-      });
+      const scenarioList = await listScenarios();
       
-      // Filter by source (default vs custom)
-      let filtered = data;
-      if (filter.source === 'default') {
-        filtered = data.filter(s => s.isDefault);
-      } else if (filter.source === 'custom') {
-        filtered = data.filter(s => !s.isDefault);
-      }
+      // Load pack information for each scenario
+      const scenariosWithPacks = await Promise.all(
+        scenarioList.map(async (scenario) => {
+          const packs = await getScenarioPacks(scenario.id);
+          return { ...scenario, packs };
+        })
+      );
       
-      setScenarios(filtered);
+      setScenarios(scenariosWithPacks);
     } catch (error) {
       console.error('Failed to load scenarios:', error);
     } finally {
@@ -45,8 +72,46 @@ export function ScenariosPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) {
+  const filterScenarios = () => {
+    let filtered = scenarios;
+
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(scenario => 
+        scenario.name.toLowerCase().includes(search) ||
+        scenario.description.toLowerCase().includes(search) ||
+        scenario.category.toLowerCase().includes(search) ||
+        scenario.tags.some(tag => tag.toLowerCase().includes(search))
+      );
+    }
+
+    // Category filter
+    if (filter.category) {
+      filtered = filtered.filter(scenario => scenario.category === filter.category);
+    }
+
+    // Difficulty filter
+    if (filter.difficulty) {
+      filtered = filtered.filter(scenario => scenario.difficulty === filter.difficulty);
+    }
+
+    // Source filter
+    if (filter.source !== 'all') {
+      if (filter.source === 'default') {
+        filtered = filtered.filter(scenario => scenario.isDefault);
+      } else if (filter.source === 'custom') {
+        filtered = filtered.filter(scenario => !scenario.isDefault);
+      }
+    }
+
+    setFilteredScenarios(filtered);
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to delete this scenario?')) {
       return;
     }
 
@@ -63,43 +128,40 @@ export function ScenariosPage() {
   };
 
   const handleRestore = async () => {
-    if (!confirm('This will restore any missing default scenarios. Continue?')) {
-      return;
-    }
-
     setRestoring(true);
     try {
       const result = await restoreDefaultScenarios();
       if (result.success) {
+        alert(`Restored ${result.restoredCount} default scenarios.`);
         await loadScenarios();
-        if (result.restoredCount === 0) {
-          alert('All default scenarios are already present.');
-        } else {
-          alert(`Restored ${result.restoredCount} default scenario${result.restoredCount > 1 ? 's' : ''}.`);
-        }
       } else {
-        alert('Failed to restore scenarios. Please try again.');
+        alert('Failed to restore default scenarios.');
       }
     } catch (error) {
       console.error('Failed to restore scenarios:', error);
-      alert('Failed to restore scenarios. Please try again.');
+      alert('Failed to restore default scenarios. Please try again.');
     } finally {
       setRestoring(false);
     }
   };
 
-  const categories = Array.from(new Set(scenarios.map(s => s.category).filter(Boolean)));
-  const difficulties = ['beginner', 'intermediate', 'advanced'];
-  const customScenariosCount = scenarios.filter(s => !s.isDefault).length;
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilter({ category: '', difficulty: '', source: 'all' });
+  };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'beginner': return 'text-green-600 bg-green-50';
-      case 'intermediate': return 'text-yellow-600 bg-yellow-50';
-      case 'advanced': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
+  const handleStartScenario = async (scenarioId: string) => {
+    try {
+      const session = await startStandaloneSession(scenarioId);
+      navigate(`/conversation/${scenarioId}?sessionId=${session.id}`);
+    } catch (error) {
+      console.error('Failed to start session:', error);
+      alert('Failed to start session. Please try again.');
     }
   };
+
+  const categories = [...new Set(scenarios.map(s => s.category))].filter(Boolean);
+  const difficulties = ['beginner', 'intermediate', 'advanced'];
 
   if (loading) {
     return (
@@ -113,22 +175,18 @@ export function ScenariosPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
-      <div className="mb-8 flex justify-between items-center">
+    <div className="max-w-7xl mx-auto p-8">
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Practice Scenarios</h1>
-          <p className="text-gray-600">
-            {filter.source === 'custom' 
-              ? 'Manage your custom conversation scenarios'
-              : 'Choose a scenario to start practicing your conversation skills'}
-          </p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Scenarios</h1>
+          <p className="text-gray-600">Browse and manage conversation practice scenarios</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={handleRestore}
             disabled={restoring}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
-            title="Restore missing default scenarios"
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
           >
             <RefreshCw size={20} className={restoring ? 'animate-spin' : ''} />
             Restore Defaults
@@ -143,244 +201,361 @@ export function ScenariosPage() {
         </div>
       </div>
 
-      {/* Filters and View Controls */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-2">
-            <Filter size={20} className="text-gray-500" />
-            <select
-              value={filter.source}
-              onChange={(e) => setFilter({ ...filter, source: e.target.value })}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Scenarios</option>
-              <option value="default">Default Scenarios</option>
-              <option value="custom">Custom Scenarios ({customScenariosCount})</option>
-            </select>
-          </div>
-          <select
-            value={filter.category}
-            onChange={(e) => setFilter({ ...filter, category: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Categories</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-          <select
-            value={filter.difficulty}
-            onChange={(e) => setFilter({ ...filter, difficulty: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Difficulties</option>
-            {difficulties.map(diff => (
-              <option key={diff} value={diff}>{diff}</option>
-            ))}
-          </select>
-        </div>
-        
-        {/* View Mode Toggle */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-lg transition-colors ${
-              viewMode === 'grid' 
-                ? 'bg-blue-100 text-blue-600' 
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-            title="Grid view"
-          >
-            <Grid size={20} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-2 rounded-lg transition-colors ${
-              viewMode === 'list' 
-                ? 'bg-blue-100 text-blue-600' 
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-            title="List view"
-          >
-            <List size={20} />
-          </button>
-        </div>
-      </div>
-
-      {/* Scenarios Display */}
-      {scenarios.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-600 mb-4">
-            {filter.source === 'custom' 
-              ? "You haven't created any scenarios yet."
-              : "No scenarios found matching your filters."}
-          </p>
-          {filter.source === 'custom' && (
+      {/* Search and Filters */}
+      <div className="mb-6 space-y-4">
+        {/* Search Bar */}
+        <div className="relative">
+          <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search scenarios by name, description, category, or tags..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {searchTerm && (
             <button
-              onClick={() => navigate('/scenarios/new')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              <Plus size={20} />
-              Create Your First Scenario
+              <X size={16} />
             </button>
           )}
         </div>
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {scenarios.map((scenario) => (
-            <div
-              key={scenario.id}
-              className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => navigate(`/conversation/${scenario.id}`)}
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">Filter:</span>
+          </div>
+          
+          <select
+            value={filter.category}
+            onChange={(e) => setFilter({ ...filter, category: e.target.value })}
+            className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">All Categories</option>
+            {categories.map(category => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+
+          <select
+            value={filter.difficulty}
+            onChange={(e) => setFilter({ ...filter, difficulty: e.target.value })}
+            className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">All Difficulties</option>
+            {difficulties.map(difficulty => (
+              <option key={difficulty} value={difficulty} className="capitalize">
+                {difficulty}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filter.source}
+            onChange={(e) => setFilter({ ...filter, source: e.target.value })}
+            className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">All Sources</option>
+            <option value="default">Default Scenarios</option>
+            <option value="custom">Custom Scenarios</option>
+          </select>
+
+          {(searchTerm || filter.category || filter.difficulty || filter.source !== 'all') && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
             >
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    <span className="mr-2">{scenario.voice === 'female' ? '👩' : '👨'}</span>
-                    {scenario.name}
-                  </h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(scenario.difficulty)}`}>
-                    {scenario.difficulty}
-                  </span>
-                </div>
-                
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {scenario.description}
-                </p>
-                
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
-                      <Clock size={16} />
-                      {scenario.estimatedMinutes} min
-                    </span>
-                    {scenario.category && (
-                      <span className="flex items-center gap-1">
-                        <Trophy size={16} />
-                        {scenario.category}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/scenarios/edit/${scenario.id}`);
-                      }}
-                      title="Edit"
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button
-                      className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(scenario.id, scenario.name);
-                      }}
-                      disabled={deletingId === scenario.id}
-                      title="Delete"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                    <button
-                      className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/conversation/${scenario.id}`);
-                      }}
-                      title="Start"
-                    >
-                      <Play size={16} />
-                    </button>
-                  </div>
-                </div>
+              <X size={12} />
+              Clear
+            </button>
+          )}
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-sm text-gray-500">View:</span>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg transition-colors ${
+                viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <Grid size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg transition-colors ${
+                viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <List size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Results count */}
+        <div className="text-sm text-gray-600">
+          Showing {filteredScenarios.length} of {scenarios.length} scenarios
+        </div>
+      </div>
+
+      {/* Scenarios List */}
+      {filteredScenarios.length === 0 ? (
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+          <Trophy size={48} className="mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-600 mb-4">
+            {searchTerm || filter.category || filter.difficulty || filter.source !== 'all'
+              ? 'No scenarios match your search criteria.'
+              : 'No scenarios available.'
+            }
+          </p>
+          {(!searchTerm && !filter.category && !filter.difficulty && filter.source === 'all') && (
+            <div className="space-y-3">
+              <p className="text-gray-500">Get started by creating your first scenario or restoring defaults.</p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => navigate('/scenarios/new')}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus size={20} />
+                  Create Scenario
+                </button>
+                <button
+                  onClick={handleRestore}
+                  disabled={restoring}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw size={20} className={restoring ? 'animate-spin' : ''} />
+                  Restore Defaults
+                </button>
               </div>
             </div>
-          ))}
+          )}
         </div>
       ) : (
-        <div className="space-y-4">
-          {scenarios.map((scenario) => (
-            <div
+        <div className={viewMode === 'grid' 
+          ? 'grid gap-6 md:grid-cols-2 lg:grid-cols-3' 
+          : 'space-y-4'
+        }>
+          {filteredScenarios.map((scenario) => (
+            <ScenarioCard
               key={scenario.id}
-              className="bg-white rounded-lg shadow hover:shadow-md transition-shadow"
-            >
-              <div className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        <span className="mr-2">{scenario.voice === 'female' ? '👩' : '👨'}</span>
-                        {scenario.name}
-                      </h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(scenario.difficulty)}`}>
-                        {scenario.difficulty}
-                      </span>
-                      {scenario.category && (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                          {scenario.category}
-                        </span>
-                      )}
-                      {scenario.isDefault && (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">
-                          Default
-                        </span>
-                      )}
-                    </div>
-                    
-                    <p className="text-gray-600 mb-3">{scenario.description}</p>
-                    
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Clock size={16} />
-                        {scenario.estimatedMinutes} minutes
-                      </span>
-                      <span>
-                        Created: {new Date(scenario.created).toLocaleDateString()}
-                      </span>
-                      {scenario.tags && scenario.tags.length > 0 && (
-                        <div className="flex gap-1">
-                          {scenario.tags.map((tag, index) => (
-                            <span key={index} className="px-2 py-1 bg-gray-100 rounded text-xs">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 ml-4">
-                    <button
-                      onClick={() => navigate(`/conversation/${scenario.id}`)}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                      title="Start conversation"
-                    >
-                      <Play size={20} />
-                    </button>
-                    <button
-                      onClick={() => navigate(`/scenarios/edit/${scenario.id}`)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Edit scenario"
-                    >
-                      <Edit size={20} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(scenario.id, scenario.name)}
-                      disabled={deletingId === scenario.id}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                      title="Delete scenario"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+              scenario={scenario}
+              viewMode={viewMode}
+              onDelete={handleDelete}
+              onEdit={(id) => navigate(`/scenarios/edit/${id}`)}
+              onStart={handleStartScenario}
+              deletingId={deletingId}
+            />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+interface ScenarioCardProps {
+  scenario: ScenarioWithPacks;
+  viewMode: 'grid' | 'list';
+  onDelete: (id: string, e: React.MouseEvent) => void;
+  onEdit: (id: string) => void;
+  onStart: (id: string) => void;
+  deletingId: string | null;
+}
+
+function ScenarioCard({ 
+  scenario, 
+  viewMode, 
+  onDelete, 
+  onEdit, 
+  onStart, 
+  deletingId 
+}: ScenarioCardProps) {
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'beginner': return 'bg-green-100 text-green-800';
+      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
+      case 'advanced': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getGenderIcon = (voice?: string) => {
+    switch (voice) {
+      case 'female': return '👩';
+      case 'male': return '👨';
+      default: return '🗣️';
+    }
+  };
+
+  if (viewMode === 'list') {
+    return (
+      <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">{scenario.name}</h3>
+              <span className="text-lg" title={`${scenario.voice || 'default'} voice`}>
+                {getGenderIcon(scenario.voice)}
+              </span>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getDifficultyColor(scenario.difficulty)}`}>
+                {scenario.difficulty}
+              </span>
+              {scenario.isDefault && (
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Default
+                </span>
+              )}
+            </div>
+            
+            <p className="text-gray-600 mb-3 line-clamp-2">{scenario.description}</p>
+            
+            <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
+              <span className="flex items-center gap-1">
+                <Clock size={16} />
+                {scenario.estimatedMinutes}m
+              </span>
+              <span className="capitalize">{scenario.category}</span>
+              {scenario.tags && scenario.tags.length > 0 && (
+                <span>Tags: {scenario.tags.join(', ')}</span>
+              )}
+            </div>
+
+            {/* Pack indicators */}
+            {scenario.packs && scenario.packs.length > 0 && (
+              <div className="flex items-center gap-2 mb-3">
+                <Package size={16} className="text-purple-600" />
+                <div className="flex flex-wrap gap-1">
+                  {scenario.packs.map((pack) => (
+                    <span
+                      key={pack.id}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-purple-50 text-purple-700"
+                    >
+                      <div 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: pack.color }}
+                      ></div>
+                      {pack.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="ml-4 flex items-center gap-2">
+            <button
+              onClick={() => onStart(scenario.id)}
+              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+              title="Start conversation"
+            >
+              <Play size={18} />
+            </button>
+            <button
+              onClick={() => onEdit(scenario.id)}
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Edit scenario"
+            >
+              <Edit size={18} />
+            </button>
+            <button
+              onClick={(e) => onDelete(scenario.id, e)}
+              disabled={deletingId === scenario.id}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+              title="Delete scenario"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2 flex-1 pr-2">
+            <h3 className="text-lg font-semibold text-gray-800">{scenario.name}</h3>
+            <span className="text-lg" title={`${scenario.voice || 'default'} voice`}>
+              {getGenderIcon(scenario.voice)}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onEdit(scenario.id)}
+              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="Edit"
+            >
+              <Edit size={16} />
+            </button>
+            <button
+              onClick={(e) => onDelete(scenario.id, e)}
+              disabled={deletingId === scenario.id}
+              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+              title="Delete"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </div>
+        
+        <p className="text-gray-600 text-sm mb-4 line-clamp-3">{scenario.description}</p>
+        
+        <div className="flex items-center gap-2 mb-4">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getDifficultyColor(scenario.difficulty)}`}>
+            {scenario.difficulty}
+          </span>
+          {scenario.isDefault && (
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              Default
+            </span>
+          )}
+        </div>
+
+        {/* Pack indicators */}
+        {scenario.packs && scenario.packs.length > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center gap-1 mb-2">
+              <Package size={14} className="text-purple-600" />
+              <span className="text-xs text-purple-600 font-medium">In packs:</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {scenario.packs.map((pack) => (
+                <span
+                  key={pack.id}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-purple-50 text-purple-700"
+                >
+                  <div 
+                    className="w-2 h-2 rounded-full" 
+                    style={{ backgroundColor: pack.color }}
+                  ></div>
+                  {pack.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+          <span className="flex items-center gap-1">
+            <Clock size={16} />
+            {scenario.estimatedMinutes}m
+          </span>
+          <span className="capitalize">{scenario.category}</span>
+        </div>
+        
+        <button
+          onClick={() => onStart(scenario.id)}
+          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <Play size={18} />
+          Start Conversation
+        </button>
+      </div>
     </div>
   );
 }

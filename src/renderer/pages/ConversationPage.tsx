@@ -409,6 +409,14 @@ export function ConversationPage() {
             </div>
           </div>
           <div className="flex justify-center gap-4">
+            {session && (
+              <button
+                onClick={() => navigate(`/analysis/${session.id}`)}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                View Analysis
+              </button>
+            )}
             <button
               onClick={() => navigate('/sessions')}
               className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
