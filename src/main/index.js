@@ -273,9 +273,10 @@ function createWindow() {
     mainWindow = null;
   });
 
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
+  // Dev tools can be opened manually with Ctrl+Shift+I if needed
+  // if (isDev) {
+  //   mainWindow.webContents.openDevTools();
+  // }
 }
 
 app.whenReady().then(() => {

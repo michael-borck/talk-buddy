@@ -11,6 +11,7 @@ import { ArchivePage } from './pages/ArchivePage';
 import { AboutPage } from './pages/AboutPage';
 import { LicensePage } from './pages/LicensePage';
 import { HelpPage } from './pages/HelpPage';
+import { DocumentationPage } from './pages/DocumentationPage';
 import { useState, useEffect } from 'react';
 import { listScenarios, listPacks, startStandaloneSession } from './services/sqlite';
 import { Home, MessageSquare, BookOpen, History, Settings, Menu, X, Mic, Package, ChevronRight, Archive, Info, HelpCircle } from 'lucide-react';
@@ -39,6 +40,7 @@ function App() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/license" element={<LicensePage />} />
               <Route path="/help" element={<HelpPage />} />
+              <Route path="/documentation" element={<DocumentationPage />} />
             </Routes>
           </main>
         </div>
