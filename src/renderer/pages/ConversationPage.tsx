@@ -5,6 +5,7 @@ import { transcribeAudio, generateSpeech } from '../services/speaches';
 import { generateResponse } from '../services/chat';
 import { Scenario, Session, ConversationMessage } from '../types';
 import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
+import { VoiceWaveAnimation } from '../components/VoiceWaveAnimation';
 
 type ConversationState = 'not-started' | 'idle' | 'listening' | 'thinking' | 'speaking';
 
@@ -33,11 +34,14 @@ export function ConversationPage() {
   const contextRef = useRef<number[] | undefined>();
   const startTimeRef = useRef<Date | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const initialMessageSpokenRef = useRef<boolean>(false);
   const [elapsedTime, setElapsedTime] = useState(0);
 
   // Load scenario
   useEffect(() => {
     if (scenarioId) {
+      // Reset the spoken flag when scenario changes
+      initialMessageSpokenRef.current = false;
       loadScenario();
     }
   }, [scenarioId]);
@@ -110,8 +114,40 @@ export function ConversationPage() {
       const existingSession = await getSession(resumeSessionId!);
       if (existingSession && !existingSession.endTime) {
         setSession(existingSession);
-        setMessages(existingSession.transcript || []);
-        setConversationState('idle');
+        
+        // Check if this is a brand new session (no transcript yet)
+        if (!existingSession.transcript || existingSession.transcript.length === 0) {
+          // This is a new session, add initial message if scenario has one
+          if (scenario?.initialMessage && !initialMessageSpokenRef.current) {
+            initialMessageSpokenRef.current = true;
+            
+            const initialMsg: ConversationMessage = {
+              id: `msg_${Date.now()}`,
+              role: 'assistant',
+              content: scenario.initialMessage,
+              timestamp: new Date().toISOString()
+            };
+            setMessages([initialMsg]);
+            
+            // Save initial transcript
+            await updateSession(existingSession.id, {
+              transcript: [initialMsg]
+            });
+            
+            // Speak initial message
+            if (audioEnabled) {
+              await speakText(scenario.initialMessage, true);
+            } else {
+              setConversationState('idle');
+            }
+          } else {
+            setConversationState('idle');
+          }
+        } else {
+          // Load existing transcript for resumed sessions
+          setMessages(existingSession.transcript);
+          setConversationState('idle');
+        }
         
         // Calculate elapsed time from start
         const startTime = new Date(existingSession.startTime);
@@ -149,11 +185,13 @@ export function ConversationPage() {
         
         // Speak initial message
         if (audioEnabled) {
-          await speakText(scenario.initialMessage);
+          await speakText(scenario.initialMessage, true);
+        } else {
+          setConversationState('idle');
         }
+      } else {
+        setConversationState('idle');
       }
-      
-      setConversationState('idle');
     } catch (err) {
       console.error('Failed to start conversation:', err);
       setError('Failed to start conversation');
@@ -242,7 +280,9 @@ export function ConversationPage() {
       } else {
         // Speak response
         if (audioEnabled) {
-          await speakText(response);
+          // We're already in 'thinking' state, now transition to speaking
+          setConversationState('speaking');
+          await speakText(response, false);
         } else {
           setConversationState('idle');
         }
@@ -255,8 +295,20 @@ export function ConversationPage() {
     }
   };
 
-  const speakText = async (text: string) => {
+  const speakText = async (text: string, isInitialGreeting: boolean = false) => {
     try {
+      // Prevent overlapping speech - if already speaking, stop current audio
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      
+      // For initial greetings, show thinking state while generating audio
+      // For responses, we're already in speaking state from processAudio
+      if (isInitialGreeting) {
+        setConversationState('thinking');
+      }
+      
       const audioBlob = await generateSpeech({
         text,
         voice: scenario?.voice
@@ -265,11 +317,12 @@ export function ConversationPage() {
       const audioUrl = URL.createObjectURL(audioBlob);
       audioRef.current = new Audio(audioUrl);
       
-      // Set speaking state when audio actually starts playing
+      // Set speaking state when audio actually starts
       audioRef.current.onplay = () => {
         setConversationState('speaking');
       };
       
+      // Keep speaking state throughout playback
       audioRef.current.onended = () => {
         setConversationState('idle');
         URL.revokeObjectURL(audioUrl);
@@ -280,7 +333,9 @@ export function ConversationPage() {
         setConversationState('idle');
       };
       
+      // Play audio - this will block until play() starts
       await audioRef.current.play();
+      // Audio is now playing, animation continues until onended fires
     } catch (err) {
       console.error('Failed to speak text:', err);
       setConversationState('idle');
@@ -319,10 +374,10 @@ export function ConversationPage() {
   const pauseSession = async () => {
     if (session) {
       await updateSession(session.id, {
-        endTime: new Date().toISOString(),
+        status: 'paused',
         duration: elapsedTime,
         metadata: {
-          endReason: 'user_ended',
+          endReason: 'user_paused',
           wordsSpoken: messages.filter(m => m.role === 'user').reduce((acc, m) => acc + m.content.split(' ').length, 0)
         }
       });
@@ -333,6 +388,7 @@ export function ConversationPage() {
   const completeSession = async (reason: 'natural' | 'user_ended' = 'user_ended') => {
     if (session) {
       await updateSession(session.id, {
+        status: 'ended',
         endTime: new Date().toISOString(),
         duration: elapsedTime,
         metadata: {
@@ -474,34 +530,16 @@ export function ConversationPage() {
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center max-w-2xl">
-          {/* Conversation Avatar/Status */}
+          {/* Voice Wave Animation */}
           <div className="mb-8">
-            <div className="relative w-32 h-32 mx-auto">
-              <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all ${
-                conversationState === 'listening' ? 'bg-red-100 animate-pulse' :
-                conversationState === 'thinking' ? 'bg-yellow-100' :
-                conversationState === 'speaking' ? 'bg-green-100 animate-pulse' :
-                'bg-gray-100'
-              }`}>
-                <div className={`${
-                  conversationState === 'thinking' ? 'animate-spin' :
-                  ''
-                }`}>
-                  {conversationState === 'listening' ? (
-                    <div className="text-4xl">🎤</div>
-                  ) : conversationState === 'thinking' ? (
-                    <div className="text-4xl">🤔</div>
-                  ) : conversationState === 'speaking' ? (
-                    <div className="text-4xl">
-                      {scenario?.voice === 'female' ? '👩' : '👨'}
-                    </div>
-                  ) : (
-                    <div className="text-4xl">
-                      {scenario?.voice === 'female' ? '👩' : '👨'}
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="relative w-64 h-32 mx-auto">
+              <VoiceWaveAnimation 
+                state={
+                  conversationState === 'speaking' ? 'speaking' :
+                  conversationState === 'thinking' ? 'thinking' :
+                  'idle'
+                }
+              />
             </div>
           </div>
 
@@ -510,7 +548,7 @@ export function ConversationPage() {
             {conversationState === 'not-started' ? 'Ready to start practicing?' :
              conversationState === 'listening' ? 'Listening... Release to stop' :
              conversationState === 'thinking' ? 'Processing your response...' :
-             conversationState === 'speaking' ? 'AI is speaking...' :
+             conversationState === 'speaking' ? 'AI is speaking... Please wait' :
              'Your turn to speak'}
           </p>
 
@@ -547,10 +585,16 @@ export function ConversationPage() {
                 {conversationState === 'listening' ? 'Release to Stop' : 'Hold to Speak'}
               </button>
               
-              <div className="mt-6">
+              <div className="mt-6 space-x-4">
+                <button
+                  onClick={pauseSession}
+                  className="text-gray-600 hover:text-gray-800 text-sm"
+                >
+                  Pause Session
+                </button>
                 <button
                   onClick={handleEndSession}
-                  className="text-gray-600 hover:text-gray-800 text-sm"
+                  className="text-red-600 hover:text-red-800 text-sm"
                 >
                   End Session
                 </button>

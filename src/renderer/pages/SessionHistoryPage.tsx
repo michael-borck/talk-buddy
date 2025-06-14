@@ -121,7 +121,7 @@ export function SessionHistoryPage() {
           status: 'active', 
           startTime: new Date().toISOString() 
         });
-      } else if (session.status === 'paused') {
+      } else if (session.status === 'paused' || session.status === 'active') {
         await updateSession(session.id, { status: 'active' });
       }
       
@@ -129,6 +129,38 @@ export function SessionHistoryPage() {
     } catch (error) {
       console.error('Failed to start/resume session:', error);
       alert('Failed to start session. Please try again.');
+    }
+  };
+
+  const handleEndSession = async (session: Session, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to end this session? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Calculate duration if not already set
+      let duration = session.duration;
+      if (!duration && session.startTime) {
+        const startTime = new Date(session.startTime);
+        duration = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
+      }
+
+      await updateSession(session.id, { 
+        status: 'ended',
+        endTime: new Date().toISOString(),
+        duration: duration || 0,
+        metadata: {
+          ...session.metadata,
+          endReason: 'ended_from_history'
+        }
+      });
+      
+      await loadData();
+    } catch (error) {
+      console.error('Failed to end session:', error);
+      alert('Failed to end session. Please try again.');
     }
   };
 
@@ -319,6 +351,7 @@ export function SessionHistoryPage() {
                                 key={session.id}
                                 session={session}
                                 onStartResume={handleStartOrResumeSession}
+                                onEndSession={handleEndSession}
                                 onDelete={handleDeleteSession}
                                 deletingId={deletingId}
                                 formatDuration={formatDuration}
@@ -352,6 +385,7 @@ export function SessionHistoryPage() {
                     expandedSession={expandedSession}
                     onToggleExpand={setExpandedSession}
                     onStartResume={handleStartOrResumeSession}
+                    onEndSession={handleEndSession}
                     onDelete={handleDeleteSession}
                     deletingId={deletingId}
                     formatDuration={formatDuration}
@@ -375,6 +409,7 @@ interface SessionCardProps {
   expandedSession: string | null;
   onToggleExpand: (id: string | null) => void;
   onStartResume: (session: Session) => void;
+  onEndSession: (session: Session, e: React.MouseEvent) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
   deletingId: string | null;
   formatDuration: (seconds?: number) => string;
@@ -388,6 +423,7 @@ function SessionCard({
   expandedSession, 
   onToggleExpand, 
   onStartResume,
+  onEndSession,
   onDelete, 
   deletingId, 
   formatDuration,
@@ -444,7 +480,7 @@ function SessionCard({
           </div>
           
           <div className="ml-4 flex items-center gap-2">
-            {(session.status === 'not_started' || session.status === 'paused') && (
+            {(session.status === 'not_started' || session.status === 'paused' || session.status === 'active') && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -454,6 +490,15 @@ function SessionCard({
                 title={session.status === 'not_started' ? 'Start session' : 'Resume session'}
               >
                 <Play size={18} />
+              </button>
+            )}
+            {(session.status === 'active' || session.status === 'paused') && (
+              <button
+                onClick={(e) => onEndSession(session, e)}
+                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                title="End session"
+              >
+                <CheckCircle size={18} />
               </button>
             )}
             {session.status === 'ended' && session.transcript && session.transcript.length > 0 && (
@@ -517,6 +562,7 @@ function SessionCard({
 interface SessionPackSessionCardProps {
   session: Session;
   onStartResume: (session: Session) => void;
+  onEndSession: (session: Session, e: React.MouseEvent) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
   deletingId: string | null;
   formatDuration: (seconds?: number) => string;
@@ -527,6 +573,7 @@ interface SessionPackSessionCardProps {
 function SessionPackSessionCard({
   session,
   onStartResume,
+  onEndSession,
   onDelete,
   deletingId,
   formatDuration,
@@ -575,7 +622,7 @@ function SessionPackSessionCard({
             {formatDuration(session.duration)}
           </span>
           
-          {(session.status === 'not_started' || session.status === 'paused') && (
+          {(session.status === 'not_started' || session.status === 'paused' || session.status === 'active') && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -585,6 +632,16 @@ function SessionPackSessionCard({
               title={session.status === 'not_started' ? 'Start session' : 'Resume session'}
             >
               <Play size={16} />
+            </button>
+          )}
+          
+          {(session.status === 'active' || session.status === 'paused') && (
+            <button
+              onClick={(e) => onEndSession(session, e)}
+              className="p-1 text-orange-600 hover:bg-orange-50 rounded transition-colors"
+              title="End session"
+            >
+              <CheckCircle size={16} />
             </button>
           )}
           

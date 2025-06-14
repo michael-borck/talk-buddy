@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getAllPreferences, setPreference } from '../services/sqlite';
-import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown } from 'lucide-react';
+import { getAllPreferences, setPreference, resetDatabase } from '../services/sqlite';
+import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle } from 'lucide-react';
 
 // Component for API Key input with environment variable support
 function ApiKeyInput({ 
@@ -214,6 +214,59 @@ function ModelSelector({
   );
 }
 
+// Prompt templates
+const PROMPT_TEMPLATES = {
+  natural: {
+    name: 'Natural Conversation',
+    description: 'Default conversational style for natural practice',
+    prompt: `IMPORTANT: To keep the conversation natural and realistic, you must:
+1. Ask only ONE question at a time
+2. Keep responses concise and conversational
+3. Wait for the user's response before asking another question
+4. Avoid listing multiple questions or options in a single response`
+  },
+  educational: {
+    name: 'Educational/Detailed',
+    description: 'More detailed responses with gentle corrections',
+    prompt: `As a conversation partner, please:
+1. Ask one thoughtful question at a time
+2. Provide context or examples when helpful
+3. Gently correct language errors by rephrasing correctly
+4. Encourage elaboration on responses
+5. Offer vocabulary alternatives when appropriate`
+  },
+  concise: {
+    name: 'Brief/Concise',
+    description: 'Very short, to-the-point responses',
+    prompt: `Keep the conversation extremely concise:
+1. Ask only ONE short question at a time
+2. Use simple, everyday language
+3. Keep responses under 2 sentences
+4. Avoid explanations or elaborations
+5. Focus on the essential information only`
+  },
+  business: {
+    name: 'Business Professional',
+    description: 'Professional business communication style',
+    prompt: `Maintain a professional business conversation by:
+1. Asking focused, relevant business questions one at a time
+2. Using appropriate business terminology and formal language
+3. Keeping exchanges concise and purposeful
+4. Following standard business etiquette
+5. Staying on topic and goal-oriented`
+  },
+  supportive: {
+    name: 'Supportive/Encouraging',
+    description: 'Extra encouragement for language learners',
+    prompt: `Be a supportive conversation partner:
+1. Ask one encouraging question at a time
+2. Celebrate attempts and progress
+3. Offer gentle hints if the user struggles
+4. Use positive reinforcement
+5. Keep a patient, understanding tone`
+  }
+};
+
 export function SettingsPage() {
   const [preferences, setPreferences] = useState({
     speachesUrl: 'https://speaches.serveur.au',
@@ -231,7 +284,12 @@ export function SettingsPage() {
     femaleTTSModel: 'speaches-ai/piper-en_US-amy-low',
     maleVoice: 'alan',
     femaleVoice: 'amy',
-    ttsSpeed: '1.25'
+    ttsSpeed: '1.25',
+    promptTemplate: 'natural',
+    customPrompt: '',
+    promptBehavior: 'enhance' as 'enhance' | 'override' | 'scenario-only',
+    includeResponseFormat: true,
+    addModelOptimizations: false
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -285,7 +343,12 @@ export function SettingsPage() {
         femaleTTSModel: prefs.femaleTTSModel || 'speaches-ai/piper-en_US-amy-low',
         maleVoice: prefs.maleVoice || 'alan',
         femaleVoice: prefs.femaleVoice || 'amy',
-        ttsSpeed: prefs.ttsSpeed || '1.25'
+        ttsSpeed: prefs.ttsSpeed || '1.25',
+        promptTemplate: prefs.promptTemplate || 'natural',
+        customPrompt: prefs.customPrompt || '',
+        promptBehavior: prefs.promptBehavior || 'enhance',
+        includeResponseFormat: prefs.includeResponseFormat !== 'false',
+        addModelOptimizations: prefs.addModelOptimizations === 'true'
       });
     } catch (error) {
       console.error('Failed to load preferences:', error);
@@ -312,6 +375,11 @@ export function SettingsPage() {
       await setPreference('maleVoice', preferences.maleVoice);
       await setPreference('femaleVoice', preferences.femaleVoice);
       await setPreference('ttsSpeed', preferences.ttsSpeed);
+      await setPreference('promptTemplate', preferences.promptTemplate);
+      await setPreference('customPrompt', preferences.customPrompt);
+      await setPreference('promptBehavior', preferences.promptBehavior);
+      await setPreference('includeResponseFormat', preferences.includeResponseFormat ? 'true' : 'false');
+      await setPreference('addModelOptimizations', preferences.addModelOptimizations ? 'true' : 'false');
       setMessage('Settings saved successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
@@ -339,6 +407,41 @@ export function SettingsPage() {
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Import failed:', error);
+    }
+  };
+
+  const handleResetDatabase = async () => {
+    const confirmed = window.confirm(
+      'WARNING: This will delete ALL your data including:\n' +
+      '• All scenarios (custom and default)\n' +
+      '• All session history\n' +
+      '• All practice packs\n\n' +
+      'Your settings will be preserved.\n\n' +
+      'Are you absolutely sure you want to reset the database?'
+    );
+    
+    if (!confirmed) return;
+    
+    const doubleConfirmed = window.confirm(
+      'This action cannot be undone!\n\n' +
+      'Click OK to permanently delete all data and start fresh.'
+    );
+    
+    if (!doubleConfirmed) return;
+    
+    try {
+      const result = await resetDatabase();
+      if (result.success) {
+        setMessage('Database reset successfully! The app will reload...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        setMessage('Failed to reset database. Please try again.');
+      }
+    } catch (error) {
+      console.error('Database reset failed:', error);
+      setMessage('Failed to reset database. Please try again.');
     }
   };
 
@@ -541,6 +644,7 @@ export function SettingsPage() {
     { id: 'stt', name: 'Speech-to-Text', icon: '🎤' },
     { id: 'tts', name: 'Text-to-Speech', icon: '🔊' },
     { id: 'chat', name: 'Chat Model', icon: '🤖' },
+    { id: 'prompts', name: 'Prompts', icon: '✍️' },
     { id: 'data', name: 'Data & Docs', icon: '📁' }
   ];
 
@@ -883,13 +987,211 @@ export function SettingsPage() {
           </section>
         )}
 
+        {/* Prompts Tab */}
+        {activeTab === 'prompts' && (
+          <section className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Conversation Prompts</h2>
+            <div className="space-y-6">
+              {/* Template Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Prompt Template
+                </label>
+                <select
+                  value={preferences.promptTemplate}
+                  onChange={(e) => {
+                    const template = e.target.value;
+                    setPreferences({ 
+                      ...preferences, 
+                      promptTemplate: template,
+                      customPrompt: template === 'custom' ? preferences.customPrompt : ''
+                    });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="natural">Natural Conversation</option>
+                  <option value="educational">Educational/Detailed</option>
+                  <option value="concise">Brief/Concise</option>
+                  <option value="business">Business Professional</option>
+                  <option value="supportive">Supportive/Encouraging</option>
+                  <option value="custom">Custom</option>
+                </select>
+                
+                {/* Template Description */}
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-700">
+                    <strong>{PROMPT_TEMPLATES[preferences.promptTemplate as keyof typeof PROMPT_TEMPLATES]?.name || 'Custom Template'}:</strong>
+                    {' '}
+                    {PROMPT_TEMPLATES[preferences.promptTemplate as keyof typeof PROMPT_TEMPLATES]?.description || 'Your personalized prompt configuration'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Prompt Text Area */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Prompt Text
+                </label>
+                <textarea
+                  value={preferences.promptTemplate === 'custom' 
+                    ? preferences.customPrompt 
+                    : PROMPT_TEMPLATES[preferences.promptTemplate as keyof typeof PROMPT_TEMPLATES]?.prompt || ''}
+                  onChange={(e) => {
+                    if (preferences.promptTemplate === 'custom') {
+                      setPreferences({ ...preferences, customPrompt: e.target.value });
+                    }
+                  }}
+                  disabled={preferences.promptTemplate !== 'custom'}
+                  rows={8}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    preferences.promptTemplate !== 'custom' ? 'bg-gray-50 text-gray-600' : ''
+                  }`}
+                  placeholder={preferences.promptTemplate === 'custom' ? 'Enter your custom prompt...' : 'Template prompt (read-only)'}
+                />
+                <p className="mt-1 text-sm text-gray-600">
+                  {preferences.promptTemplate === 'custom' 
+                    ? 'Define your custom conversation prompt instructions'
+                    : 'This prompt is read-only. Select "Custom" to create your own prompt.'
+                  }
+                </p>
+              </div>
+
+              {/* Advanced Options */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-medium text-gray-700 mb-3">Advanced Options</h3>
+                <div className="space-y-3">
+                  {/* Prompt Behavior */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Prompt Behavior
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="promptBehavior"
+                          value="enhance"
+                          checked={preferences.promptBehavior === 'enhance'}
+                          onChange={(e) => setPreferences({ ...preferences, promptBehavior: 'enhance' })}
+                          className="mr-2"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Enhance scenario prompts</span>
+                          <span className="text-sm text-gray-600 ml-1">(recommended)</span>
+                          <p className="text-sm text-gray-600">Add your prompt instructions to existing scenario prompts</p>
+                        </div>
+                      </label>
+                      
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="promptBehavior"
+                          value="override"
+                          checked={preferences.promptBehavior === 'override'}
+                          onChange={(e) => setPreferences({ ...preferences, promptBehavior: 'override' })}
+                          className="mr-2"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Override scenario prompts</span>
+                          <p className="text-sm text-gray-600">Replace scenario prompts entirely with your template</p>
+                        </div>
+                      </label>
+                      
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="promptBehavior"
+                          value="scenario-only"
+                          checked={preferences.promptBehavior === 'scenario-only'}
+                          onChange={(e) => setPreferences({ ...preferences, promptBehavior: 'scenario-only' })}
+                          className="mr-2"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">Use scenario prompts only</span>
+                          <p className="text-sm text-gray-600">Disable prompt enhancement (use original scenario prompts)</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <label className="flex items-start">
+                    <input
+                      type="checkbox"
+                      checked={preferences.includeResponseFormat}
+                      onChange={(e) => setPreferences({ ...preferences, includeResponseFormat: e.target.checked })}
+                      className="mt-1 mr-3"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">Include response format instructions</span>
+                      <p className="text-sm text-gray-600">Add instructions for consistent response formatting</p>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-start">
+                    <input
+                      type="checkbox"
+                      checked={preferences.addModelOptimizations}
+                      onChange={(e) => setPreferences({ ...preferences, addModelOptimizations: e.target.checked })}
+                      className="mt-1 mr-3"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">Add model-specific optimizations</span>
+                      <p className="text-sm text-gray-600">Include performance hints for better model responses</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Preview Section */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-medium text-gray-700 mb-3">Prompt Preview</h3>
+                <div className="bg-gray-50 rounded-lg p-4 border">
+                  <p className="text-sm text-gray-600 mb-2">This is how your prompt will appear to the AI model:</p>
+                  <div className="bg-white rounded border p-3 text-sm font-mono text-gray-800 max-h-64 overflow-y-auto">
+                    {(() => {
+                      let fullPrompt = '';
+                      
+                      // Base prompt
+                      const basePrompt = preferences.promptTemplate === 'custom' 
+                        ? preferences.customPrompt 
+                        : PROMPT_TEMPLATES[preferences.promptTemplate as keyof typeof PROMPT_TEMPLATES]?.prompt || '';
+                      
+                      fullPrompt += basePrompt;
+                      
+                      // Add response format if enabled
+                      if (preferences.includeResponseFormat) {
+                        fullPrompt += '\n\nResponse Format Guidelines:\n- Keep responses natural and conversational\n- Ask one question at a time\n- Respond in a way that encourages continued dialogue';
+                      }
+                      
+                      // Add model optimizations if enabled
+                      if (preferences.addModelOptimizations) {
+                        fullPrompt += '\n\nModel Instructions:\n- Prioritize clarity and engagement\n- Avoid repetitive patterns\n- Maintain consistency in tone and style';
+                      }
+                      
+                      return fullPrompt || 'No prompt configured';
+                    })()}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {preferences.promptBehavior === 'override' 
+                      ? 'This prompt will be used for ALL scenarios, overriding their specific prompts.'
+                      : preferences.promptBehavior === 'enhance'
+                      ? 'This prompt will be combined with scenario-specific prompts when available.'
+                      : 'Prompt enhancement is disabled. Scenarios will use their original prompts only.'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Data Management & Documentation Tab */}
         {activeTab === 'data' && (
           <div className="space-y-8">
             {/* Data Management */}
             <section className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Data Management</h2>
-              <div className="flex gap-4">
+              <div className="flex gap-4 flex-wrap">
                 <button
                   onClick={exportData}
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
@@ -908,6 +1210,20 @@ export function SettingsPage() {
               <p className="mt-2 text-sm text-gray-600">
                 Export or import your scenarios, sessions, and preferences
               </p>
+              
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Danger Zone</h3>
+                <button
+                  onClick={handleResetDatabase}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                >
+                  <AlertTriangle size={20} />
+                  Reset Database
+                </button>
+                <p className="mt-2 text-sm text-red-600">
+                  Warning: This will delete all scenarios, sessions, and packs. Settings will be preserved.
+                </p>
+              </div>
             </section>
 
             {/* Documentation Links */}

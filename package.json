@@ -7,14 +7,14 @@
   "homepage": "./",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:3307 && electron . --dev --no-sandbox\"",
     "build": "vite build",
     "preview": "vite preview",
     "electron": "electron .",
     "electron-dev": "electron .",
     "electron:prod": "NODE_ENV=production electron .",
-    "electron:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:3000 && electron . --dev\"",
-    "electron:dev-nosandbox": "concurrently -k \"npm run dev\" \"wait-on tcp:3000 && electron . --dev --no-sandbox\"",
+    "electron:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:3307 && electron . --dev\"",
+    "electron:dev-nosandbox": "concurrently -k \"npm run dev\" \"wait-on tcp:3307 && electron . --dev --no-sandbox\"",
     "electron:build": "npm run build && electron-builder",
     "electron:dist": "npm run build && electron-builder --publish=never",
     "electron:dist-all": "npm run build && electron-builder -mwl --publish=never"

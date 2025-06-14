@@ -2,6 +2,39 @@
 import { getPreference } from './sqlite';
 import { ConversationMessage } from '../types';
 
+// Default prompt templates (same as in SettingsPage)
+const DEFAULT_PROMPTS = {
+  natural: `IMPORTANT: To keep the conversation natural and realistic, you must:
+1. Ask only ONE question at a time
+2. Keep responses concise and conversational
+3. Wait for the user's response before asking another question
+4. Avoid listing multiple questions or options in a single response`,
+  educational: `As a conversation partner, please:
+1. Ask one thoughtful question at a time
+2. Provide context or examples when helpful
+3. Gently correct language errors by rephrasing correctly
+4. Encourage elaboration on responses
+5. Offer vocabulary alternatives when appropriate`,
+  concise: `Keep the conversation extremely concise:
+1. Ask only ONE short question at a time
+2. Use simple, everyday language
+3. Keep responses under 2 sentences
+4. Avoid explanations or elaborations
+5. Focus on the essential information only`,
+  business: `Maintain a professional business conversation by:
+1. Asking focused, relevant business questions one at a time
+2. Using appropriate business terminology and formal language
+3. Keeping exchanges concise and purposeful
+4. Following standard business etiquette
+5. Staying on topic and goal-oriented`,
+  supportive: `Be a supportive conversation partner:
+1. Ask one encouraging question at a time
+2. Celebrate attempts and progress
+3. Offer gentle hints if the user struggles
+4. Use positive reinforcement
+5. Keep a patient, understanding tone`
+};
+
 // Unified interfaces for different providers
 interface ChatCompletionRequest {
   model: string;
@@ -70,6 +103,37 @@ async function getChatApiKey(): Promise<string> {
   return apiKey;
 }
 
+// Get configured prompt enhancement
+async function getPromptEnhancement(): Promise<string> {
+  const promptTemplate = await getPreference('promptTemplate') || 'natural';
+  const customPrompt = await getPreference('customPrompt') || '';
+  const includeResponseFormat = await getPreference('includeResponseFormat') || 'true';
+  const addModelOptimizations = await getPreference('addModelOptimizations') || 'false';
+  
+  // Get base prompt
+  let basePrompt = '';
+  if (promptTemplate === 'custom' && customPrompt) {
+    basePrompt = customPrompt;
+  } else if (DEFAULT_PROMPTS[promptTemplate]) {
+    basePrompt = DEFAULT_PROMPTS[promptTemplate];
+  } else {
+    basePrompt = DEFAULT_PROMPTS.natural;
+  }
+  
+  // Add optional enhancements
+  let enhancement = basePrompt;
+  
+  if (includeResponseFormat === 'true') {
+    enhancement += '\n\nResponse Format: Keep responses natural and conversational. Avoid bullet points or numbered lists unless specifically asked.';
+  }
+  
+  if (addModelOptimizations === 'true') {
+    enhancement += '\n\nIMPORTANT: Generate responses that sound like natural human speech, not written text. Use contractions, informal language where appropriate, and conversational tone.';
+  }
+  
+  return enhancement;
+}
+
 // Generate a response from the chat provider
 export async function generateResponse(
   messages: ConversationMessage[],
@@ -102,7 +166,38 @@ async function generateChatCompletion(
   const chatMessages: ChatCompletionRequest['messages'] = [];
   
   if (systemPrompt) {
-    chatMessages.push({ role: 'system', content: systemPrompt });
+    // Get configured prompt enhancement and behavior
+    const promptEnhancement = await getPromptEnhancement();
+    const promptBehavior = await getPreference('promptBehavior') || 'enhance';
+    
+    // Decide how to apply prompts based on behavior setting
+    let finalSystemPrompt = '';
+    switch (promptBehavior) {
+      case 'override':
+        // Use only the settings prompt, ignore scenario prompt
+        finalSystemPrompt = promptEnhancement;
+        break;
+      case 'enhance':
+        // Combine scenario prompt with settings prompt (default)
+        finalSystemPrompt = systemPrompt + '\n\n' + promptEnhancement;
+        break;
+      case 'scenario-only':
+        // Use only the scenario prompt, ignore settings prompt
+        finalSystemPrompt = systemPrompt;
+        break;
+      default:
+        // Fallback to enhance behavior
+        finalSystemPrompt = systemPrompt + '\n\n' + promptEnhancement;
+    }
+    
+    chatMessages.push({ role: 'system', content: finalSystemPrompt });
+    
+    // Log the full prompt for debugging
+    console.log('=== CHAT COMPLETION API PROMPT ===');
+    console.log('Prompt Behavior:', promptBehavior);
+    console.log('System Prompt:', finalSystemPrompt);
+    console.log('Messages:', chatMessages);
+    console.log('==================================');
   }
   
   messages.forEach(msg => {
@@ -182,10 +277,36 @@ async function generateOllamaResponse(
     .filter(Boolean)
     .join('\n\n') + '\n\nAssistant:';
 
+  // Get configured prompt enhancement and behavior
+  const promptEnhancement = await getPromptEnhancement();
+  const promptBehavior = await getPreference('promptBehavior') || 'enhance';
+  
+  // Decide how to apply prompts based on behavior setting
+  let finalSystemPrompt = undefined;
+  if (systemPrompt) {
+    switch (promptBehavior) {
+      case 'override':
+        // Use only the settings prompt, ignore scenario prompt
+        finalSystemPrompt = promptEnhancement;
+        break;
+      case 'enhance':
+        // Combine scenario prompt with settings prompt (default)
+        finalSystemPrompt = systemPrompt + '\n\n' + promptEnhancement;
+        break;
+      case 'scenario-only':
+        // Use only the scenario prompt, ignore settings prompt
+        finalSystemPrompt = systemPrompt;
+        break;
+      default:
+        // Fallback to enhance behavior
+        finalSystemPrompt = systemPrompt + '\n\n' + promptEnhancement;
+    }
+  }
+
   const request: OllamaGenerateRequest = {
     model,
     prompt,
-    system: systemPrompt,
+    system: finalSystemPrompt,
     stream: false,
     context,
     options: {
@@ -247,10 +368,36 @@ export async function streamResponse(
     .filter(Boolean)
     .join('\n\n') + '\n\nAssistant:';
 
+  // Get configured prompt enhancement and behavior
+  const promptEnhancement = await getPromptEnhancement();
+  const promptBehavior = await getPreference('promptBehavior') || 'enhance';
+  
+  // Decide how to apply prompts based on behavior setting
+  let finalSystemPrompt = undefined;
+  if (systemPrompt) {
+    switch (promptBehavior) {
+      case 'override':
+        // Use only the settings prompt, ignore scenario prompt
+        finalSystemPrompt = promptEnhancement;
+        break;
+      case 'enhance':
+        // Combine scenario prompt with settings prompt (default)
+        finalSystemPrompt = systemPrompt + '\n\n' + promptEnhancement;
+        break;
+      case 'scenario-only':
+        // Use only the scenario prompt, ignore settings prompt
+        finalSystemPrompt = systemPrompt;
+        break;
+      default:
+        // Fallback to enhance behavior
+        finalSystemPrompt = systemPrompt + '\n\n' + promptEnhancement;
+    }
+  }
+
   const request: OllamaGenerateRequest = {
     model,
     prompt,
-    system: systemPrompt,
+    system: finalSystemPrompt,
     stream: true,
     context,
     options: {

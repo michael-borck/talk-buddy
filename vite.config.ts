@@ -16,7 +16,7 @@ export default defineConfig({
     sourcemap: false,
   },
   server: {
-    port: 3000,
+    port: 3307,
     strictPort: true,
     force: true, // Force reload
   },

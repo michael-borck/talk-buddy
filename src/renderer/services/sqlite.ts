@@ -6,6 +6,7 @@ interface ElectronAPI {
   database: {
     query: (query: string, params?: any[]) => Promise<{ success: boolean; data?: any; error?: string }>;
     run: (query: string, params?: any[]) => Promise<{ success: boolean; data?: any; error?: string }>;
+    reset: () => Promise<{ success: boolean; error?: string }>;
   };
   dialog: {
     openFile: () => Promise<{ canceled: boolean; filePaths: string[] }>;
@@ -596,6 +597,12 @@ export async function importData(fileContent: string): Promise<void> {
 // Restore default scenarios
 export async function restoreDefaultScenarios(): Promise<{ success: boolean, restoredCount?: number, error?: string }> {
   const result = await window.electronAPI.scenarios.restoreDefaults();
+  return result;
+}
+
+// Reset database (clear all data and restore defaults)
+export async function resetDatabase(): Promise<{ success: boolean, error?: string }> {
+  const result = await window.electronAPI.database.reset();
   return result;
 }
 

@@ -3,6 +3,11 @@ const path = require('path');
 const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'production' && require('electron-is-dev'));
 const Database = require('better-sqlite3');
 
+// Disable sandbox on Linux if needed - must be done before app ready
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('no-sandbox');
+}
+
 let mainWindow;
 let db;
 
@@ -261,7 +266,7 @@ function createWindow() {
 
   mainWindow.loadURL(
     isDev
-      ? 'http://localhost:3000'
+      ? 'http://localhost:3307'
       : `file://${path.join(__dirname, '../../dist/index.html')}`
   );
 
@@ -383,7 +388,12 @@ app.whenReady().then(() => {
       ('femaleTTSModel', 'speaches-ai/piper-en_US-amy-low'),
       ('maleVoice', 'alan'),
       ('femaleVoice', 'amy'),
-      ('ttsSpeed', '1.25');
+      ('ttsSpeed', '1.25'),
+      ('promptTemplate', 'natural'),
+      ('customPrompt', ''),
+      ('promptBehavior', 'enhance'),
+      ('includeResponseFormat', 'true'),
+      ('addModelOptimizations', 'false');
   `);
   
   // Insert seed data if no scenarios exist
@@ -514,6 +524,28 @@ ipcMain.handle('api:fetch', async (event, { url, options }) => {
     });
   } catch (error) {
     return { ok: false, error: error.message };
+  }
+});
+
+// Reset database
+ipcMain.handle('db:reset', async () => {
+  try {
+    // Clear all tables except user_preferences
+    db.exec(`
+      DELETE FROM sessions;
+      DELETE FROM session_packs;
+      DELETE FROM pack_scenarios;
+      DELETE FROM packs;
+      DELETE FROM scenarios;
+    `);
+    
+    // Re-insert seed scenarios
+    insertSeedScenarios(db);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Database reset error:', error);
+    return { success: false, error: error.message };
   }
 });
 

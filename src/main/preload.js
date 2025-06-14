@@ -6,7 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Database operations
   database: {
     query: (query, params) => ipcRenderer.invoke('db:query', { query, params }),
-    run: (query, params) => ipcRenderer.invoke('db:run', { query, params })
+    run: (query, params) => ipcRenderer.invoke('db:run', { query, params }),
+    reset: () => ipcRenderer.invoke('db:reset')
   },
 
   // Dialog operations
