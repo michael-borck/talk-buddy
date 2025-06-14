@@ -23,6 +23,7 @@ Choose your path based on how you'll use ChatterBox:
 Master every part of the ChatterBox interface:
 
 - **[Home Dashboard](interface-guide/home-dashboard.md)** - Your central hub and quick actions
+- **[Conversation Interface](interface-guide/conversation-interface.md)** - Voice wave animation and conversation controls
 - **[Scenarios Page](interface-guide/scenarios-page.md)** - Browse, create, and manage scenarios
 - **[Practice Packs Page](interface-guide/practice-packs-page.md)** - Organize scenarios into learning sequences
 - **[Session History](interface-guide/session-history.md)** - Review and analyze your practice sessions

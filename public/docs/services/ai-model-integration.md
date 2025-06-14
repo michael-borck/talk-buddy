@@ -11,6 +11,71 @@ AI models provide the conversational intelligence that makes practice scenarios 
 - **Adaptive behavior**: AI adjusts to your responses and conversation flow
 - **Scenario consistency**: Maintains character and context throughout practice
 
+### Configurable Prompt System
+
+#### How Prompts Control AI Behavior
+Each ChatterBox scenario includes a **system prompt** that defines exactly how the AI should behave:
+
+**Purpose**: System prompts are instructions that tell the AI:
+- What role to play (interviewer, customer, colleague, etc.)
+- How to respond (professional, casual, challenging, supportive)
+- What context to maintain (job interview, product return, presentation feedback)
+- What goals to pursue (test communication skills, provide realistic interaction)
+
+**Implementation**: The system prompt is sent to the AI model before every conversation, establishing the "character" and context.
+
+#### Example System Prompts
+
+**Job Interview Scenario**:
+```
+You are an experienced hiring manager conducting a job interview for a Marketing Manager position. Ask relevant questions about the candidate's experience, skills, and fit for the role. Be professional but friendly. Follow up on their answers with deeper questions. If they give good answers, acknowledge it. If they need to elaborate, guide them gently.
+```
+
+**Customer Service Scenario**:
+```
+You are a customer calling about a product return. You bought a laptop online but it arrived damaged. You're frustrated but not unreasonable. Explain your situation clearly, provide details when asked, and work with the representative to find a solution. Stay in character as someone who needs help.
+```
+
+**Presentation Practice**:
+```
+You are an audience member at a business presentation. Ask thoughtful questions about the topic being presented. Challenge ideas constructively, ask for clarification on complex points, and engage as an intelligent, interested listener would.
+```
+
+#### Benefits of Configurable Prompts
+
+**Realistic Practice**:
+- AI behaves consistently within the scenario context
+- Responses feel authentic to the situation
+- Interactions match real-world expectations
+
+**Customizable Difficulty**:
+- Supportive prompts for beginners ("be encouraging and patient")
+- Challenging prompts for advanced users ("ask tough questions")
+- Context-specific behaviors (formal vs. casual situations)
+
+**Scenario Variety**:
+- Same AI model can play vastly different roles
+- Infinite scenario possibilities through prompt customization
+- Easy creation of specialized practice situations
+
+#### Creating Effective System Prompts
+
+**Best Practices**:
+1. **Be specific about the role**: "You are a [specific job title/role]"
+2. **Set clear context**: Explain the situation and setting
+3. **Define personality**: Professional, friendly, challenging, etc.
+4. **Give interaction guidelines**: How to respond, what to focus on
+5. **Set boundaries**: What the AI should and shouldn't do
+
+**Prompt Structure Example**:
+```
+[ROLE] You are a [specific character/position]
+[CONTEXT] In [situation/setting]
+[PERSONALITY] Be [personality traits]
+[GOALS] Focus on [conversation objectives]
+[GUIDELINES] [Specific behaviors or restrictions]
+```
+
 ### AI Service Types
 
 #### Local AI Models (Recommended)

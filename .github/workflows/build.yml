@@ -90,30 +90,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" \
-            --title "TalkBuddy ${{ github.ref_name }}" \
-            --notes "## TalkBuddy Release ${{ github.ref_name }}
+            --title "ChatterBox ${{ github.ref_name }}" \
+            --notes "## ChatterBox Release ${{ github.ref_name }}
             
             ### Downloads
             
             #### Windows
-            - \`TalkBuddy-Setup-*.exe\` - Windows installer
+            - \`ChatterBox-Setup-*.exe\` - Windows installer
             
             #### macOS
-            - \`TalkBuddy-*.dmg\` - macOS installer
+            - \`ChatterBox-*.dmg\` - macOS installer
             
             #### Linux
-            - \`TalkBuddy-*.AppImage\` - Universal Linux app
-            - \`TalkBuddy-*.deb\` - Debian/Ubuntu package
+            - \`ChatterBox-*.AppImage\` - Universal Linux app
+            - \`ChatterBox-*.deb\` - Debian/Ubuntu package
             
             ### Installation Instructions
             
             **Windows:** Download and run the .exe installer
             
-            **macOS:** Download the .dmg file, open it, and drag TalkBuddy to Applications
+            **macOS:** Download the .dmg file, open it, and drag ChatterBox to Applications
             
             **Linux:** 
             - AppImage: Make executable with \`chmod +x\` and run
-            - DEB: Install with \`sudo dpkg -i TalkBuddy-*.deb\`
+            - DEB: Install with \`sudo dpkg -i ChatterBox-*.deb\`
             
             ### Requirements
             - Microphone access for speech recognition

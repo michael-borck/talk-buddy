@@ -58,16 +58,18 @@ Take a moment to understand what you'll be doing:
 When the conversation begins, you'll see:
 
 **Main Screen Elements**:
-- **Large AI avatar** in the center (circular icon)
+- **Voice wave animation** in the center (7 vertical blue bars)
 - **Timer** showing session duration (top-left)
 - **End Session** button (top-right)
 - **Push-to-talk button** at the bottom (large circular button)
 
-**Status Indicators**:
-- **Blue background**: Ready to listen to AI
-- **Green background**: AI is speaking
-- **Blue pulsing**: You're speaking (voice detected)
-- **Orange/amber**: AI is thinking/processing
+**Voice Wave States**:
+- **Idle**: Minimal height bars with low opacity (waiting for you)
+- **Thinking**: Subtle wave movement (AI is processing your input)
+- **Speaking**: Dynamic wave animation (AI is talking to you)
+
+**Visual Feedback**:
+The voice wave animation provides clear visual feedback about what's happening in the conversation without any distracting text.
 
 ### Step 3: Begin the Conversation
 
@@ -104,7 +106,7 @@ When the conversation begins, you'll see:
 - **Hold the microphone button** the entire time you're speaking
 - **Release immediately** when you finish
 - **Wait for AI response** before speaking again
-- **Don't interrupt** when the AI is speaking (green background)
+- **Don't interrupt** when the AI is speaking (voice wave animation active)
 
 ## Conversation Guidance
 

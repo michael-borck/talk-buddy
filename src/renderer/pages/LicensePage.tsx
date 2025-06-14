@@ -66,6 +66,34 @@ export function LicensePage() {
       license: 'Apache-2.0',
       description: 'TypeScript is a language for application-scale JavaScript',
       url: 'https://www.typescriptlang.org/'
+    },
+    {
+      name: 'React Markdown',
+      version: '^10.1.0',
+      license: 'MIT',
+      description: 'Markdown component for React',
+      url: 'https://github.com/remarkjs/react-markdown'
+    },
+    {
+      name: 'Rehype Highlight',
+      version: '^7.0.2',
+      license: 'MIT',
+      description: 'Syntax highlighting for markdown code blocks',
+      url: 'https://github.com/rehypejs/rehype-highlight'
+    },
+    {
+      name: 'Remark GFM',
+      version: '^4.0.1',
+      license: 'MIT',
+      description: 'GitHub Flavored Markdown support for Remark',
+      url: 'https://github.com/remarkjs/remark-gfm'
+    },
+    {
+      name: 'Electron-is-dev',
+      version: '^2.0.0',
+      license: 'MIT',
+      description: 'Check if Electron is running in development mode',
+      url: 'https://github.com/sindresorhus/electron-is-dev'
     }
   ];
 

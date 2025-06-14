@@ -71,7 +71,8 @@ export const documentationStructure = {
   'interface-guide': {
     title: 'Interface Guide',
     items: {
-      'home-dashboard': 'Home Dashboard'
+      'home-dashboard': 'Home Dashboard',
+      'conversation-interface': 'Conversation Interface'
     }
   }
 };

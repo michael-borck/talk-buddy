@@ -26,16 +26,20 @@ ChatterBox is an AI-powered conversation practice application with an audio-firs
 
 The conversation screen is completely visual with no text elements:
 
-#### AI Avatar
-- **Visual**: Circular avatar/icon in center of screen
+#### AI Avatar with Voice Wave Animation
+- **Visual**: Voice wave animation (7 vertical bars) in center of screen
 - **States**:
-  - **Listening**: Subtle pulse animation (user is speaking)
-  - **Thinking**: Rotating or processing animation (AI processing response)
-  - **Speaking**: Expanding rings/waves emanating from avatar (AI speaking)
+  - **Idle**: Minimal height bars with low opacity (waiting for interaction)
+  - **Thinking**: Subtle random wave movement (AI processing response)
+  - **Speaking**: Dynamic wave patterns simulating voice activity (AI speaking)
 - **Colors**: 
-  - Listening: Blue theme
-  - Thinking: Orange/amber theme
-  - Speaking: Green theme
+  - Primary wave color: Blue (#3B82F6)
+  - Opacity varies by state (0.3 idle, 0.5 thinking, 0.8 speaking)
+- **Animation Details**:
+  - 7 vertical bars with 4px width, 4px gap between bars
+  - Smooth transitions between states (0.3s ease)
+  - Individual bar animations with staggered timing for natural effect
+  - Different wave patterns for speaking state (1.3s-1.7s cycles)
 
 #### User Controls
 - **Single Button**: Large push-to-talk button at bottom
@@ -124,11 +128,13 @@ interface Scenario {
   category: ScenarioCategory
   difficulty: 'beginner' | 'intermediate' | 'advanced'
   estimatedMinutes: number
-  systemPrompt: string
-  initialMessage: string
+  systemPrompt: string      // Configurable AI behavior prompt
+  initialMessage: string    // AI's opening message
   tags: string[]
   isPublic: boolean
   createdBy?: string
+  voice?: 'male' | 'female' // Preferred TTS voice
+  archived?: boolean        // For soft-delete functionality
 }
 
 enum ScenarioCategory {
@@ -172,6 +178,23 @@ interface SessionMetadata {
 ```
 
 ## Technical Implementation
+
+### AI Conversation System
+
+#### Configurable Prompt System
+Each scenario includes a customizable system prompt that defines AI behavior:
+- **Purpose**: Controls AI personality, role, and response style
+- **Implementation**: Sent as system message to AI model before conversation
+- **Examples**:
+  - Interview scenarios: "You are a hiring manager conducting a professional interview..."
+  - Customer service: "You are a customer with a product return issue..."
+  - Presentation practice: "You are an audience member asking questions..."
+
+#### Conversation Context Management
+- System prompt establishes AI character and context
+- Initial message provides conversation opener
+- Full conversation history maintained for coherent responses
+- Context window management for long conversations
 
 ### Audio Processing Flow
 ```
