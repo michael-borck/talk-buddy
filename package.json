@@ -2,7 +2,10 @@
   "name": "chatterbox-desktop",
   "version": "2.3.2",
   "description": "ChatterBox - AI-powered conversation practice desktop app",
-  "author": "Michael Borck",
+  "author": {
+    "name": "Michael Borck",
+    "email": "michael@chatterbox.app"
+  },
   "main": "src/main/index.js",
   "homepage": "./",
   "private": true,
@@ -79,7 +82,8 @@
         "deb"
       ],
       "icon": "assets/icon.png",
-      "category": "Education"
+      "category": "Education",
+      "maintainer": "Michael Borck <michael@chatterbox.app>"
     }
   },
   "browserslist": {
