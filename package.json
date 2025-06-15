@@ -61,15 +61,25 @@
     ],
     "mac": {
       "category": "public.app-category.education",
-      "icon": "assets/icon.icns"
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        }
+      ]
     },
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "assets/icon.png"
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Education"
     }
   },
   "browserslist": {
