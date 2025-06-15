@@ -1,6 +1,6 @@
 {
   "name": "chatterbox-desktop",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "ChatterBox - AI-powered conversation practice desktop app",
   "author": "Michael Borck",
   "main": "src/main/index.js",
