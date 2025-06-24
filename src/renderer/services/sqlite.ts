@@ -334,7 +334,7 @@ export async function exportScenario(scenarioId: string, fileName?: string): Pro
     formatVersion: "2.0",
     type: "scenario",
     metadata: {
-      exportedBy: "ChatterBox v2.0.0",
+      exportedBy: "Talk Buddy v2.0.0",
       exportDate: new Date().toISOString(),
       title: scenario.name
     },
@@ -363,7 +363,7 @@ export async function exportScenarios(scenarioIds: string[], fileName?: string):
     formatVersion: "2.0",
     type: "scenarios",
     metadata: {
-      exportedBy: "ChatterBox v2.0.0",
+      exportedBy: "Talk Buddy v2.0.0",
       exportDate: new Date().toISOString(),
       title: `${validScenarios.length} Scenarios`,
       count: validScenarios.length
@@ -397,7 +397,7 @@ export async function exportPackage(packId: string, fileName?: string): Promise<
     formatVersion: "2.0",
     type: "skill_package",
     metadata: {
-      exportedBy: "ChatterBox v2.0.0",
+      exportedBy: "Talk Buddy v2.0.0",
       exportDate: new Date().toISOString(),
       title: pack.name,
       description: pack.description,
@@ -434,7 +434,7 @@ export async function importFromFile(fileContent: string): Promise<{ success: bo
     
     // Validate format
     if (!data.formatVersion || !data.type) {
-      throw new Error('Invalid ChatterBox export file format');
+      throw new Error('Invalid Talk Buddy export file format');
     }
 
     if (data.formatVersion !== "2.0") {
@@ -547,7 +547,7 @@ export async function exportData(): Promise<void> {
     preferences
   };
   
-  const result = await window.electronAPI.dialog.saveFile('chatterbox-export.json');
+  const result = await window.electronAPI.dialog.saveFile('talk-buddy-export.json');
   
   if (!result.canceled && result.filePath) {
     // In a real implementation, we'd need to write this through IPC
@@ -556,7 +556,7 @@ export async function exportData(): Promise<void> {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'chatterbox-export.json';
+    a.download = 'talk-buddy-export.json';
     a.click();
     URL.revokeObjectURL(url);
   }

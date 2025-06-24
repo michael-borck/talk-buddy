@@ -1,10 +1,10 @@
 # AI Model Integration
 
-Configure AI conversation models to power realistic dialogue scenarios in ChatterBox. This guide covers setting up both local and online AI services for natural conversation practice.
+Configure AI conversation models to power realistic dialogue scenarios in Talk Buddy. This guide covers setting up both local and online AI services for natural conversation practice.
 
 ## Understanding AI Integration
 
-### Role of AI in ChatterBox
+### Role of AI in Talk Buddy
 AI models provide the conversational intelligence that makes practice scenarios engaging:
 - **Character simulation**: AI plays roles like interviewers, customers, colleagues
 - **Natural responses**: Contextual replies that feel realistic and human-like  
@@ -14,7 +14,7 @@ AI models provide the conversational intelligence that makes practice scenarios 
 ### Configurable Prompt System
 
 #### How Prompts Control AI Behavior
-Each ChatterBox scenario includes a **system prompt** that defines exactly how the AI should behave:
+Each Talk Buddy scenario includes a **system prompt** that defines exactly how the AI should behave:
 
 **Purpose**: System prompts are instructions that tell the AI:
 - What role to play (interviewer, customer, colleague, etc.)
@@ -103,7 +103,7 @@ You are an audience member at a business presentation. Ask thoughtful questions 
 4. **Gray (○)**: Service not configured or unknown status
 
 ### Test AI Connection
-1. **Go to Settings**: Click "Settings" in ChatterBox sidebar
+1. **Go to Settings**: Click "Settings" in Talk Buddy sidebar
 2. **Find AI/Chat section**: Look for AI model configuration
 3. **Test connection**: Click "Test AI" or similar button
 4. **Verify response**: AI should provide a test response
@@ -162,7 +162,7 @@ ollama serve
 
 ### Setting Up AI Models
 
-#### Recommended Models for ChatterBox
+#### Recommended Models for Talk Buddy
 
 **Llama 2 (7B) - Best for beginners**
 ```bash
@@ -209,10 +209,10 @@ ollama pull codellama:7b
 - **Llama 2 7B**: Minimal RAM requirements
 - **TinyLlama**: Very small model, basic conversations only
 
-### Configuring ChatterBox for Ollama
+### Configuring Talk Buddy for Ollama
 
 #### Update AI Service Settings
-1. **Open ChatterBox Settings**
+1. **Open Talk Buddy Settings**
 2. **Find AI/LLM service configuration**
 3. **Set service URL**: `http://localhost:11434`
 4. **Set model name**: Enter the model you installed (e.g., "llama2", "mistral")
@@ -234,17 +234,17 @@ FROM llama2
 # Set temperature (creativity level: 0.1 = focused, 0.9 = creative)
 PARAMETER temperature 0.7
 
-# Set system message for ChatterBox scenarios
+# Set system message for Talk Buddy scenarios
 SYSTEM You are a helpful conversation partner who stays in character for practice scenarios. Provide natural, contextual responses that help the user practice their communication skills.
 ```
 
 Apply custom configuration:
 ```bash
 # Create custom model
-ollama create chatterbox -f Modelfile
+ollama create talkbuddy -f Modelfile
 
-# Use in ChatterBox
-# Set model name to "chatterbox" in settings
+# Use in Talk Buddy
+# Set model name to "talkbuddy" in settings
 ```
 
 #### Performance Optimization
@@ -262,7 +262,7 @@ OLLAMA_NUM_KEEP=5 ollama serve
 ## Online AI Services
 
 ### When to Use Online Services
-- **Testing ChatterBox**: Quick setup for evaluation
+- **Testing Talk Buddy**: Quick setup for evaluation
 - **High-performance needs**: Access to latest, most capable models
 - **Limited local hardware**: Insufficient RAM/CPU for local models
 - **Specialized capabilities**: Specific model features not available locally
@@ -272,7 +272,7 @@ OLLAMA_NUM_KEEP=5 ollama serve
 #### OpenAI Integration
 **Setup process**:
 1. **Get API key**: Create account at [openai.com](https://openai.com)
-2. **Configure ChatterBox**: Enter API endpoint and key in settings
+2. **Configure Talk Buddy**: Enter API endpoint and key in settings
 3. **Select model**: Choose GPT-3.5-turbo or GPT-4
 4. **Test connection**: Verify API access works
 
@@ -281,7 +281,7 @@ OLLAMA_NUM_KEEP=5 ollama serve
 - **GPT-4**: Highest quality, higher cost per usage
 
 #### Other Compatible Services
-ChatterBox supports OpenAI-compatible APIs:
+Talk Buddy supports OpenAI-compatible APIs:
 - **Anthropic Claude**: Via compatible proxies
 - **Cohere**: Command models via API
 - **Local inference servers**: Text Generation WebUI, FastChat
@@ -300,7 +300,7 @@ Model: local-model-name
 ```
 
 #### API Key Management
-- **Secure storage**: ChatterBox stores API keys securely
+- **Secure storage**: Talk Buddy stores API keys securely
 - **Key rotation**: Change keys regularly for security
 - **Usage monitoring**: Track API usage to manage costs
 - **Key permissions**: Use least-privilege API keys
@@ -406,7 +406,7 @@ curl http://localhost:11434/api/generate -d '{
 #### Performance Monitoring
 - **Task Manager/Activity Monitor**: Monitor CPU and RAM usage
 - **Ollama logs**: Check for error messages or performance warnings  
-- **ChatterBox logs**: Look for AI service connection issues
+- **Talk Buddy logs**: Look for AI service connection issues
 - **Network monitoring**: Check for API rate limiting (online services)
 
 ## Best Practices
@@ -414,7 +414,7 @@ curl http://localhost:11434/api/generate -d '{
 ### Model Management
 - **Regular updates**: Keep Ollama and models updated
 - **Model cleanup**: Remove unused models to save space
-- **Testing**: Verify models work with ChatterBox after updates
+- **Testing**: Verify models work with Talk Buddy after updates
 - **Documentation**: Keep track of which models work best for your use cases
 
 ### Performance Optimization
@@ -437,15 +437,15 @@ curl http://localhost:11434/api/generate -d '{
 - [ ] Download and install Ollama from [ollama.ai](https://ollama.ai)
 - [ ] Install a conversation model: `ollama pull llama2`
 - [ ] Verify model installation: `ollama list`
-- [ ] Configure ChatterBox to use localhost:11434
-- [ ] Set model name in ChatterBox settings
+- [ ] Configure Talk Buddy to use localhost:11434
+- [ ] Set model name in Talk Buddy settings
 - [ ] Test AI connection and try a practice scenario
 
 ### Online AI (OpenAI) - 10 minutes
 - [ ] Create account at [openai.com](https://openai.com)
 - [ ] Generate API key
-- [ ] Configure ChatterBox with OpenAI API endpoint
-- [ ] Enter API key in ChatterBox settings
+- [ ] Configure Talk Buddy with OpenAI API endpoint
+- [ ] Enter API key in Talk Buddy settings
 - [ ] Select model (gpt-3.5-turbo recommended)
 - [ ] Test connection and try a practice scenario
 
@@ -458,7 +458,7 @@ curl http://localhost:11434/api/generate -d '{
 
 ---
 
-**With proper AI integration, ChatterBox becomes a powerful conversation practice tool. Choose local models for privacy and unlimited practice, or online services for quick setup and latest capabilities! 🤖**
+**With proper AI integration, Talk Buddy becomes a powerful conversation practice tool. Choose local models for privacy and unlimited practice, or online services for quick setup and latest capabilities! 🤖**
 
 **Related Guides**: 
 - **[STT Setup](stt-setup.md)** - Configure speech recognition

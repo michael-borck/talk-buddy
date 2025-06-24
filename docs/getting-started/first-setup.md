@@ -1,10 +1,10 @@
 # First Setup
 
-Welcome to ChatterBox! This guide will help you configure the app for the best experience.
+Welcome to Talk Buddy! This guide will help you configure the app for the best experience.
 
 ## Initial Launch
 
-When you first open ChatterBox, you'll see:
+When you first open Talk Buddy, you'll see:
 
 1. **Home Dashboard** with welcome message
 2. **Sidebar navigation** on the left
@@ -22,7 +22,7 @@ When you first open ChatterBox, you'll see:
 
 ### Step 2: Configure External Services
 
-ChatterBox works best with these external services:
+Talk Buddy works best with these external services:
 
 #### Option A: Use Default Online Services (Easiest)
 The app comes pre-configured with working online services:
@@ -46,8 +46,8 @@ For better privacy and offline use:
    - Follow installation instructions
    - Start the service on `http://localhost:8000`
 
-3. **Update ChatterBox Settings**:
-   - Go to Settings in ChatterBox
+3. **Update Talk Buddy Settings**:
+   - Go to Settings in Talk Buddy
    - Change service URLs to your local installations
    - Test connections using the "Test" buttons
 
@@ -70,7 +70,7 @@ For better privacy and offline use:
 
 ## Explore Default Content
 
-ChatterBox comes with sample scenarios to get you started:
+Talk Buddy comes with sample scenarios to get you started:
 
 ### Default Scenarios Include:
 - **Job Interview - Marketing Manager**: Practice professional interviews
@@ -102,7 +102,7 @@ The footer shows connection status for:
 - **Chat**: AI conversation service status
 
 ### Quick Actions
-- Click the **ChatterBox** title to access the About page
+- Click the **Talk Buddy** title to access the About page
 - Click the **version number** to see app information
 - Use the **collapse button** (☰) to minimize the sidebar
 
@@ -124,16 +124,16 @@ The footer shows connection status for:
 ## Data and Privacy
 
 ### Local Data Storage
-ChatterBox stores all your data locally:
+Talk Buddy stores all your data locally:
 - **Scenarios**: Custom scenarios you create
 - **Sessions**: Practice session transcripts and history
 - **Settings**: Your preferences and configurations
 
 ### Data Location
 Your data is stored in:
-- **Windows**: `%APPDATA%/ChatterBox/`
-- **macOS**: `~/Library/Application Support/ChatterBox/`
-- **Linux**: `~/.config/ChatterBox/`
+- **Windows**: `%APPDATA%/TalkBuddy/`
+- **macOS**: `~/Library/Application Support/TalkBuddy/`
+- **Linux**: `~/.config/TalkBuddy/`
 
 ### Privacy Notes
 - No data is sent to external services except during active conversations
@@ -148,12 +148,12 @@ If you see red dots in the status footer:
 1. **Check Internet Connection**: For online services
 2. **Verify Service URLs**: Go to Settings and check URLs are correct
 3. **Test Individual Services**: Use the "Test" buttons in Settings
-4. **Check Firewall**: Ensure ChatterBox can access the internet
+4. **Check Firewall**: Ensure Talk Buddy can access the internet
 
 ### No Audio Input/Output
 1. **Check Microphone Permissions**: Your system may need to grant microphone access
 2. **Test System Audio**: Ensure your microphone and speakers work in other apps
-3. **Restart ChatterBox**: Sometimes audio permissions require an app restart
+3. **Restart Talk Buddy**: Sometimes audio permissions require an app restart
 
 ### Performance Issues
 1. **Close Other Apps**: Free up system resources
@@ -162,7 +162,7 @@ If you see red dots in the status footer:
 
 ## Next Steps
 
-Now that ChatterBox is configured:
+Now that Talk Buddy is configured:
 
 1. **[Try Your First Scenario](../workflows/your-first-scenario.md)** - Take your first practice session
 2. **[Learn the Interface](../interface-guide/home-dashboard.md)** - Explore all the features

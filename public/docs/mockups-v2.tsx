@@ -1,4 +1,4 @@
-// ChatterBox V2 - Visual Mockups
+// Talk Buddy V2 - Visual Mockups
 // These are React component mockups showing the audio-first interface
 
 import React from 'react';
@@ -163,7 +163,7 @@ export const Dashboard = () => (
     <header className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <h1 className="text-xl font-semibold">ChatterBox</h1>
+          <h1 className="text-xl font-semibold">Talk Buddy</h1>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">John Doe</span>
             <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm">

@@ -218,7 +218,7 @@ export function DocumentationPage(): JSX.Element {
           <HelpCircle size={48} className="text-blue-600" />
           <div>
             <h1 className="text-4xl font-bold text-gray-800">Help & Documentation</h1>
-            <p className="text-lg text-gray-600">Everything you need to master ChatterBox</p>
+            <p className="text-lg text-gray-600">Everything you need to master Talk Buddy</p>
           </div>
         </div>
       </div>
@@ -280,14 +280,14 @@ export function DocumentationPage(): JSX.Element {
             Fix Problems
           </button>
           <button
-            onClick={() => openExternal('https://github.com/michael-borck/chatter-box/issues')}
+            onClick={() => openExternal('https://github.com/michael-borck/talk-buddy/issues'))
             className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Report Issue
             <ExternalLink size={14} />
           </button>
           <button
-            onClick={() => openExternal('https://michael-borck.github.io/chatter-box')}
+            onClick={() => openExternal('https://michael-borck.github.io/talk-buddy'))
             className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Online Docs

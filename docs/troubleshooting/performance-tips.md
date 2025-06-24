@@ -1,6 +1,6 @@
 # Performance Tips
 
-Optimize ChatterBox for smooth, responsive conversation practice. This guide covers system optimization, service configuration, and usage patterns for the best possible performance.
+Optimize Talk Buddy for smooth, responsive conversation practice. This guide covers system optimization, service configuration, and usage patterns for the best possible performance.
 
 ## Understanding Performance Factors
 
@@ -19,7 +19,7 @@ Optimize ChatterBox for smooth, responsive conversation practice. This guide cov
 - **Network operations**: Online service connectivity
 
 #### Resource Usage
-- **Memory consumption**: RAM usage by ChatterBox and services
+- **Memory consumption**: RAM usage by Talk Buddy and services
 - **CPU utilization**: Processing load during conversations
 - **Storage I/O**: Database and file operations
 - **Network bandwidth**: Data usage for online services
@@ -111,14 +111,14 @@ echo "default-fragment-size-msec = 5" >> ~/.pulse/daemon.conf
 pulseaudio -k && pulseaudio --start
 ```
 
-## ChatterBox Application Optimization
+## Talk Buddy Application Optimization
 
 ### Application Settings
 
 #### General Performance Settings
 **Memory Management**:
 - **Close unused scenarios**: Keep only active practice content loaded
-- **Regular restart**: Restart ChatterBox after extended use (2+ hours)
+- **Regular restart**: Restart Talk Buddy after extended use (2+ hours)
 - **Clear cache**: Use application cache clearing if available
 - **Archive old content**: Move unused scenarios to archive
 
@@ -132,7 +132,7 @@ pulseaudio -k && pulseaudio --start
 - **Reduce animations**: Disable or minimize UI animations if available
 - **Lower resolution**: Use appropriate display scaling for your system
 - **Close other windows**: Minimize other applications during practice
-- **Single monitor**: Use primary monitor for ChatterBox if using multiple displays
+- **Single monitor**: Use primary monitor for Talk Buddy if using multiple displays
 
 ### Service Configuration Optimization
 
@@ -230,7 +230,7 @@ speaches serve --tts-model "speaches-ai/piper-en_US-lessac-low"  # Good quality
 **Between Sessions**:
 - **Restart services**: Restart AI/STT/TTS services periodically
 - **Clear temporary files**: Clean system temporary directories
-- **Update software**: Keep ChatterBox and services updated
+- **Update software**: Keep Talk Buddy and services updated
 - **System maintenance**: Run disk cleanup and system optimization tools
 
 #### Network Optimization
@@ -288,12 +288,12 @@ htop  # or top on macOS/Linux
 #### SSD Configuration
 **Windows SSD Optimization**:
 - **TRIM enabled**: Ensure SSD TRIM is enabled
-- **Disable indexing**: Turn off Windows Search indexing for ChatterBox directories
+- **Disable indexing**: Turn off Windows Search indexing for Talk Buddy directories
 - **Page file**: Move page file to different drive if possible
 
 **macOS SSD Optimization**:
 - **TRIM support**: Enable TRIM for third-party SSDs if needed
-- **Spotlight indexing**: Exclude ChatterBox directories from Spotlight
+- **Spotlight indexing**: Exclude Talk Buddy directories from Spotlight
 - **File system**: Use APFS for optimal performance
 
 **Linux SSD Optimization**:
@@ -302,14 +302,14 @@ htop  # or top on macOS/Linux
 sudo hdparm -I /dev/sda | grep TRIM  # Verify TRIM support
 
 # Optimize mount options
-# Add 'noatime' to /etc/fstab for ChatterBox partition
+# Add 'noatime' to /etc/fstab for Talk Buddy partition
 ```
 
 ### Network Performance
 
 #### Connection Optimization
 **Quality of Service (QoS)**:
-- **Router configuration**: Prioritize ChatterBox traffic
+- **Router configuration**: Prioritize Talk Buddy traffic
 - **Bandwidth allocation**: Reserve minimum bandwidth for practice
 - **Network monitoring**: Use tools to monitor network performance
 
@@ -409,7 +409,7 @@ vmstat 1    # Virtual memory statistics
 **Solutions**:
 1. **Close background applications**: Free system resources
 2. **Reduce visual effects**: Disable animations and effects
-3. **Restart ChatterBox**: Clear application memory leaks
+3. **Restart Talk Buddy**: Clear application memory leaks
 4. **Check disk space**: Ensure adequate free storage
 
 #### Memory Issues
@@ -417,7 +417,7 @@ vmstat 1    # Virtual memory statistics
 **Solutions**:
 1. **Restart services regularly**: Clear accumulated memory usage
 2. **Use appropriate models**: Choose models fitting available RAM
-3. **Close other applications**: Free memory for ChatterBox
+3. **Close other applications**: Free memory for Talk Buddy
 4. **Add more RAM**: Hardware upgrade if consistently memory-constrained
 
 ---
@@ -432,7 +432,7 @@ vmstat 1    # Virtual memory statistics
 - [ ] **Stable network connection** - check if using online services
 
 ### System Optimization
-- [ ] **Use SSD storage** for ChatterBox installation and data
+- [ ] **Use SSD storage** for Talk Buddy installation and data
 - [ ] **Sufficient RAM** - 8GB+ recommended for local AI services
 - [ ] **Updated drivers** - audio, graphics, and system drivers current
 - [ ] **Local services preferred** - use local AI/STT/TTS when possible
@@ -447,7 +447,7 @@ vmstat 1    # Virtual memory statistics
 
 ---
 
-**Optimized ChatterBox performance enables natural, flowing conversation practice. Take time to configure your system properly for the best learning experience! ⚡**
+**Optimized Talk Buddy performance enables natural, flowing conversation practice. Take time to configure your system properly for the best learning experience! ⚡**
 
 **Related Guides**: 
 - **[Connection Issues](connection-issues.md)** - Fix connectivity problems

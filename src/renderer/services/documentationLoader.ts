@@ -1,4 +1,4 @@
-// Documentation loader service for ChatterBox
+// Documentation loader service for Talk Buddy
 // This service loads markdown documentation files for in-app display
 
 interface DocMetadata {
@@ -144,7 +144,7 @@ This documentation is being loaded dynamically. In the full implementation, this
 
 ## Features
 
-- **In-app viewing**: Read documentation without leaving ChatterBox
+- **In-app viewing**: Read documentation without leaving Talk Buddy
 - **Offline access**: All documentation is bundled with the application
 - **Search functionality**: Find information quickly across all docs
 - **Navigation**: Easy browsing between sections and pages
@@ -153,7 +153,7 @@ This documentation is being loaded dynamically. In the full implementation, this
 
 To view the complete documentation:
 
-1. **Online**: Visit [ChatterBox Documentation](https://michael-borck.github.io/chatter-box)
+1. **Online**: Visit [Talk Buddy Documentation](https://michael-borck.github.io/talk-buddy)
 2. **Repository**: Browse the \`docs/\` folder on GitHub
 3. **Local**: Check the \`docs/${section}/${page}.md\` file in your installation
 
@@ -168,7 +168,7 @@ This is a demonstration of the in-app documentation system. The actual implement
 
 ---
 
-*The in-app documentation system provides a seamless user experience by keeping all help content within ChatterBox.*`;
+*The in-app documentation system provides a seamless user experience by keeping all help content within Talk Buddy.*`;
 }
 
 /**
@@ -186,8 +186,8 @@ The documentation file might not be available or there was an error loading it.
 ## What you can do:
 
 1. **Try again**: Refresh the page or navigate back and try again
-2. **Check online**: Visit the [online documentation](https://michael-borck.github.io/chatter-box/${section}/${page})
-3. **Report issue**: If this keeps happening, please [report an issue](https://github.com/michael-borck/chatter-box/issues)
+2. **Check online**: Visit the [online documentation](https://michael-borck.github.io/talk-buddy/${section}/${page})
+3. **Report issue**: If this keeps happening, please [report an issue](https://github.com/michael-borck/talk-buddy/issues)
 
 ## Alternative help:
 

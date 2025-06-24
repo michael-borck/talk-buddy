@@ -1,10 +1,10 @@
 {
-  "name": "chatterbox-desktop",
+  "name": "talk-buddy-desktop",
   "version": "2.3.3",
-  "description": "ChatterBox - AI-powered conversation practice desktop app",
+  "description": "Talk Buddy - AI-powered conversation practice desktop app",
   "author": {
     "name": "Michael Borck",
-    "email": "michael@chatterbox.app"
+    "email": "michael@talkbuddy.app"
   },
   "main": "src/main/index.js",
   "homepage": "./",
@@ -52,8 +52,8 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.chatterbox.desktop",
-    "productName": "ChatterBox",
+    "appId": "com.talkbuddy.desktop",
+    "productName": "TalkBuddy",
     "directories": {
       "output": "dist"
     },
@@ -83,7 +83,7 @@
       ],
       "icon": "assets/icon.png",
       "category": "Education",
-      "maintainer": "Michael Borck <michael@chatterbox.app>"
+      "maintainer": "Michael Borck <michael@talkbuddy.app>"
     }
   },
   "browserslist": {

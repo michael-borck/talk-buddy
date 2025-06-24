@@ -70,7 +70,7 @@ export function AboutPage() {
             <div className="flex items-center justify-center gap-3 mb-4">
               <Mic size={48} className="text-blue-600" />
               <div>
-                <h1 className="text-4xl font-bold text-gray-800">ChatterBox</h1>
+                <h1 className="text-4xl font-bold text-gray-800">Talk Buddy</h1>
                 <p className="text-lg text-gray-600">Desktop Edition</p>
               </div>
             </div>
@@ -89,16 +89,16 @@ export function AboutPage() {
 
         {/* About Section */}
         <div className="bg-white rounded-xl shadow-sm p-8 mb-8">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">About ChatterBox</h2>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">About Talk Buddy</h2>
           <div className="prose prose-gray max-w-none">
             <p className="text-gray-700 mb-4">
-              ChatterBox is an AI-powered conversation practice application designed to help you 
+              Talk Buddy is an AI-powered conversation practice application designed to help you 
               improve your speaking skills through realistic dialogue scenarios. Whether you're 
               preparing for job interviews, practicing a new language, or developing communication 
-              skills, ChatterBox provides a safe and supportive environment to practice.
+              skills, Talk Buddy provides a safe and supportive environment to practice.
             </p>
             <p className="text-gray-700 mb-4">
-              Built with modern web technologies and packaged as a desktop application, ChatterBox 
+              Built with modern web technologies and packaged as a desktop application, Talk Buddy 
               offers a seamless experience with features like voice recognition, text-to-speech, 
               conversation analytics, and progress tracking.
             </p>
@@ -160,7 +160,7 @@ export function AboutPage() {
               onClick={(e) => {
                 e.preventDefault();
                 if (window.electronAPI?.shell?.openExternal) {
-                  window.electronAPI.shell.openExternal('https://github.com/michael-borck/chatter-box');
+                  window.electronAPI.shell.openExternal('https://github.com/michael-borck/talk-buddy');
                 }
               }}
               className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"

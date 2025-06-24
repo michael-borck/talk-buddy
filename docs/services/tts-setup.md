@@ -1,6 +1,6 @@
 # Text-to-Speech Setup
 
-Configure voice synthesis services to enable AI voice responses in ChatterBox. This guide covers both online and local TTS (Text-to-Speech) service options for natural-sounding conversation practice.
+Configure voice synthesis services to enable AI voice responses in Talk Buddy. This guide covers both online and local TTS (Text-to-Speech) service options for natural-sounding conversation practice.
 
 ## Understanding TTS Services
 
@@ -28,7 +28,7 @@ TTS services convert AI text responses into spoken voice output:
 ## Quick Start (Online Services)
 
 ### Default Configuration
-ChatterBox comes pre-configured with working TTS services:
+Talk Buddy comes pre-configured with working TTS services:
 
 #### Check Current Status
 1. **Look at status footer**: TTS indicator should be green (●)
@@ -46,7 +46,7 @@ ChatterBox comes pre-configured with working TTS services:
 
 #### Connection Issues
 - **Check internet**: Verify stable connection
-- **Firewall settings**: Ensure ChatterBox can access external services
+- **Firewall settings**: Ensure Talk Buddy can access external services
 - **Service status**: Online services may occasionally be unavailable
 
 #### Audio Problems
@@ -107,10 +107,10 @@ speaches serve --host 0.0.0.0 --port 8000 --enable-tts
 3. **Run**: Execute the binary to start server
 4. **Configure**: Set to run on port 8000 with TTS enabled
 
-### Configuring ChatterBox for Local TTS
+### Configuring Talk Buddy for Local TTS
 
 #### Update Service URL
-1. **Open ChatterBox Settings**
+1. **Open Talk Buddy Settings**
 2. **Find TTS Service URL field**
 3. **Change to local address**: `http://localhost:8000`
 4. **Save settings**
@@ -185,7 +185,7 @@ Configure different voices for different AI characters:
 4. **Casual conversation**: Relaxed, conversational voice
 
 #### Voice Switching
-In ChatterBox settings:
+In Talk Buddy settings:
 - **Primary voice**: Default voice for most scenarios
 - **Alternative voices**: Different voices for specific contexts
 - **Test voices**: Verify each voice works well for intended use
@@ -248,8 +248,8 @@ In ChatterBox settings:
 **Solutions**:
 1. **Verify service running**: Check if Speaches or online service is available
 2. **Test network connectivity**: Ensure internet access for online services
-3. **Check firewall**: Confirm ChatterBox can access TTS service
-4. **Restart services**: Stop and start TTS service, restart ChatterBox
+3. **Check firewall**: Confirm Talk Buddy can access TTS service
+4. **Restart services**: Stop and start TTS service, restart Talk Buddy
 
 #### Slow Voice Generation
 **Symptoms**: Long delays between AI text and voice output
@@ -329,7 +329,7 @@ curl -X POST http://localhost:8000/tts \
 ## Quick Setup Checklist
 
 ### Online TTS (5 minutes)
-- [ ] Open ChatterBox
+- [ ] Open Talk Buddy
 - [ ] Check TTS status indicator (should be green)
 - [ ] Go to Settings and test TTS service
 - [ ] Verify audio output device is working
@@ -338,7 +338,7 @@ curl -X POST http://localhost:8000/tts \
 ### Local TTS (45 minutes)
 - [ ] Install Speaches (Docker, Python, or binary)
 - [ ] Start Speaches service on port 8000 with TTS enabled
-- [ ] Configure ChatterBox to use localhost:8000
+- [ ] Configure Talk Buddy to use localhost:8000
 - [ ] Test connection in Settings
 - [ ] Verify voice synthesis works
 - [ ] Configure for automatic startup (optional)
@@ -352,7 +352,7 @@ curl -X POST http://localhost:8000/tts \
 
 ---
 
-**With proper TTS setup, your ChatterBox conversations become immersive and natural. Choose the option that best fits your privacy needs and desired voice quality! 🔊**
+**With proper TTS setup, your Talk Buddy conversations become immersive and natural. Choose the option that best fits your privacy needs and desired voice quality! 🔊**
 
 **Related Guides**: 
 - **[STT Setup](stt-setup.md)** - Configure speech recognition input

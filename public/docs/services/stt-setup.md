@@ -1,11 +1,11 @@
 # Speech-to-Text Setup
 
-Configure speech recognition services to enable voice input in ChatterBox. This guide covers both online and local STT (Speech-to-Text) service options.
+Configure speech recognition services to enable voice input in Talk Buddy. This guide covers both online and local STT (Speech-to-Text) service options.
 
 ## Understanding STT Services
 
 ### What is Speech-to-Text?
-STT services convert your spoken words into text that ChatterBox can process:
+STT services convert your spoken words into text that Talk Buddy can process:
 - **Voice input**: Capture what you say during practice conversations
 - **Real-time processing**: Convert speech to text quickly for smooth interaction
 - **Accuracy**: Understand your words correctly for meaningful AI responses
@@ -28,7 +28,7 @@ STT services convert your spoken words into text that ChatterBox can process:
 ## Quick Start (Online Services)
 
 ### Default Configuration
-ChatterBox comes pre-configured with working STT services:
+Talk Buddy comes pre-configured with working STT services:
 
 #### Check Current Status
 1. **Look at status footer**: STT indicator should be green (●)
@@ -46,11 +46,11 @@ ChatterBox comes pre-configured with working STT services:
 
 #### Connection Issues
 - **Check internet**: Verify stable connection
-- **Firewall settings**: Ensure ChatterBox can access external services
+- **Firewall settings**: Ensure Talk Buddy can access external services
 - **Service status**: Online services may occasionally be unavailable
 
 #### Microphone Problems
-- **Permissions**: Grant microphone access to ChatterBox
+- **Permissions**: Grant microphone access to Talk Buddy
 - **Hardware test**: Verify microphone works in other applications
 - **System settings**: Check microphone volume and input device
 
@@ -107,10 +107,10 @@ speaches serve --host 0.0.0.0 --port 8000
 3. **Run**: Execute the binary to start server
 4. **Configure**: Set to run on port 8000
 
-### Configuring ChatterBox for Local STT
+### Configuring Talk Buddy for Local STT
 
 #### Update Service URL
-1. **Open ChatterBox Settings**
+1. **Open Talk Buddy Settings**
 2. **Find STT Service URL field**
 3. **Change to local address**: `http://localhost:8000`
 4. **Save settings**
@@ -172,7 +172,7 @@ Configure multiple STT services for redundancy:
 3. **Testing**: Verify both services work independently
 
 #### Service Switching
-In ChatterBox settings:
+In Talk Buddy settings:
 - **Change service URL**: Switch between local and online
 - **Test new service**: Verify functionality before practice
 - **Save configurations**: Keep both URLs documented for easy switching
@@ -216,7 +216,7 @@ In ChatterBox settings:
 #### Microphone Not Working
 **Symptoms**: No speech detected, silent input
 **Solutions**:
-1. **Check system permissions**: Grant microphone access to ChatterBox
+1. **Check system permissions**: Grant microphone access to Talk Buddy
 2. **Test hardware**: Verify microphone works in other applications
 3. **Check input device**: Ensure correct microphone selected in system settings
 4. **Adjust sensitivity**: Increase microphone volume if too quiet
@@ -234,8 +234,8 @@ In ChatterBox settings:
 **Solutions**:
 1. **Verify service running**: Check if Speaches or online service is available
 2. **Test network connectivity**: Ensure internet access for online services
-3. **Check firewall**: Confirm ChatterBox can access STT service
-4. **Restart services**: Stop and start STT service, restart ChatterBox
+3. **Check firewall**: Confirm Talk Buddy can access STT service
+4. **Restart services**: Stop and start STT service, restart Talk Buddy
 
 #### Slow Response Times
 **Symptoms**: Long delays between speech and recognition
@@ -315,7 +315,7 @@ curl -X POST http://localhost:8000/stt \
 ## Quick Setup Checklist
 
 ### Online STT (5 minutes)
-- [ ] Open ChatterBox
+- [ ] Open Talk Buddy
 - [ ] Check STT status indicator (should be green)
 - [ ] Go to Settings and test STT service
 - [ ] Grant microphone permissions if prompted
@@ -324,7 +324,7 @@ curl -X POST http://localhost:8000/stt \
 ### Local STT (30 minutes)
 - [ ] Install Speaches (Docker, Python, or binary)
 - [ ] Start Speaches service on port 8000
-- [ ] Configure ChatterBox to use localhost:8000
+- [ ] Configure Talk Buddy to use localhost:8000
 - [ ] Test connection in Settings
 - [ ] Verify speech recognition works
 - [ ] Configure for automatic startup (optional)

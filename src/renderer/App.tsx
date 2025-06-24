@@ -85,11 +85,11 @@ function Sidebar() {
             <button 
               onClick={() => navigate('/about')}
               className="flex items-center gap-2 hover:bg-gray-700 p-2 rounded-lg transition-colors"
-              title="About ChatterBox"
+              title="About Talk Buddy"
             >
               <Mic size={24} className="text-blue-400" />
               <div>
-                <h1 className="text-xl font-bold text-white">ChatterBox</h1>
+                <h1 className="text-xl font-bold text-white">Talk Buddy</h1>
                 <p className="text-xs text-gray-400">Desktop Edition</p>
               </div>
             </button>
@@ -98,7 +98,7 @@ function Sidebar() {
             <button 
               onClick={() => navigate('/about')}
               className="text-blue-400 hover:bg-gray-700 p-2 rounded-lg transition-colors mb-2"
-              title="About ChatterBox"
+              title="About Talk Buddy"
             >
               <Mic size={20} />
             </button>
@@ -145,7 +145,7 @@ function Sidebar() {
           <button
             onClick={() => navigate('/about')}
             className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
-            title="About ChatterBox"
+            title="About Talk Buddy"
           >
             v{appVersion}
           </button>

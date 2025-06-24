@@ -5,7 +5,7 @@ import { app } from 'electron';
 let db: Database.Database;
 
 export function initDatabase(): Database.Database {
-  const dbPath = path.join(app.getPath('userData'), 'chatterbox.db');
+  const dbPath = path.join(app.getPath('userData'), 'talkbuddy.db');
   db = new Database(dbPath);
 
   // Create tables if they don't exist

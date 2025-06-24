@@ -1,11 +1,11 @@
 # Connection Issues
 
-Having trouble connecting to speech or AI services? This guide will help you diagnose and fix connection problems in ChatterBox.
+Having trouble connecting to speech or AI services? This guide will help you diagnose and fix connection problems in Talk Buddy.
 
 ## Quick Diagnosis
 
 ### Check Status Footer
-Look at the bottom of ChatterBox for service status indicators:
+Look at the bottom of Talk Buddy for service status indicators:
 
 - **Green dots (●)**: Service is connected and working
 - **Red dots (●)**: Connection failed or service error
@@ -41,21 +41,21 @@ Look at the bottom of ChatterBox for service status indicators:
 1. **Open Windows Security** (search "Windows Security")
 2. **Go to Firewall & network protection**
 3. **Click "Allow an app through firewall"**
-4. **Find ChatterBox** in the list
+4. **Find Talk Buddy** in the list
 5. **Check both "Private" and "Public" boxes**
-6. **If ChatterBox isn't listed**: Click "Change settings" → "Allow another app" → Browse for ChatterBox
+6. **If Talk Buddy isn't listed**: Click "Change settings" → "Allow another app" → Browse for Talk Buddy
 
 #### macOS Firewall
 1. **Open System Preferences** → Security & Privacy
 2. **Click "Firewall" tab**
 3. **Click "Firewall Options"**
-4. **Ensure ChatterBox is set to "Allow incoming connections"**
-5. **If not listed**: Click "+" and add ChatterBox
+4. **Ensure Talk Buddy is set to "Allow incoming connections"**
+5. **If not listed**: Click "+" and add Talk Buddy
 
 #### Antivirus Software
-Some antivirus programs block ChatterBox:
+Some antivirus programs block Talk Buddy:
 - **Temporarily disable** antivirus to test
-- **Add ChatterBox to exceptions** if disabling fixes the issue
+- **Add Talk Buddy to exceptions** if disabling fixes the issue
 - **Check real-time protection settings**
 - **Look for "web protection" or "network monitoring" features**
 
@@ -86,8 +86,8 @@ Some antivirus programs block ChatterBox:
 #### Solutions
 
 **Check Microphone Permissions**
-- **Windows**: Settings → Privacy → Microphone → Allow ChatterBox
-- **macOS**: System Preferences → Security & Privacy → Microphone → Check ChatterBox
+- **Windows**: Settings → Privacy → Microphone → Allow Talk Buddy
+- **macOS**: System Preferences → Security & Privacy → Microphone → Check Talk Buddy
 - **Linux**: Verify ALSA/PulseAudio permissions
 
 **Test Microphone Hardware**
@@ -97,7 +97,7 @@ Some antivirus programs block ChatterBox:
 4. **Ensure microphone isn't muted** in system settings
 
 **Service Configuration**
-1. **Go to ChatterBox Settings**
+1. **Go to Talk Buddy Settings**
 2. **Check STT Service URL** (default: configured service endpoint)
 3. **Click "Test STT"** to verify connection
 4. **Try different STT model** if options are available
@@ -119,7 +119,7 @@ Some antivirus programs block ChatterBox:
 4. **Test system text-to-speech** functionality
 
 **Service Configuration**
-1. **Go to ChatterBox Settings**
+1. **Go to Talk Buddy Settings**
 2. **Check TTS Service URL** and configuration
 3. **Click "Test TTS"** to verify connection
 4. **Try different voice options** (male/female)
@@ -136,7 +136,7 @@ Some antivirus programs block ChatterBox:
 #### Solutions
 
 **Service URL and Configuration**
-1. **Go to ChatterBox Settings**
+1. **Go to Talk Buddy Settings**
 2. **Verify AI Service URL** (default: Ollama endpoint)
 3. **Check API keys** if using paid services
 4. **Test connection** using settings test button
@@ -245,15 +245,15 @@ lsof -i :11434
 #### Disk Space
 - **Ensure adequate storage**: AI models can be several GB each
 - **Clear temporary files**: Free up disk space if low
-- **Check ChatterBox data folder**: Ensure it's not corrupted
+- **Check Talk Buddy data folder**: Ensure it's not corrupted
 
 ### Log File Analysis
 
-#### ChatterBox Logs
+#### Talk Buddy Logs
 1. **Find log location**:
-   - **Windows**: `%APPDATA%/ChatterBox/logs/`
-   - **macOS**: `~/Library/Application Support/ChatterBox/logs/`
-   - **Linux**: `~/.config/ChatterBox/logs/`
+   - **Windows**: `%APPDATA%/Talk Buddy/logs/`
+   - **macOS**: `~/Library/Application Support/Talk Buddy/logs/`
+   - **Linux**: `~/.config/Talk Buddy/logs/`
 
 2. **Check recent logs** for error messages
 3. **Look for connection errors**, timeout messages, or service failures
@@ -272,12 +272,12 @@ lsof -i :11434
 - **Speaches (STT/TTS)**: `http://localhost:8000`
 
 #### Online Services (Fallback)
-- **Check current settings** in ChatterBox Settings page
+- **Check current settings** in Talk Buddy Settings page
 - **Verify URLs are current** (services may change endpoints)
 
 ### Changing Service URLs
 
-1. **Go to Settings** in ChatterBox
+1. **Go to Settings** in Talk Buddy
 2. **Update service URLs** in the appropriate fields
 3. **Click "Test"** for each service to verify connectivity
 4. **Save settings** when all tests pass
@@ -288,7 +288,7 @@ lsof -i :11434
 
 When seeking help, gather:
 - **Operating system** and version
-- **ChatterBox version** (check About page)
+- **Talk Buddy version** (check About page)
 - **Service status** (red/green/gray indicators)
 - **Error messages** from logs or UI
 - **Network environment** (home, office, school)
@@ -298,7 +298,7 @@ When seeking help, gather:
 
 - **[Common Errors Guide](common-errors.md)**: Solutions to frequent problems
 - **[Service Setup Guides](../services/)**: Detailed configuration instructions
-- **[GitHub Issues](https://github.com/michael-borck/chatter-box/issues)**: Community support and bug reports
+- **[GitHub Issues](https://github.com/michael-borck/talk-buddy/issues)**: Community support and bug reports
 
 ### Temporary Workarounds
 
@@ -314,15 +314,15 @@ When seeking help, gather:
 
 ### First Steps (5 minutes)
 - [ ] Check internet connection in browser
-- [ ] Look at ChatterBox status footer indicators
-- [ ] Restart ChatterBox application
+- [ ] Look at Talk Buddy status footer indicators
+- [ ] Restart Talk Buddy application
 - [ ] Test each service using Settings page
 
 ### If Still Having Issues (15 minutes)
 - [ ] Check firewall and antivirus settings
 - [ ] Verify microphone and speaker permissions
 - [ ] Test hardware with other applications
-- [ ] Review ChatterBox log files for errors
+- [ ] Review Talk Buddy log files for errors
 
 ### Advanced Steps (30 minutes)
 - [ ] Test service URLs manually using curl/browser
@@ -337,4 +337,4 @@ When seeking help, gather:
 **Related Guides**: 
 - **[Service Setup](../services/stt-setup.md)** - Configure speech and AI services
 - **[Common Errors](common-errors.md)** - Solutions to frequent problems
-- **[Performance Tips](performance-tips.md)** - Optimize ChatterBox performance
+- **[Performance Tips](performance-tips.md)** - Optimize Talk Buddy performance

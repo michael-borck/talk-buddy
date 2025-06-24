@@ -1,6 +1,6 @@
-# ChatterBox for Teachers
+# Talk Buddy for Teachers
 
-Welcome, educators! ChatterBox is a powerful tool for creating engaging conversation practice experiences for your students. This guide will help you leverage ChatterBox to enhance your curriculum.
+Welcome, educators! Talk Buddy is a powerful tool for creating engaging conversation practice experiences for your students. This guide will help you leverage Talk Buddy to enhance your curriculum.
 
 ## Quick Start for Teachers
 
@@ -126,7 +126,7 @@ Provide students with clear instructions:
 How to Import Your Practice Pack:
 
 1. Save the JSON file to your computer
-2. Open ChatterBox
+2. Open Talk Buddy
 3. Go to Practice Packs page
 4. Click "Import Pack" 
 5. Select the downloaded JSON file
@@ -145,7 +145,7 @@ Need help? Check the [Import Guide](../workflows/importing-packages.md)
 ### Guiding Practice Sessions
 
 #### Pre-Practice Preparation
-Help students get the most from ChatterBox:
+Help students get the most from Talk Buddy:
 - **Context setting**: Explain the scenario's real-world relevance
 - **Skill focus**: Identify specific communication skills to practice
 - **Success criteria**: Define what good performance looks like
@@ -166,7 +166,7 @@ Structure meaningful follow-up:
 ### Progress Monitoring Concepts
 
 #### Individual Progress Tracking
-While ChatterBox doesn't provide teacher dashboards, you can guide students to:
+While Talk Buddy doesn't provide teacher dashboards, you can guide students to:
 - **Session history review**: Regular check-ins on practice frequency
 - **Self-assessment**: Students reflect on their improvement
 - **Goal setting**: Help students set communication improvement goals
@@ -233,14 +233,14 @@ While ChatterBox doesn't provide teacher dashboards, you can guide students to:
 ## Professional Development Resources
 
 ### Staying Current
-- **ChatterBox updates**: Follow the [changelog](../reference/changelog.md) for new features
+- **Talk Buddy updates**: Follow the [changelog](../reference/changelog.md) for new features
 - **Educational technology**: Explore AI tools in education
 - **Communication pedagogy**: Research best practices in conversation skill development
 
 ### Community and Support
-- **Teacher forums**: Connect with other educators using ChatterBox
+- **Teacher forums**: Connect with other educators using Talk Buddy
 - **Feature requests**: Suggest improvements that would help your teaching
-- **Student feedback**: Gather insights on how ChatterBox supports learning
+- **Student feedback**: Gather insights on how Talk Buddy supports learning
 
 ---
 
@@ -263,7 +263,7 @@ While ChatterBox doesn't provide teacher dashboards, you can guide students to:
 
 ---
 
-**ChatterBox empowers you to create personalized, engaging conversation practice for your students. Start with one simple scenario and build from there! 🎓**
+**Talk Buddy empowers you to create personalized, engaging conversation practice for your students. Start with one simple scenario and build from there! 🎓**
 
 **Next Steps**: 
 - Try **[Creating Your First Scenario](../workflows/creating-scenarios.md)**

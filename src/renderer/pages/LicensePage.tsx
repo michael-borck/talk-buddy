@@ -111,7 +111,7 @@ export function LicensePage() {
           </button>
         </div>
 
-        {/* ChatterBox License */}
+        {/* Talk Buddy License */}
         <div className="bg-white rounded-xl shadow-sm p-8 mb-8">
           <div className="flex items-center gap-3 mb-6">
             <Heart size={24} className="text-red-500" />
@@ -119,7 +119,7 @@ export function LicensePage() {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">ChatterBox License</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Talk Buddy License</h2>
             <div className="bg-gray-50 p-6 rounded-lg font-mono text-sm">
               <div className="text-gray-700">
                 <p className="mb-4"><strong>MIT License</strong></p>
@@ -158,7 +158,7 @@ export function LicensePage() {
           </div>
           
           <p className="text-gray-600 mb-6">
-            ChatterBox is built upon many excellent open source projects. We are grateful to 
+            Talk Buddy is built upon many excellent open source projects. We are grateful to 
             the developers and maintainers of these libraries that make this application possible.
           </p>
 
@@ -193,7 +193,7 @@ export function LicensePage() {
           <div className="mt-8 p-4 bg-blue-50 rounded-lg">
             <h3 className="font-semibold text-blue-900 mb-2">Special Thanks</h3>
             <p className="text-blue-800 text-sm">
-              To all the open source contributors who make projects like ChatterBox possible. 
+              To all the open source contributors who make projects like Talk Buddy possible. 
               Your dedication to sharing knowledge and building tools that benefit everyone 
               is truly appreciated.
             </p>
@@ -201,11 +201,11 @@ export function LicensePage() {
 
           <div className="mt-6 text-center">
             <button
-              onClick={() => openExternal('https://github.com/michael-borck/chatter-box')}
+              onClick={() => openExternal('https://github.com/michael-borck/talk-buddy')}
               className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
             >
               <Code2 size={16} />
-              View ChatterBox Source Code
+              View Talk Buddy Source Code
               <ExternalLink size={14} />
             </button>
           </div>

@@ -230,7 +230,7 @@ export function StatusFooter() {
         </div>
 
         <div className="text-gray-400 text-xs">
-          ChatterBox {appVersion ? `v${appVersion}` : 'v2.0.0'}
+          Talk Buddy {appVersion ? `v${appVersion}` : 'v2.0.0'}
         </div>
       </div>
     </footer>

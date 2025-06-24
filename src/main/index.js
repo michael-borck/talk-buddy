@@ -286,7 +286,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   // Initialize SQLite database
-  const dbPath = path.join(app.getPath('userData'), 'chatterbox.db');
+  const dbPath = path.join(app.getPath('userData'), 'talkbuddy.db');
   db = new Database(dbPath);
   
   // Add missing columns to existing databases

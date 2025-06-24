@@ -1,10 +1,10 @@
 # Home Dashboard
 
-The Home Dashboard is your central hub in ChatterBox. It provides quick access to recent content, key actions, and an overview of your learning progress.
+The Home Dashboard is your central hub in Talk Buddy. It provides quick access to recent content, key actions, and an overview of your learning progress.
 
 ## Dashboard Overview
 
-When you open ChatterBox or click "Home" in the sidebar, you'll see:
+When you open Talk Buddy or click "Home" in the sidebar, you'll see:
 
 ### Header Section
 - **Welcome Message**: Personalized greeting 
@@ -99,11 +99,11 @@ The "recent" sections update based on:
 
 ## Empty State Guidance
 
-### When You First Open ChatterBox
-If this is your first time using ChatterBox:
+### When You First Open Talk Buddy
+If this is your first time using Talk Buddy:
 
 **Recent Scenarios Section**:
-- Shows default scenarios that come with ChatterBox
+- Shows default scenarios that come with Talk Buddy
 - Displays "No scenarios yet" if defaults aren't loaded
 - Provides "Create your first scenario" button
 
@@ -113,7 +113,7 @@ If this is your first time using ChatterBox:
 - Links to the Practice Packs page
 
 ### Getting Started Actions
-1. **Try a Default Scenario**: Use Quick Start to experience ChatterBox
+1. **Try a Default Scenario**: Use Quick Start to experience Talk Buddy
 2. **Create Your First Scenario**: Click the create button to design custom content
 3. **Import Content**: If you have exported scenarios or packs to import
 
@@ -162,12 +162,12 @@ If this is your first time using ChatterBox:
 ### Quick Start Not Working
 - Ensure you have at least one active (non-archived) scenario
 - Check that scenarios aren't corrupted (try viewing one individually)
-- Restart ChatterBox if the issue persists
+- Restart Talk Buddy if the issue persists
 
 ### Performance Issues
 - **Slow loading**: Check if you have many scenarios (consider archiving old ones)
 - **Outdated content**: Refresh by navigating away and back to Home
-- **System resources**: Close other applications if ChatterBox seems sluggish
+- **System resources**: Close other applications if Talk Buddy seems sluggish
 
 ## Related Features
 

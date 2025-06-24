@@ -1,6 +1,6 @@
 # Conversation Interface
 
-The conversation interface is the heart of ChatterBox - where you practice speaking with AI in a completely visual, text-free environment designed to feel natural and immersive.
+The conversation interface is the heart of Talk Buddy - where you practice speaking with AI in a completely visual, text-free environment designed to feel natural and immersive.
 
 ## Interface Overview
 

@@ -98,7 +98,7 @@ Level 1: Novice → Level 2: Competent → Level 3: Proficient → Level 4: Expe
 ### Step 1: Create the Practice Pack
 
 #### Access Pack Creation
-1. **Open ChatterBox**
+1. **Open Talk Buddy**
 2. **Go to Practice Packs**: Click "Practice Packs" in sidebar
 3. **Create new pack**: Click "Create New Pack" or "+" button
 

@@ -26,8 +26,8 @@ Learn how to export your scenarios and practice packs to share with students, co
 
 ### Export File Formats
 
-#### ChatterBox JSON Format
-- **Native format**: Designed specifically for ChatterBox
+#### Talk Buddy JSON Format
+- **Native format**: Designed specifically for Talk Buddy
 - **Complete fidelity**: Preserves all scenario details and metadata
 - **Cross-platform**: Works on Windows, macOS, and Linux versions
 - **Version compatible**: Designed for forward and backward compatibility
@@ -38,7 +38,7 @@ Learn how to export your scenarios and practice packs to share with students, co
   "formatVersion": "2.0",
   "type": "skill_package",
   "metadata": {
-    "exportedBy": "ChatterBox v2.0.0",
+    "exportedBy": "Talk Buddy v2.0.0",
     "exportDate": "2024-01-15T10:30:00Z",
     "title": "Business Interview Skills",
     "description": "Progressive interview practice scenarios",
@@ -56,7 +56,7 @@ Learn how to export your scenarios and practice packs to share with students, co
 ### Exporting Practice Packs
 
 #### Step 1: Select Your Pack
-1. **Open ChatterBox**
+1. **Open Talk Buddy**
 2. **Navigate to Practice Packs**: Click "Practice Packs" in sidebar
 3. **Find your pack**: Locate the pack you want to export
 4. **Verify content**: Ensure all scenarios are included and working
@@ -210,7 +210,7 @@ Establish naming conventions for series:
 #### Folder Structure
 Organize exports logically:
 ```
-ChatterBox Exports/
+Talk Buddy Exports/
 ├── Course Materials/
 │   ├── Business Communication/
 │   │   ├── Module 1 - Basics/
@@ -244,7 +244,7 @@ Include supporting files:
 
 #### Post-Export Verification
 - [ ] **File integrity**: Export completed without errors
-- [ ] **Import testing**: File imports correctly into ChatterBox
+- [ ] **Import testing**: File imports correctly into Talk Buddy
 - [ ] **Content preservation**: All scenarios and metadata intact
 - [ ] **File size reasonable**: Not corrupted or unexpectedly large/small
 - [ ] **Documentation included**: Instructions and objectives provided
@@ -258,7 +258,7 @@ Include supporting files:
 **Solutions**: 
 - Check available disk space
 - Verify all scenarios in pack are working
-- Restart ChatterBox and try again
+- Restart Talk Buddy and try again
 - Export individual scenarios to identify problematic content
 
 #### File Won't Import After Export
@@ -267,7 +267,7 @@ Include supporting files:
 - Test import yourself before sharing
 - Check file isn't corrupted (very small or very large size)
 - Verify file extension is .json
-- Ensure recipients have compatible ChatterBox version
+- Ensure recipients have compatible Talk Buddy version
 
 #### Missing Content in Export
 **Symptoms**: Some scenarios don't appear in exported pack
@@ -288,12 +288,12 @@ Include supporting files:
 - Confirm recipients have appropriate access rights
 
 #### Version Compatibility
-**Symptoms**: Content works in your ChatterBox but not in recipients'
+**Symptoms**: Content works in your Talk Buddy but not in recipients'
 **Solutions**:
-- Check ChatterBox version compatibility
+- Check Talk Buddy version compatibility
 - Export in standard format (avoid experimental features)
 - Include version information in documentation
-- Provide installation instructions for compatible ChatterBox version
+- Provide installation instructions for compatible Talk Buddy version
 
 ## Advanced Sharing Techniques
 
@@ -355,7 +355,7 @@ For ongoing sharing:
 
 ---
 
-**Sharing your ChatterBox content amplifies its impact and builds learning communities. Export thoughtfully, share generously, and help others develop their communication skills! 🤝**
+**Sharing your Talk Buddy content amplifies its impact and builds learning communities. Export thoughtfully, share generously, and help others develop their communication skills! 🤝**
 
 **Related Guides**: 
 - **[Importing Packages](importing-packages.md)** - Help others use your shared content

@@ -1,4 +1,4 @@
-# ChatterBox Desktop
+# Talk Buddy Desktop
 
 AI-powered conversation practice desktop application with real-time speech recognition and synthesis. Practice real-world conversations with an AI partner in a safe, supportive environment - all running locally on your computer.
 
@@ -33,7 +33,7 @@ AI-powered conversation practice desktop application with real-time speech recog
 
 ### Prerequisites
 
-Before running ChatterBox Desktop, you need:
+Before running Talk Buddy Desktop, you need:
 
 1. **Speaches API** - Speech-to-text and text-to-speech
    - Cloud service available at: https://speaches.serveur.au
@@ -49,15 +49,15 @@ Before running ChatterBox Desktop, you need:
 ### Installation
 
 #### Option 1: Download Release (Recommended)
-1. Go to [Releases](https://github.com/yourusername/chatterbox/releases)
+1. Go to [Releases](https://github.com/yourusername/talk-buddy/releases)
 2. Download the installer for your platform
-3. Install and run ChatterBox
+3. Install and run Talk Buddy
 
 #### Option 2: Build from Source
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/chatterbox.git
-cd chatterbox
+git clone https://github.com/yourusername/talk-buddy.git
+cd talk-buddy
 
 # Install dependencies
 npm install
@@ -72,7 +72,7 @@ npm run dist
 ## 📁 Project Structure
 
 ```
-chatterbox-desktop/
+talk-buddy-desktop/
 ├── public/                 # Electron main process
 │   ├── electron.js         # Main process entry
 │   └── preload.js          # Preload script for IPC
@@ -99,9 +99,9 @@ Configure external services in Settings:
 ## 💾 Data Storage
 
 All data is stored locally:
-- **Windows**: `%APPDATA%/chatterbox-desktop/chatterbox.db`
-- **macOS**: `~/Library/Application Support/chatterbox-desktop/chatterbox.db`
-- **Linux**: `~/.config/chatterbox-desktop/chatterbox.db`
+- **Windows**: `%APPDATA%/talk-buddy-desktop/talkbuddy.db`
+- **macOS**: `~/Library/Application Support/talk-buddy-desktop/talkbuddy.db`
+- **Linux**: `~/.config/talk-buddy-desktop/talkbuddy.db`
 
 ## 🚀 Development
 

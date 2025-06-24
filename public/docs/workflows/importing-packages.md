@@ -1,6 +1,6 @@
 # Importing Packages
 
-Learn how to import scenarios and practice packs into ChatterBox from teachers, colleagues, or the community.
+Learn how to import scenarios and practice packs into Talk Buddy from teachers, colleagues, or the community.
 
 ## Understanding Import Types
 
@@ -49,8 +49,8 @@ Learn how to import scenarios and practice packs into ChatterBox from teachers, 
 2. **Save to accessible location**: Desktop, Downloads folder, etc.
 3. **Note the filename**: For easy identification during import
 
-#### Step 2: Open ChatterBox
-1. **Launch ChatterBox**
+#### Step 2: Open Talk Buddy
+1. **Launch Talk Buddy**
 2. **Navigate to Practice Packs**: Click "Practice Packs" in sidebar
 3. **Locate import option**: Look for "Import" button or menu option
 
@@ -68,7 +68,7 @@ Learn how to import scenarios and practice packs into ChatterBox from teachers, 
 ### Importing Individual Scenarios
 
 #### Step 1: Access Scenario Import
-1. **Open ChatterBox**
+1. **Open Talk Buddy**
 2. **Go to Scenarios**: Click "Scenarios" in sidebar
 3. **Find import option**: Look for "Import" button
 
@@ -89,7 +89,7 @@ Learn how to import scenarios and practice packs into ChatterBox from teachers, 
 #### Typical Workflow
 1. **Receive file from teacher**: Via email, LMS, or hand-off
 2. **Save file locally**: Keep organized with clear naming
-3. **Import to ChatterBox**: Follow practice pack import process
+3. **Import to Talk Buddy**: Follow practice pack import process
 4. **Begin practice**: Start with first scenario in the pack
 
 #### Best Practices for Students
@@ -102,7 +102,7 @@ Learn how to import scenarios and practice packs into ChatterBox from teachers, 
 
 #### Corporate Training Scenarios
 1. **Receive from training department**: Company-specific scenarios
-2. **Import to personal ChatterBox**: Add to your practice library
+2. **Import to personal Talk Buddy**: Add to your practice library
 3. **Coordinate with team**: Share insights and experiences
 4. **Track progress**: Monitor improvement in professional skills
 
@@ -126,7 +126,7 @@ Learn how to import scenarios and practice packs into ChatterBox from teachers, 
 
 #### Check File Format
 - **Correct extension**: Must be `.json` file
-- **ChatterBox export**: File must be exported from ChatterBox (not other apps)
+- **Talk Buddy export**: File must be exported from Talk Buddy (not other apps)
 - **File integrity**: Ensure file downloaded completely without corruption
 
 #### Common Solutions
@@ -144,7 +144,7 @@ Learn how to import scenarios and practice packs into ChatterBox from teachers, 
 
 #### Refresh and Restart
 1. **Refresh the page**: Navigate away and back to the section
-2. **Restart ChatterBox**: Close and reopen the application
+2. **Restart Talk Buddy**: Close and reopen the application
 3. **Check import confirmation**: Look for success message during import
 
 ### Content Appears But Won't Work
@@ -166,7 +166,7 @@ Learn how to import scenarios and practice packs into ChatterBox from teachers, 
 #### Local File Organization
 Create a folder structure like:
 ```
-ChatterBox Content/
+Talk Buddy Content/
 ├── Course Materials/
 │   ├── Business Communication 101/
 │   ├── Technical Writing/
@@ -254,7 +254,7 @@ ChatterBox Content/
 ### Before Importing
 - [ ] Verify file source and trust
 - [ ] Check file extension (.json)
-- [ ] Ensure ChatterBox is updated
+- [ ] Ensure Talk Buddy is updated
 - [ ] Have working internet connection for testing
 
 ### During Import Process
@@ -271,13 +271,13 @@ ChatterBox Content/
 
 ### If Problems Occur
 - [ ] Check file integrity and format
-- [ ] Restart ChatterBox and retry
+- [ ] Restart Talk Buddy and retry
 - [ ] Test with known-good files
 - [ ] Contact content provider for assistance
 
 ---
 
-**Importing content is one of the best ways to expand your ChatterBox practice library. Start with trusted sources and gradually build a comprehensive collection! 📥**
+**Importing content is one of the best ways to expand your Talk Buddy practice library. Start with trusted sources and gradually build a comprehensive collection! 📥**
 
 **Related Guides**: 
 - **[Exporting & Sharing](exporting-sharing.md)** - Share your own content

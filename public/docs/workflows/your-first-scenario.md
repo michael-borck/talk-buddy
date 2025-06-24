@@ -1,11 +1,11 @@
 # Your First Scenario
 
-Ready to try ChatterBox? This guide walks you through your first practice conversation step by step.
+Ready to try Talk Buddy? This guide walks you through your first practice conversation step by step.
 
 ## Prerequisites
 
 Before starting:
-- ✅ ChatterBox is [installed](../getting-started/installation.md) and running
+- ✅ Talk Buddy is [installed](../getting-started/installation.md) and running
 - ✅ You've completed [basic setup](../getting-started/first-setup.md)
 - ✅ Your microphone and speakers are working
 - ✅ Services show green status dots (or you're ready to practice without voice)
@@ -22,7 +22,7 @@ This scenario is perfect for beginners because:
 
 ### Access the Scenario
 
-1. **Open ChatterBox** if it's not already running
+1. **Open Talk Buddy** if it's not already running
 2. **Click "Scenarios"** in the sidebar navigation
 3. **Find "Customer Service - Product Return"** in the list
 4. **Read the description**: 
@@ -205,7 +205,7 @@ Look for:
 
 ### Voice Not Recognized
 - Check microphone permissions in your system settings
-- Ensure microphone is selected correctly in ChatterBox settings
+- Ensure microphone is selected correctly in Talk Buddy settings
 - Try speaking louder or closer to the microphone
 - Test microphone in other applications
 
@@ -224,11 +224,11 @@ Look for:
 ### Technical Difficulties
 - **Audio cutting out**: Check your internet connection
 - **Slow responses**: Online services may have delays
-- **App freezing**: Restart ChatterBox and try again
+- **App freezing**: Restart Talk Buddy and try again
 
 ---
 
-**Congratulations on completing your first ChatterBox session! 🎉**
+**Congratulations on completing your first Talk Buddy session! 🎉**
 
 Ready to explore more? Check out:
 - **[Creating Scenarios](creating-scenarios.md)** to design your own practice

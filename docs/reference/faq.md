@@ -1,14 +1,14 @@
 # Frequently Asked Questions
 
-Get quick answers to common ChatterBox questions.
+Get quick answers to common Talk Buddy questions.
 
 ## Getting Started
 
-### Q: What is ChatterBox?
-**A:** ChatterBox is an AI-powered conversation practice application that helps you improve your speaking skills through realistic dialogue scenarios. It's perfect for interview preparation, language learning, professional communication development, and building confidence in various conversation contexts.
+### Q: What is Talk Buddy?
+**A:** Talk Buddy is an AI-powered conversation practice application that helps you improve your speaking skills through realistic dialogue scenarios. It's perfect for interview preparation, language learning, professional communication development, and building confidence in various conversation contexts.
 
-### Q: Do I need an internet connection to use ChatterBox?
-**A:** ChatterBox can work both online and offline:
+### Q: Do I need an internet connection to use Talk Buddy?
+**A:** Talk Buddy can work both online and offline:
 - **Online mode**: Full functionality with AI conversations and speech processing
 - **Offline mode**: Limited functionality - you can view scenarios and transcripts, but conversation practice requires internet for AI services
 
@@ -20,21 +20,21 @@ Get quick answers to common ChatterBox questions.
 - **Network**: Internet connection for AI services
 - **Audio**: Working microphone and speakers/headphones
 
-### Q: Is ChatterBox free to use?
-**A:** Yes! ChatterBox is open source software released under the MIT license. It's completely free to download, use, and modify.
+### Q: Is Talk Buddy free to use?
+**A:** Yes! Talk Buddy is open source software released under the MIT license. It's completely free to download, use, and modify.
 
-## Using ChatterBox
+## Using Talk Buddy
 
 ### Q: How do I start my first conversation?
 **A:** 
-1. Open ChatterBox and click "Scenarios" in the sidebar
+1. Open Talk Buddy and click "Scenarios" in the sidebar
 2. Choose a beginner-friendly scenario like "Customer Service - Product Return"
 3. Click the scenario to start a session
 4. Follow the [Your First Scenario guide](../workflows/your-first-scenario.md) for detailed steps
 
 ### Q: Why isn't my microphone working?
 **A:** Check these common issues:
-- **Permissions**: Ensure ChatterBox has microphone access in system settings
+- **Permissions**: Ensure Talk Buddy has microphone access in system settings
 - **Hardware**: Test your microphone in other applications
 - **Connection**: Verify speech services are connected (check status footer)
 - **Settings**: Go to Settings and test STT (Speech-to-Text) service
@@ -47,7 +47,7 @@ Get quick answers to common ChatterBox questions.
 4. See [Connection Issues guide](../troubleshooting/connection-issues.md) for detailed troubleshooting
 
 ### Q: Can I practice without speaking out loud?
-**A:** Currently, ChatterBox is designed for voice-based conversation practice. While you can view scenarios and read transcripts, the core learning experience involves speaking with the AI. Future versions may include text-only modes.
+**A:** Currently, Talk Buddy is designed for voice-based conversation practice. While you can view scenarios and read transcripts, the core learning experience involves speaking with the AI. Future versions may include text-only modes.
 
 ## Content and Scenarios
 
@@ -56,7 +56,7 @@ Get quick answers to common ChatterBox questions.
 - **Import from teachers**: If you're a student, your instructor can provide practice packs
 - **Create your own**: Use the scenario creation tools to design custom practice
 - **Community sharing**: Import scenarios shared by other users
-- **Default content**: ChatterBox includes built-in scenarios to start with
+- **Default content**: Talk Buddy includes built-in scenarios to start with
 
 ### Q: Can I edit the default scenarios?
 **A:** You can't edit the built-in default scenarios directly, but you can:
@@ -80,11 +80,11 @@ Get quick answers to common ChatterBox questions.
 
 ## Technical Issues
 
-### Q: ChatterBox won't install on my computer. What should I do?
+### Q: Talk Buddy won't install on my computer. What should I do?
 **A:** Try these solutions:
 - **Windows**: Run installer as Administrator, disable antivirus temporarily
 - **macOS**: Check Security & Privacy settings, allow app from unidentified developer
-- **Linux**: Ensure AppImage is executable (`chmod +x ChatterBox.AppImage`)
+- **Linux**: Ensure AppImage is executable (`chmod +x Talk Buddy.AppImage`)
 - See [Installation Guide](../getting-started/installation.md) for detailed instructions
 
 ### Q: The app is running slowly. How can I improve performance?
@@ -92,7 +92,7 @@ Get quick answers to common ChatterBox questions.
 - **Close other applications** to free up RAM
 - **Check internet connection** for online AI services
 - **Use local services** instead of online ones if possible
-- **Restart ChatterBox** to clear any memory issues
+- **Restart Talk Buddy** to clear any memory issues
 - See [Performance Tips](../troubleshooting/performance-tips.md) for more solutions
 
 ### Q: I'm getting connection errors. How do I fix them?
@@ -103,7 +103,7 @@ Get quick answers to common ChatterBox questions.
 4. Check firewall and antivirus settings
 5. Follow the complete [Connection Issues guide](../troubleshooting/connection-issues.md)
 
-### Q: Can I use ChatterBox on a corporate/school network?
+### Q: Can I use Talk Buddy on a corporate/school network?
 **A:** Yes, but you may need to:
 - **Contact IT department** for firewall exceptions
 - **Use local services** instead of online ones
@@ -112,8 +112,8 @@ Get quick answers to common ChatterBox questions.
 
 ## Educational Use
 
-### Q: I'm a teacher. How can I use ChatterBox in my classroom?
-**A:** ChatterBox is excellent for education:
+### Q: I'm a teacher. How can I use Talk Buddy in my classroom?
+**A:** Talk Buddy is excellent for education:
 - **Create curriculum-specific scenarios** for your subject area
 - **Build progressive practice packs** for skill development
 - **Export and share content** with students easily
@@ -123,13 +123,13 @@ Get quick answers to common ChatterBox questions.
 ### Q: I'm a student. How do I import content from my teacher?
 **A:** 
 1. Save the JSON file your teacher provides
-2. Open ChatterBox and go to Practice Packs (or Scenarios)
+2. Open Talk Buddy and go to Practice Packs (or Scenarios)
 3. Click "Import" and select the file
 4. The content will appear in your app
 5. See [Student Guide](../user-guides/for-students.md) for detailed steps
 
 ### Q: Can I track my progress over time?
-**A:** Yes! ChatterBox provides several ways to monitor improvement:
+**A:** Yes! Talk Buddy provides several ways to monitor improvement:
 - **Session History**: Review all your practice conversations
 - **Transcript Analysis**: Compare early vs. recent sessions
 - **Practice Frequency**: Track how often you practice
@@ -144,30 +144,30 @@ Get quick answers to common ChatterBox questions.
 
 ## Privacy and Data
 
-### Q: What data does ChatterBox collect?
-**A:** ChatterBox prioritizes privacy:
+### Q: What data does Talk Buddy collect?
+**A:** Talk Buddy prioritizes privacy:
 - **Local storage**: All your scenarios, sessions, and settings are stored locally
 - **No tracking**: No analytics or usage data sent to external servers
 - **Service interaction only**: Data is only sent to AI/speech services during active conversations
 - **User control**: You choose which services to use (local vs. online)
 
 ### Q: Where is my data stored?
-**A:** Your ChatterBox data is stored locally on your computer:
-- **Windows**: `%APPDATA%/ChatterBox/`
-- **macOS**: `~/Library/Application Support/ChatterBox/`
-- **Linux**: `~/.config/ChatterBox/`
+**A:** Your Talk Buddy data is stored locally on your computer:
+- **Windows**: `%APPDATA%/Talk Buddy/`
+- **macOS**: `~/Library/Application Support/Talk Buddy/`
+- **Linux**: `~/.config/Talk Buddy/`
 
 ### Q: Can I backup my data?
 **A:** Yes! You can backup your content by:
 - **Exporting scenarios**: Save individual scenarios as JSON files
 - **Exporting practice packs**: Save complete practice packs
-- **File system backup**: Copy the entire ChatterBox data folder
+- **File system backup**: Copy the entire Talk Buddy data folder
 - **Import on new device**: Use exported files to restore content
 
 ## Advanced Usage
 
 ### Q: Can I use different AI models?
-**A:** Yes! ChatterBox supports various AI services:
+**A:** Yes! Talk Buddy supports various AI services:
 - **Local models**: Ollama with different language models
 - **Online services**: Various AI providers (check Settings)
 - **Custom endpoints**: Configure your own AI service URLs
@@ -177,12 +177,12 @@ Get quick answers to common ChatterBox questions.
 **A:** For maximum privacy, use local services:
 1. **Install Ollama** for AI conversations
 2. **Set up Speaches** for speech processing
-3. **Configure ChatterBox** to use localhost URLs
+3. **Configure Talk Buddy** to use localhost URLs
 4. **Test connections** to ensure everything works
 5. Follow [Service Setup guides](../services/) for detailed instructions
 
-### Q: Can I contribute to ChatterBox development?
-**A:** Absolutely! ChatterBox is open source:
+### Q: Can I contribute to Talk Buddy development?
+**A:** Absolutely! Talk Buddy is open source:
 - **Report bugs**: Use GitHub Issues for problems
 - **Suggest features**: Share ideas for improvements
 - **Contribute code**: Submit pull requests for enhancements
@@ -201,7 +201,7 @@ Get quick answers to common ChatterBox questions.
 ### Q: How do I report a bug?
 **A:** To report bugs effectively:
 1. **Check existing issues** on GitHub first
-2. **Gather information**: OS version, ChatterBox version, error messages
+2. **Gather information**: OS version, Talk Buddy version, error messages
 3. **Describe steps to reproduce** the problem
 4. **Include screenshots** if helpful
 5. **Submit via GitHub Issues** with all relevant details
@@ -219,7 +219,7 @@ Get quick answers to common ChatterBox questions.
 ### Most Common Issues and Quick Fixes
 
 **Problem**: Microphone not working
-**Quick Fix**: Check system microphone permissions for ChatterBox
+**Quick Fix**: Check system microphone permissions for Talk Buddy
 
 **Problem**: AI not responding
 **Quick Fix**: Check internet connection and AI service status (footer)
@@ -228,11 +228,11 @@ Get quick answers to common ChatterBox questions.
 **Quick Fix**: Check system volume and speaker settings
 
 **Problem**: Import not working
-**Quick Fix**: Ensure file is a .json export from ChatterBox
+**Quick Fix**: Ensure file is a .json export from Talk Buddy
 
 **Problem**: App won't start
 **Quick Fix**: Restart computer, run as administrator (Windows)
 
 ---
 
-**Still need help? Check out our comprehensive [Troubleshooting Section](../troubleshooting/) or visit the [GitHub Repository](https://github.com/michael-borck/chatter-box) for community support! 🤝**
+**Still need help? Check out our comprehensive [Troubleshooting Section](../troubleshooting/) or visit the [GitHub Repository](https://github.com/michael-borck/talk-buddy) for community support! 🤝**

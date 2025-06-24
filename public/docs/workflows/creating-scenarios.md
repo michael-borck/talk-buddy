@@ -1,6 +1,6 @@
 # Creating Scenarios
 
-Learn how to design and build custom conversation scenarios in ChatterBox. This guide covers the complete process from initial concept to testing your finished scenario.
+Learn how to design and build custom conversation scenarios in Talk Buddy. This guide covers the complete process from initial concept to testing your finished scenario.
 
 ## Before You Start
 
@@ -27,7 +27,7 @@ Ask yourself:
 
 ### Step 1: Access the Scenario Builder
 
-1. **Open ChatterBox**
+1. **Open Talk Buddy**
 2. **Click "Scenarios"** in the sidebar
 3. **Click "Create New Scenario"** or the "+" button
 4. **Choose "Create from Scratch"** (vs. importing)

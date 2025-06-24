@@ -1,6 +1,6 @@
-# ChatterBox for Students
+# Talk Buddy for Students
 
-Welcome, students! ChatterBox is your personal AI conversation coach. Whether you're practicing for interviews, improving language skills, or building confidence in communication, this guide will help you succeed.
+Welcome, students! Talk Buddy is your personal AI conversation coach. Whether you're practicing for interviews, improving language skills, or building confidence in communication, this guide will help you succeed.
 
 ## Quick Start for Students
 
@@ -13,12 +13,12 @@ Welcome, students! ChatterBox is your personal AI conversation coach. Whether yo
 ## Getting Your First Content
 
 ### From Your Teacher
-If you're using ChatterBox in a class:
+If you're using Talk Buddy in a class:
 
 #### Receiving Teacher Content
 1. **Get the file**: Your teacher will provide a `.json` file (practice pack or scenario)
 2. **Save to computer**: Download and save in an easy-to-find location
-3. **Import to ChatterBox**: Follow the [importing guide](#importing-teacher-content) below
+3. **Import to Talk Buddy**: Follow the [importing guide](#importing-teacher-content) below
 4. **Start practicing**: Your new content will appear in Practice Packs or Scenarios
 
 #### Common File Names
@@ -29,7 +29,7 @@ Teachers often use descriptive names like:
 - `Technical-Presentations.json`
 
 ### Using Default Content
-ChatterBox comes with built-in scenarios perfect for getting started:
+Talk Buddy comes with built-in scenarios perfect for getting started:
 
 #### Built-in Scenarios Include
 - **Job Interviews**: Practice professional interview skills
@@ -39,7 +39,7 @@ ChatterBox comes with built-in scenarios perfect for getting started:
 - **Presentations**: Practice explaining ideas clearly
 
 #### Getting Started
-1. **Open ChatterBox**
+1. **Open Talk Buddy**
 2. **Click "Scenarios"** in the sidebar
 3. **Browse default scenarios** - they're already available!
 4. **Try "Customer Service - Product Return"** for an easy first experience
@@ -50,7 +50,7 @@ ChatterBox comes with built-in scenarios perfect for getting started:
 
 #### For Practice Packs (Most Common)
 1. **Save the file**: Download your teacher's `.json` file
-2. **Open ChatterBox**
+2. **Open Talk Buddy**
 3. **Go to Practice Packs**: Click "Practice Packs" in the sidebar
 4. **Click "Import Pack"**: Look for import button or menu option
 5. **Select your file**: Choose the downloaded `.json` file
@@ -58,7 +58,7 @@ ChatterBox comes with built-in scenarios perfect for getting started:
 
 #### For Individual Scenarios
 1. **Save the file**: Download the scenario `.json` file
-2. **Open ChatterBox**
+2. **Open Talk Buddy**
 3. **Go to Scenarios**: Click "Scenarios" in the sidebar
 4. **Click "Import"**: Look for import option
 5. **Select your file**: Choose the downloaded file
@@ -69,12 +69,12 @@ ChatterBox comes with built-in scenarios perfect for getting started:
 #### File Won't Import
 - **Check file extension**: Must be `.json`
 - **File not corrupted**: Try downloading again
-- **Correct file type**: Ensure it's a ChatterBox export file
+- **Correct file type**: Ensure it's a Talk Buddy export file
 - **Try different browser**: If downloading from email/web
 
 #### Import Successful But No Content
 - **Check Archives**: Content might be in archived section
-- **Refresh the app**: Close and reopen ChatterBox
+- **Refresh the app**: Close and reopen Talk Buddy
 - **Different section**: Practice pack content appears in Practice Packs, not Scenarios
 
 ## Effective Practice Strategies
@@ -176,7 +176,7 @@ ChatterBox comes with built-in scenarios perfect for getting started:
 ### Integrating with Coursework
 
 #### Before Class Discussions
-- **Practice key topics**: Use ChatterBox to rehearse discussing course material
+- **Practice key topics**: Use Talk Buddy to rehearse discussing course material
 - **Build confidence**: Practice articulating your ideas before group discussions
 - **Vocabulary preparation**: Familiarize yourself with technical terms
 
@@ -236,13 +236,13 @@ ChatterBox comes with built-in scenarios perfect for getting started:
 - **Connection issues**: See [troubleshooting guide](../troubleshooting/connection-issues.md)
 
 ### Learning Support
-- **Ask your teacher**: If using ChatterBox in class, your instructor can provide guidance
+- **Ask your teacher**: If using Talk Buddy in class, your instructor can provide guidance
 - **Study groups**: Practice with classmates using the same scenarios
 - **Online resources**: Check the full [documentation](../README.md) for detailed guides
 
 ### Academic Integration
 - **Course alignment**: Make sure your practice supports your course objectives
-- **Assessment preparation**: Use ChatterBox to prepare for graded speaking activities
+- **Assessment preparation**: Use Talk Buddy to prepare for graded speaking activities
 - **Skill development**: Focus on communication skills valued in your field
 
 ---
@@ -250,7 +250,7 @@ ChatterBox comes with built-in scenarios perfect for getting started:
 ## Quick Reference for Students
 
 ### Getting Started Fast
-1. **[Installation](../getting-started/installation.md)** - Get ChatterBox running
+1. **[Installation](../getting-started/installation.md)** - Get Talk Buddy running
 2. **[First Setup](../getting-started/first-setup.md)** - Configure for best experience
 3. **[Your First Scenario](../workflows/your-first-scenario.md)** - Try your first practice session
 
@@ -261,11 +261,11 @@ ChatterBox comes with built-in scenarios perfect for getting started:
 
 ### Study Integration
 - **[Self-Learner Guide](for-self-learners.md)** - Independent study strategies
-- **[Interface Guide](../interface-guide/home-dashboard.md)** - Master the ChatterBox interface
+- **[Interface Guide](../interface-guide/home-dashboard.md)** - Master the Talk Buddy interface
 
 ---
 
-**ChatterBox is your 24/7 conversation coach. Practice regularly, embrace mistakes as learning opportunities, and watch your communication confidence grow! 🌟**
+**Talk Buddy is your 24/7 conversation coach. Practice regularly, embrace mistakes as learning opportunities, and watch your communication confidence grow! 🌟**
 
 **Next Steps**: 
 - Try **[Your First Scenario](../workflows/your-first-scenario.md)**

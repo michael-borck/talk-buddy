@@ -1,13 +1,13 @@
 # Glossary
 
-Comprehensive reference of terms, concepts, and technical language used in ChatterBox and conversation practice.
+Comprehensive reference of terms, concepts, and technical language used in Talk Buddy and conversation practice.
 
 ## Core Concepts
 
 ### **AI (Artificial Intelligence)**
-Computer systems that simulate human-like conversation and responses. In ChatterBox, AI powers the conversation partners that respond to your practice.
+Computer systems that simulate human-like conversation and responses. In Talk Buddy, AI powers the conversation partners that respond to your practice.
 
-### **ChatterBox**
+### **Talk Buddy**
 The conversation practice application that combines AI, speech recognition, and voice synthesis to create realistic practice scenarios.
 
 ### **Conversation Practice**
@@ -25,7 +25,7 @@ A single practice conversation within a scenario, from start to completion.
 ## Speech and Audio Technology
 
 ### **STT (Speech-to-Text)**
-Technology that converts spoken words into written text. Enables ChatterBox to understand what you say during practice.
+Technology that converts spoken words into written text. Enables Talk Buddy to understand what you say during practice.
 
 ### **TTS (Text-to-Speech)**
 Technology that converts written text into spoken audio. Allows AI responses to be heard as voice output.
@@ -91,10 +91,10 @@ Software components that run on your own computer, providing AI, STT, or TTS fun
 Cloud-based services that provide AI, STT, or TTS functionality via internet connection.
 
 ### **API (Application Programming Interface)**
-Technical interface that allows ChatterBox to communicate with external AI and speech services.
+Technical interface that allows Talk Buddy to communicate with external AI and speech services.
 
 ### **Endpoint**
-Specific network address where ChatterBox connects to access AI or speech services.
+Specific network address where Talk Buddy connects to access AI or speech services.
 
 ### **Service Status**
 Real-time indication of whether AI, STT, and TTS services are connected and functioning properly.
@@ -108,22 +108,22 @@ Local speech service that provides both speech recognition (STT) and voice synth
 ## File Formats and Data
 
 ### **JSON (JavaScript Object Notation)**
-Text-based file format used for exporting and importing scenarios and practice packs in ChatterBox.
+Text-based file format used for exporting and importing scenarios and practice packs in Talk Buddy.
 
 ### **Export**
 Process of saving scenarios or practice packs to files that can be shared with others or backed up.
 
 ### **Import**
-Process of loading scenarios or practice packs from files created by ChatterBox exports.
+Process of loading scenarios or practice packs from files created by Talk Buddy exports.
 
 ### **Database**
-Local storage system where ChatterBox keeps all scenarios, practice packs, and user data.
+Local storage system where Talk Buddy keeps all scenarios, practice packs, and user data.
 
 ### **Metadata**
 Descriptive information about scenarios including title, description, difficulty, duration, and creation details.
 
 ### **Format Version**
-Version identifier in export files that ensures compatibility between different ChatterBox versions.
+Version identifier in export files that ensures compatibility between different Talk Buddy versions.
 
 ## Educational Terms
 
@@ -183,24 +183,24 @@ Use of graphics processing units to speed up AI model processing and response ge
 Authentication credential required to access online AI or speech services.
 
 ### **Firewall**
-Network security system that may need configuration to allow ChatterBox to access online services.
+Network security system that may need configuration to allow Talk Buddy to access online services.
 
 ### **Port**
 Network communication endpoint used by services (e.g., port 8000 for Speaches, port 11434 for Ollama).
 
 ### **Configuration File**
-Text file containing settings and preferences for ChatterBox or related services.
+Text file containing settings and preferences for Talk Buddy or related services.
 
 ## User Interface
 
 ### **Sidebar Navigation**
-Left-side menu in ChatterBox providing access to different pages and functions.
+Left-side menu in Talk Buddy providing access to different pages and functions.
 
 ### **Status Footer**
-Bottom area of ChatterBox showing connection status for AI, STT, and TTS services.
+Bottom area of Talk Buddy showing connection status for AI, STT, and TTS services.
 
 ### **Settings Page**
-Configuration interface for adjusting ChatterBox preferences and service connections.
+Configuration interface for adjusting Talk Buddy preferences and service connections.
 
 ### **Scenario Editor**
 Interface for creating and modifying conversation practice scenarios.
@@ -220,7 +220,7 @@ Measure of how relevant, appropriate, and helpful AI responses are within conver
 Smoothness and naturalness of dialogue progression during practice sessions.
 
 ### **System Performance**
-Overall speed and responsiveness of ChatterBox and its connected services.
+Overall speed and responsiveness of Talk Buddy and its connected services.
 
 ### **Audio Quality**
 Clarity and naturalness of voice synthesis and speech recognition accuracy.
@@ -307,7 +307,7 @@ Assessment activities that mirror real-world communication challenges and contex
 - **UX**: User Experience
 
 ### **File Extensions**
-- **.json**: ChatterBox export/import files
+- **.json**: Talk Buddy export/import files
 - **.yaml/.yml**: Configuration files
 - **.wav/.mp3**: Audio files
 - **.md**: Documentation files (Markdown)
@@ -324,9 +324,9 @@ Assessment activities that mirror real-world communication challenges and contex
 
 ---
 
-**This glossary provides definitions for terms used throughout ChatterBox documentation and conversation practice. Bookmark this page for quick reference while learning and using the system! 📚**
+**This glossary provides definitions for terms used throughout Talk Buddy documentation and conversation practice. Bookmark this page for quick reference while learning and using the system! 📚**
 
 **Related Resources**:
 - **[FAQ](faq.md)** - Frequently asked questions and answers
-- **[Getting Started](../getting-started/installation.md)** - Begin using ChatterBox
+- **[Getting Started](../getting-started/installation.md)** - Begin using Talk Buddy
 - **[User Guides](../user-guides/)** - Role-specific guidance

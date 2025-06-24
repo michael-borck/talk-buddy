@@ -1,8 +1,8 @@
-# ChatterBox V2 - Specification
+# Talk Buddy V2 - Specification
 
 ## Overview
 
-ChatterBox is an AI-powered conversation practice application with an audio-first, visual interface. Users engage in structured interview scenarios through voice interaction, with transcripts saved for later review.
+Talk Buddy is an AI-powered conversation practice application with an audio-first, visual interface. Users engage in structured interview scenarios through voice interaction, with transcripts saved for later review.
 
 ## Core Architecture
 

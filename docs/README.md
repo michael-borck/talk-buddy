@@ -1,18 +1,18 @@
-# ChatterBox Documentation
+# Talk Buddy Documentation
 
-Welcome to the comprehensive ChatterBox documentation! This guide will help you master AI-powered conversation practice.
+Welcome to the comprehensive Talk Buddy documentation! This guide will help you master AI-powered conversation practice.
 
 ## 🚀 Quick Start
 
-New to ChatterBox? Start here:
+New to Talk Buddy? Start here:
 
-- **[Installation Guide](getting-started/installation.md)** - Download and install ChatterBox
+- **[Installation Guide](getting-started/installation.md)** - Download and install Talk Buddy
 - **[First Setup](getting-started/first-setup.md)** - Configure services and preferences  
 - **[Your First Scenario](workflows/your-first-scenario.md)** - Complete your first practice session
 
 ## 👥 User Guides
 
-Choose your path based on how you'll use ChatterBox:
+Choose your path based on how you'll use Talk Buddy:
 
 - **[For Students](user-guides/for-students.md)** - Import packages, track progress, self-paced learning
 - **[For Teachers](user-guides/for-teachers.md)** - Create curriculum, share packages, guide students
@@ -20,7 +20,7 @@ Choose your path based on how you'll use ChatterBox:
 
 ## 🖥️ Interface Guide
 
-Master every part of the ChatterBox interface:
+Master every part of the Talk Buddy interface:
 
 - **[Home Dashboard](interface-guide/home-dashboard.md)** - Your central hub and quick actions
 - **[Conversation Interface](interface-guide/conversation-interface.md)** - Voice wave animation and conversation controls
@@ -33,7 +33,7 @@ Master every part of the ChatterBox interface:
 
 ## ⚡ Essential Workflows
 
-Master the core ChatterBox workflows:
+Master the core Talk Buddy workflows:
 
 - **[Creating Scenarios](workflows/creating-scenarios.md)** - Design effective practice scenarios
 - **[Building Skill Packages](workflows/building-skill-packages.md)** - Organize scenarios into structured learning paths
@@ -61,7 +61,7 @@ Configure external services for full functionality:
 
 ## 🎯 Advanced Features
 
-Unlock ChatterBox's full potential:
+Unlock Talk Buddy's full potential:
 
 - **[Session Analytics](advanced/session-analytics.md)** - Deep dive into conversation analysis
 - **[Voice Customization](advanced/voice-customization.md)** - Fine-tune speech settings
@@ -74,7 +74,7 @@ Solve common issues quickly:
 
 - **[Connection Issues](troubleshooting/connection-issues.md)** - Fix service connectivity problems
 - **[Common Errors](troubleshooting/common-errors.md)** - Solutions to frequent problems
-- **[Performance Tips](troubleshooting/performance-tips.md)** - Optimize ChatterBox performance
+- **[Performance Tips](troubleshooting/performance-tips.md)** - Optimize Talk Buddy performance
 
 ## 📚 Reference
 
@@ -88,9 +88,9 @@ Quick reference materials:
 
 For developers and advanced users:
 
-- **[Architecture Overview](technical/architecture.md)** - How ChatterBox is built
+- **[Architecture Overview](technical/architecture.md)** - How Talk Buddy is built
 - **[Database Schema](technical/database-schema.md)** - Data structure reference
-- **[Contributing](technical/contributing.md)** - Help improve ChatterBox
+- **[Contributing](technical/contributing.md)** - Help improve Talk Buddy
 
 ---
 
@@ -98,7 +98,7 @@ For developers and advanced users:
 
 - Check the **[FAQ](reference/faq.md)** for common questions
 - Search this documentation using your browser's find function (Ctrl/Cmd + F)
-- Visit the [ChatterBox GitHub repository](https://github.com/michael-borck/chatter-box) for technical support
+- Visit the [Talk Buddy GitHub repository](https://github.com/michael-borck/talk-buddy) for technical support
 
 ---
 

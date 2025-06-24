@@ -1,6 +1,6 @@
 # macOS Code Signing Setup
 
-This guide explains how to set up code signing certificates for building and distributing ChatterBox on macOS.
+This guide explains how to set up code signing certificates for building and distributing Talk Buddy on macOS.
 
 ## Prerequisites
 

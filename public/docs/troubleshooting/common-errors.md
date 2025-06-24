@@ -1,17 +1,17 @@
 # Common Errors
 
-Quick solutions to the most frequently encountered ChatterBox errors and issues.
+Quick solutions to the most frequently encountered Talk Buddy errors and issues.
 
 ## Installation and Startup Errors
 
-### "ChatterBox failed to start" or "Application Error"
+### "Talk Buddy failed to start" or "Application Error"
 
 #### Windows
 **Symptoms**: App won't launch, error dialog on startup
 **Common Causes**: Insufficient permissions, corrupted installation, missing dependencies
 
 **Solutions**:
-1. **Run as Administrator**: Right-click ChatterBox and select "Run as administrator"
+1. **Run as Administrator**: Right-click Talk Buddy and select "Run as administrator"
 2. **Reinstall application**: Uninstall and download fresh installer
 3. **Check Windows version**: Ensure Windows 10 or later
 4. **Install Visual C++ Redistributables**: Download from Microsoft website
@@ -19,29 +19,29 @@ Quick solutions to the most frequently encountered ChatterBox errors and issues.
 
 **Registry Issues (Advanced)**:
 ```cmd
-# Clear ChatterBox registry entries (run as admin)
-reg delete "HKCU\Software\ChatterBox" /f
-reg delete "HKLM\Software\ChatterBox" /f
+# Clear Talk Buddy registry entries (run as admin)
+reg delete "HKCU\Software\Talk Buddy" /f
+reg delete "HKLM\Software\Talk Buddy" /f
 ```
 
 #### macOS
-**Symptoms**: "ChatterBox can't be opened" or "Damaged application" error
+**Symptoms**: "Talk Buddy can't be opened" or "Damaged application" error
 **Common Causes**: Security restrictions, incomplete download, permission issues
 
 **Solutions**:
 1. **Security bypass**: Right-click app → Open → Open anyway
-2. **System Preferences**: Security & Privacy → Allow ChatterBox
-3. **Clear quarantine**: `xattr -cr /Applications/ChatterBox.app`
+2. **System Preferences**: Security & Privacy → Allow Talk Buddy
+3. **Clear quarantine**: `xattr -cr /Applications/Talk Buddy.app`
 4. **Re-download**: Delete app and download fresh copy
 5. **Check macOS version**: Ensure macOS 10.14 or later
 
 **Terminal Commands**:
 ```bash
 # Remove quarantine attribute
-sudo xattr -rd com.apple.quarantine /Applications/ChatterBox.app
+sudo xattr -rd com.apple.quarantine /Applications/Talk Buddy.app
 
 # Fix permissions
-sudo chmod -R 755 /Applications/ChatterBox.app
+sudo chmod -R 755 /Applications/Talk Buddy.app
 ```
 
 #### Linux
@@ -49,7 +49,7 @@ sudo chmod -R 755 /Applications/ChatterBox.app
 **Common Causes**: File permissions, missing dependencies
 
 **Solutions**:
-1. **Make executable**: `chmod +x ChatterBox*.AppImage`
+1. **Make executable**: `chmod +x Talk Buddy*.AppImage`
 2. **Install dependencies**: 
    ```bash
    # Ubuntu/Debian
@@ -63,31 +63,31 @@ sudo chmod -R 755 /Applications/ChatterBox.app
 
 ### "Database initialization failed"
 
-**Symptoms**: ChatterBox starts but shows database errors, scenarios won't load
+**Symptoms**: Talk Buddy starts but shows database errors, scenarios won't load
 **Common Causes**: Corrupted database, permission issues, insufficient disk space
 
 **Solutions**:
 1. **Clear data directory**: 
-   - **Windows**: `%APPDATA%/ChatterBox/`
-   - **macOS**: `~/Library/Application Support/ChatterBox/`
-   - **Linux**: `~/.config/ChatterBox/`
+   - **Windows**: `%APPDATA%/Talk Buddy/`
+   - **macOS**: `~/Library/Application Support/Talk Buddy/`
+   - **Linux**: `~/.config/Talk Buddy/`
 2. **Check disk space**: Ensure at least 500MB free
 3. **Run with elevated permissions**: Administrator/sudo access
 4. **Backup and reset**: Export scenarios before clearing data
 
 **Manual Database Reset**:
 ```bash
-# Navigate to ChatterBox data directory
-cd ~/.config/ChatterBox  # Linux
-cd ~/Library/Application\ Support/ChatterBox  # macOS
+# Navigate to Talk Buddy data directory
+cd ~/.config/Talk Buddy  # Linux
+cd ~/Library/Application\ Support/Talk Buddy  # macOS
 
 # Backup existing data
-cp chatterbox.db chatterbox.db.backup
+cp talkbuddy.db talkbuddy.db.backup
 
 # Remove corrupted database
-rm chatterbox.db
+rm talkbuddy.db
 
-# Restart ChatterBox to recreate database
+# Restart Talk Buddy to recreate database
 ```
 
 ## Service Connection Errors
@@ -100,8 +100,8 @@ rm chatterbox.db
 **Solutions by Priority**:
 
 1. **Check Microphone Permissions**:
-   - **Windows**: Settings → Privacy → Microphone → Allow ChatterBox
-   - **macOS**: System Preferences → Security & Privacy → Microphone → ✓ ChatterBox
+   - **Windows**: Settings → Privacy → Microphone → Allow Talk Buddy
+   - **macOS**: System Preferences → Security & Privacy → Microphone → ✓ Talk Buddy
    - **Linux**: Check PulseAudio/ALSA permissions
 
 2. **Test Hardware**:
@@ -110,14 +110,14 @@ rm chatterbox.db
    - Try different microphone if available
 
 3. **Verify Service Configuration**:
-   - Go to ChatterBox Settings
+   - Go to Talk Buddy Settings
    - Check STT service URL is correct
    - Click "Test STT" to verify connection
    - Try switching between local and online services
 
 4. **Network/Firewall Issues**:
    - Check internet connection for online services
-   - Verify firewall allows ChatterBox network access
+   - Verify firewall allows Talk Buddy network access
    - Try disabling VPN temporarily
 
 ### "AI Service Connection Failed" or "Chat Service Unavailable"
@@ -142,7 +142,7 @@ rm chatterbox.db
 2. **Online AI Service Issues**:
    - Check API key is valid and not expired
    - Verify service URL is correct
-   - Test API access outside ChatterBox
+   - Test API access outside Talk Buddy
    - Check account usage limits/billing
 
 3. **Configuration Problems**:
@@ -182,7 +182,7 @@ rm chatterbox.db
 **Solutions**:
 1. **File Format Verification**:
    - Ensure file extension is `.json`
-   - Verify file is ChatterBox export (not other app's JSON)
+   - Verify file is Talk Buddy export (not other app's JSON)
    - Check file size isn't 0 bytes (corruption indicator)
 
 2. **Re-download File**:
@@ -200,7 +200,7 @@ rm chatterbox.db
    ```
 
 4. **Version Compatibility**:
-   - Ensure ChatterBox version supports file format
+   - Ensure Talk Buddy version supports file format
    - Check file's `formatVersion` field
    - Try importing individual scenarios if pack fails
 
@@ -212,7 +212,7 @@ rm chatterbox.db
 **Solutions**:
 1. **Permission Issues**:
    - Try saving to different location (Desktop, Documents)
-   - Run ChatterBox with elevated permissions
+   - Run Talk Buddy with elevated permissions
    - Check folder write permissions
 
 2. **Disk Space**:
@@ -227,7 +227,7 @@ rm chatterbox.db
 
 ## Performance Issues
 
-### "ChatterBox is Running Slowly" or "Application Freezing"
+### "Talk Buddy is Running Slowly" or "Application Freezing"
 
 **Symptoms**: Slow response times, UI lag, temporary freezing
 **Common Causes**: Insufficient resources, too many applications running
@@ -236,7 +236,7 @@ rm chatterbox.db
 1. **Resource Management**:
    - Close other applications to free RAM
    - Check system resources (Task Manager/Activity Monitor)
-   - Restart ChatterBox periodically during long sessions
+   - Restart Talk Buddy periodically during long sessions
 
 2. **AI Model Optimization**:
    - Use smaller AI models (7B instead of 13B+)
@@ -282,7 +282,7 @@ rm chatterbox.db
    - Test audio with other applications
    - Check correct audio output device selected
 
-2. **ChatterBox Audio Settings**:
+2. **Talk Buddy Audio Settings**:
    - Test TTS in Settings page
    - Try different voice options
    - Check voice speed/volume settings
@@ -364,7 +364,7 @@ rm chatterbox.db
 ### Common Error Codes
 
 **E001 - Database Connection Failed**: Database file corrupted or inaccessible
-- **Solution**: Clear data directory and restart ChatterBox
+- **Solution**: Clear data directory and restart Talk Buddy
 
 **E002 - Service Timeout**: AI or speech service not responding
 - **Solution**: Check service connectivity and restart services
@@ -382,7 +382,7 @@ rm chatterbox.db
 
 ### System Information
 ```bash
-# Check ChatterBox version
+# Check Talk Buddy version
 # Available in About page within app
 
 # Check system resources
@@ -407,9 +407,9 @@ netstat -an | grep :11434
 ```
 
 ### Log Locations
-- **Windows**: `%APPDATA%/ChatterBox/logs/`
-- **macOS**: `~/Library/Application Support/ChatterBox/logs/`
-- **Linux**: `~/.config/ChatterBox/logs/`
+- **Windows**: `%APPDATA%/Talk Buddy/logs/`
+- **macOS**: `~/Library/Application Support/Talk Buddy/logs/`
+- **Linux**: `~/.config/Talk Buddy/logs/`
 
 ---
 
@@ -423,7 +423,7 @@ netstat -an | grep :11434
 
 ### Information to Gather
 When seeking help, collect:
-- **ChatterBox version** (from About page)
+- **Talk Buddy version** (from About page)
 - **Operating system** and version
 - **Error messages** (exact text or screenshots)
 - **Steps to reproduce** the problem
@@ -433,14 +433,14 @@ When seeking help, collect:
 ### Support Resources
 1. **Documentation search**: Use browser find (Ctrl/Cmd+F) in these guides
 2. **FAQ section**: Check [Frequently Asked Questions](../reference/faq.md)
-3. **GitHub Issues**: Search existing issues at [GitHub repository](https://github.com/michael-borck/chatter-box/issues)
+3. **GitHub Issues**: Search existing issues at [GitHub repository](https://github.com/michael-borck/talk-buddy/issues)
 4. **Create new issue**: If problem not found, create detailed bug report
 
 ---
 
-**Most ChatterBox errors have straightforward solutions. Work through the relevant section systematically, and don't hesitate to restart the application or services when in doubt! 🔧**
+**Most Talk Buddy errors have straightforward solutions. Work through the relevant section systematically, and don't hesitate to restart the application or services when in doubt! 🔧**
 
 **Related Guides**: 
 - **[Connection Issues](connection-issues.md)** - Detailed networking troubleshooting
-- **[Performance Tips](performance-tips.md)** - Optimize ChatterBox performance
+- **[Performance Tips](performance-tips.md)** - Optimize Talk Buddy performance
 - **[FAQ](../reference/faq.md)** - Frequently asked questions and answers
