@@ -287,7 +287,7 @@ export function DocumentationPage(): JSX.Element {
             <ExternalLink size={14} />
           </button>
           <button
-            onClick={() => openExternal('https://michael-borck.github.io/talk-buddy'))
+            onClick={() => openExternal('https://michael-borck.github.io/talk-buddy')}
             className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Online Docs
