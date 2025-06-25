@@ -3,8 +3,8 @@ const path = require('path');
 const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'production' && require('electron-is-dev'));
 const Database = require('better-sqlite3');
 
-// Disable sandbox on Linux if needed - must be done before app ready
-if (process.platform === 'linux') {
+// Disable sandbox on Linux only in development or when explicitly requested
+if (process.platform === 'linux' && (isDev || process.argv.includes('--no-sandbox'))) {
   app.commandLine.appendSwitch('no-sandbox');
 }
 

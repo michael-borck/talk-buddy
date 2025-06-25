@@ -78,12 +78,26 @@
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
       ],
       "icon": "assets/icon.png",
       "category": "Education",
-      "maintainer": "Michael Borck <michael@talkbuddy.app>"
+      "maintainer": "Michael Borck <michael@talkbuddy.app>",
+      "executableName": "TalkBuddy",
+      "synopsis": "AI-powered conversation practice desktop app",
+      "desktop": {
+        "Name": "TalkBuddy",
+        "Comment": "AI-powered conversation practice",
+        "Categories": "Education;Languages;",
+        "Keywords": "ai;conversation;practice;language;learning;"
+      }
     }
   },
   "browserslist": {
