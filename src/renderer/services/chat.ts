@@ -323,22 +323,116 @@ async function generateOllamaResponse(
   }
 
   try {
-    const response = await fetch(`${baseUrl}/api/generate`, {
+    // Try multiple endpoint variations since different Ollama versions use different paths
+    const chatRequest = {
+      model: model,
+      messages: [
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        ...messages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }))
+      ],
+      stream: false
+    };
+
+    // Try 1: Standard Ollama /api/chat endpoint (newer versions)
+    console.log('Trying /api/chat endpoint...');
+    let response = await fetch(`${baseUrl}/api/chat`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(chatRequest),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        response: data.message.content.trim(),
+        context: undefined
+      };
+    }
+    console.log(`/api/chat failed with status: ${response.status}`);
+
+    // Try 2: Standard Ollama /api/generate endpoint (older versions)
+    console.log('Trying /api/generate endpoint...');
+    response = await fetch(`${baseUrl}/api/generate`, {
       method: 'POST',
       headers,
       body: JSON.stringify(request),
     });
 
-    if (!response.ok) {
-      throw new Error(`Ollama request failed: ${response.statusText}`);
+    if (response.ok) {
+      const data: OllamaGenerateResponse = await response.json();
+      return {
+        response: data.response.trim(),
+        context: data.context
+      };
+    }
+    console.log(`/api/generate failed with status: ${response.status}`);
+
+    // Try 3: Check if it's an OpenAI-compatible endpoint
+    console.log('Trying OpenAI-compatible /v1/chat/completions endpoint...');
+    response = await fetch(`${baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: model,
+        messages: chatRequest.messages,
+        stream: false
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        response: data.choices[0].message.content.trim(),
+        context: undefined
+      };
+    }
+    console.log(`/v1/chat/completions failed with status: ${response.status}`);
+
+    // Try 4: Check available models using correct Ollama endpoint /api/tags
+    console.log('Checking available models via /api/tags...');
+    try {
+      const tagsResponse = await fetch(`${baseUrl}/api/tags`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (tagsResponse.ok) {
+        const tagsData = await tagsResponse.json();
+        console.log('Available models from /api/tags:', tagsData);
+        
+        if (tagsData.models && tagsData.models.length === 0) {
+          throw new Error(`No models are available on the server. Please install a model first (e.g., 'ollama pull llama3.2')`);
+        }
+        
+        // Check if model exists (exact match or starts with the model name)
+        const modelExists = tagsData.models?.some((m: any) => 
+          m.name === model || 
+          m.name === `${model}:latest` ||
+          m.name.startsWith(`${model}:`) ||
+          m.model === model ||
+          m.model === `${model}:latest` ||
+          m.model.startsWith(`${model}:`)
+        );
+        
+        if (!modelExists) {
+          const availableModels = tagsData.models?.map((m: any) => m.name || m.model).join(', ') || 'none';
+          throw new Error(`Model '${model}' not found. Available models: ${availableModels}. Please update your model name in Settings → Chat Model.`);
+        }
+        
+        console.log(`Model '${model}' found on server, proceeding with request...`);
+      } else {
+        console.log(`Could not fetch models (status: ${tagsResponse.status}), proceeding anyway...`);
+      }
+    } catch (modelError) {
+      console.log('Model check failed:', modelError);
+      throw modelError;
     }
 
-    const data: OllamaGenerateResponse = await response.json();
+    throw new Error(`All endpoints failed. Last status: ${response.status} ${response.statusText}`);
     
-    return {
-      response: data.response.trim(),
-      context: data.context
-    };
   } catch (error) {
     console.error('Ollama error:', error);
     throw new Error('Failed to generate response. Make sure Ollama is running and the model is available.');

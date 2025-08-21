@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getAllPreferences, setPreference, resetDatabase } from '../services/sqlite';
-import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server } from 'lucide-react';
+import * as embeddedService from '../services/embedded';
+import * as speechProvider from '../services/speechProvider';
 
 // Component for API Key input with environment variable support
 function ApiKeyInput({ 
@@ -272,6 +274,13 @@ export function SettingsPage() {
     speachesUrl: 'https://speaches.serveur.au',
     sttUrl: 'https://speaches.serveur.au',
     ttsUrl: 'https://speaches.serveur.au',
+    sttProvider: 'embedded' as 'embedded' | 'speaches',
+    ttsProvider: 'embedded' as 'embedded' | 'speaches',
+    embeddedSttUrl: 'http://127.0.0.1:8765',
+    embeddedTtsUrl: 'http://127.0.0.1:8765',
+    embeddedMaleVoiceId: '',
+    embeddedFemaleVoiceId: '',
+    embeddedSpeechSpeed: '1.2',
     sttApiKey: '',
     ttsApiKey: '',
     ollamaUrl: 'https://ollama.serveur.au',
@@ -319,10 +328,49 @@ export function SettingsPage() {
     tts: '',
     chat: ''
   });
+  const [embeddedServerStatus, setEmbeddedServerStatus] = useState({
+    running: false,
+    url: 'http://127.0.0.1:8765',
+    port: 8765
+  });
+  const [embeddedVoices, setEmbeddedVoices] = useState({
+    male: [] as Array<{id: number, name: string, gender: string}>,
+    female: [] as Array<{id: number, name: string, gender: string}>,
+    unknown: [] as Array<{id: number, name: string, gender: string}>,
+    all: [] as Array<{id: number, name: string, gender: string}>
+  });
+  const [loadingVoices, setLoadingVoices] = useState(false);
 
   useEffect(() => {
     loadPreferences();
+    checkEmbeddedServerStatus();
   }, []);
+
+  const checkEmbeddedServerStatus = async () => {
+    try {
+      const status = await window.electronAPI.embeddedServerStatus();
+      setEmbeddedServerStatus(status);
+      
+      // Load voices if server is running
+      if (status.running) {
+        loadEmbeddedVoices();
+      }
+    } catch (error) {
+      console.error('Failed to get embedded server status:', error);
+    }
+  };
+
+  const loadEmbeddedVoices = async () => {
+    setLoadingVoices(true);
+    try {
+      const voices = await embeddedService.getCategorizedVoices();
+      setEmbeddedVoices(voices);
+    } catch (error) {
+      console.error('Failed to load embedded voices:', error);
+    } finally {
+      setLoadingVoices(false);
+    }
+  };
 
   const loadPreferences = async () => {
     try {
@@ -331,6 +379,13 @@ export function SettingsPage() {
         speachesUrl: prefs.speachesUrl || 'https://speaches.serveur.au',
         sttUrl: prefs.sttUrl || prefs.speachesUrl || 'https://speaches.serveur.au',
         ttsUrl: prefs.ttsUrl || prefs.speachesUrl || 'https://speaches.serveur.au',
+        sttProvider: (prefs.sttProvider || 'embedded') as 'embedded' | 'speaches',
+        ttsProvider: (prefs.ttsProvider || 'embedded') as 'embedded' | 'speaches',
+        embeddedSttUrl: (prefs.embeddedSttUrl || 'http://127.0.0.1:8765').replace(':8766', ':8765'),
+        embeddedTtsUrl: (prefs.embeddedTtsUrl || 'http://127.0.0.1:8765').replace(':8766', ':8765'),
+        embeddedMaleVoiceId: prefs.embeddedMaleVoiceId || '',
+        embeddedFemaleVoiceId: prefs.embeddedFemaleVoiceId || '',
+        embeddedSpeechSpeed: prefs.embeddedSpeechSpeed || '1.2',
         sttApiKey: prefs.sttApiKey || '',
         ttsApiKey: prefs.ttsApiKey || '',
         ollamaUrl: prefs.ollamaUrl || 'https://ollama.serveur.au',
@@ -362,6 +417,13 @@ export function SettingsPage() {
       await setPreference('speachesUrl', preferences.speachesUrl);
       await setPreference('sttUrl', preferences.sttUrl);
       await setPreference('ttsUrl', preferences.ttsUrl);
+      await setPreference('sttProvider', preferences.sttProvider);
+      await setPreference('ttsProvider', preferences.ttsProvider);
+      await setPreference('embeddedSttUrl', preferences.embeddedSttUrl);
+      await setPreference('embeddedTtsUrl', preferences.embeddedTtsUrl);
+      await setPreference('embeddedMaleVoiceId', preferences.embeddedMaleVoiceId);
+      await setPreference('embeddedFemaleVoiceId', preferences.embeddedFemaleVoiceId);
+      await setPreference('embeddedSpeechSpeed', preferences.embeddedSpeechSpeed);
       await setPreference('sttApiKey', preferences.sttApiKey);
       await setPreference('ttsApiKey', preferences.ttsApiKey);
       await setPreference('ollamaUrl', preferences.ollamaUrl);
@@ -450,6 +512,31 @@ export function SettingsPage() {
     setTestResults(prev => ({ ...prev, [serviceType]: '' }));
 
     try {
+      // Use speech provider abstraction for STT/TTS testing
+      if (serviceType === 'stt') {
+        const connected = await speechProvider.checkSTTConnection();
+        const provider = preferences.sttProvider;
+        setTestResults(prev => ({ 
+          ...prev, 
+          [serviceType]: connected 
+            ? `✅ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} STT server is running and healthy` 
+            : `❌ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} STT server is not available. Check configuration.` 
+        }));
+        return;
+      }
+      
+      if (serviceType === 'tts') {
+        const connected = await speechProvider.checkTTSConnection();
+        const provider = preferences.ttsProvider;
+        setTestResults(prev => ({ 
+          ...prev, 
+          [serviceType]: connected 
+            ? `✅ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} TTS server is running and healthy` 
+            : `❌ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} TTS server is not available. Check configuration.` 
+        }));
+        return;
+      }
+      
       let baseUrl;
       
       switch (serviceType) {
@@ -574,6 +661,20 @@ export function SettingsPage() {
     setModelErrors(prev => ({ ...prev, [serviceType]: '' }));
 
     try {
+      // Handle provider-specific model fetching
+      if (serviceType === 'stt' && preferences.sttProvider === 'embedded') {
+        const models = await embeddedService.getAvailableModels();
+        const sttModels = models.filter(model => model.id.includes('whisper'));
+        setModels(prev => ({ ...prev, stt: sttModels.map(m => m.id) }));
+        return;
+      }
+      
+      if (serviceType === 'tts' && preferences.ttsProvider === 'embedded') {
+        const voices = await speechProvider.getAvailableVoices();
+        setModels(prev => ({ ...prev, tts: voices }));
+        return;
+      }
+      
       let url, endpoint;
       
       switch (serviceType) {
@@ -688,6 +789,48 @@ export function SettingsPage() {
           <section className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Speech-to-Text (STT) Service</h2>
             <div className="space-y-4">
+              {/* Provider Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  STT Provider
+                </label>
+                <div className="flex gap-4 mb-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="embedded"
+                      checked={preferences.sttProvider === 'embedded'}
+                      onChange={(e) => setPreferences({ ...preferences, sttProvider: e.target.value as 'embedded' | 'speaches' })}
+                      className="mr-2"
+                    />
+                    <Server size={16} className="mr-1" />
+                    <span>Embedded Server (Offline)</span>
+                    <span className={`ml-2 px-2 py-1 text-xs rounded ${embeddedServerStatus.running ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {embeddedServerStatus.running ? 'Running' : 'Stopped'}
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="speaches"
+                      checked={preferences.sttProvider === 'speaches'}
+                      onChange={(e) => setPreferences({ ...preferences, sttProvider: e.target.value as 'embedded' | 'speaches' })}
+                      className="mr-2"
+                    />
+                    <ExternalLink size={16} className="mr-1" />
+                    <span>External Server (Speaches)</span>
+                  </label>
+                </div>
+                <p className="text-sm text-gray-600">
+                  {preferences.sttProvider === 'embedded' 
+                    ? 'Uses local Whisper model for offline speech-to-text processing'
+                    : 'Uses external Speaches server for speech-to-text processing'
+                  }
+                </p>
+              </div>
+
+              {/* URL Configuration - show based on provider */}
+              {preferences.sttProvider === 'speaches' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   STT Server URL
@@ -717,7 +860,9 @@ export function SettingsPage() {
                   </p>
                 )}
               </div>
+              )}
 
+              {preferences.sttProvider === 'speaches' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   STT API Key (Optional)
@@ -735,7 +880,43 @@ export function SettingsPage() {
                     : 'API key for authentication (leave empty for local/free services)'}
                 </p>
               </div>
+              )}
 
+              {/* Embedded Server Configuration */}
+              {preferences.sttProvider === 'embedded' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Embedded STT Server
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={preferences.embeddedSttUrl}
+                      onChange={(e) => setPreferences({ ...preferences, embeddedSttUrl: e.target.value })}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="http://127.0.0.1:8765"
+                      readOnly
+                    />
+                    <button
+                      onClick={() => testService('stt')}
+                      disabled={testing.stt}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {testing.stt ? 'Testing...' : 'Test'}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Local embedded server using Whisper tiny model
+                  </p>
+                  {testResults.stt && (
+                    <p className={`mt-2 text-sm ${testResults.stt.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
+                      {testResults.stt}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {preferences.sttProvider === 'speaches' && (
               <ModelSelector
                 value={preferences.sttModel}
                 onChange={(value) => setPreferences({ ...preferences, sttModel: value })}
@@ -747,6 +928,7 @@ export function SettingsPage() {
                 label="STT Model"
                 description="Speech-to-text model for transcription (whisper models only)"
               />
+              )}
             </div>
           </section>
         )}
@@ -756,6 +938,151 @@ export function SettingsPage() {
           <section className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Text-to-Speech (TTS) & Voice Settings</h2>
             <div className="space-y-4">
+              {/* Provider Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  TTS Provider
+                </label>
+                <div className="flex gap-4 mb-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="embedded"
+                      checked={preferences.ttsProvider === 'embedded'}
+                      onChange={(e) => setPreferences({ ...preferences, ttsProvider: e.target.value as 'embedded' | 'speaches' })}
+                      className="mr-2"
+                    />
+                    <Server size={16} className="mr-1" />
+                    <span>Embedded Server (Offline)</span>
+                    <span className={`ml-2 px-2 py-1 text-xs rounded ${embeddedServerStatus.running ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {embeddedServerStatus.running ? 'Running' : 'Stopped'}
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="speaches"
+                      checked={preferences.ttsProvider === 'speaches'}
+                      onChange={(e) => setPreferences({ ...preferences, ttsProvider: e.target.value as 'embedded' | 'speaches' })}
+                      className="mr-2"
+                    />
+                    <ExternalLink size={16} className="mr-1" />
+                    <span>External Server (Speaches)</span>
+                  </label>
+                </div>
+                <p className="text-sm text-gray-600">
+                  {preferences.ttsProvider === 'embedded' 
+                    ? 'Uses high-quality Piper voices (Alan & Amy) for offline text-to-speech processing'
+                    : 'Uses external Speaches server for text-to-speech processing'
+                  }
+                </p>
+              </div>
+
+              {/* Embedded TTS Configuration */}
+              {preferences.ttsProvider === 'embedded' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Embedded TTS Server URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={preferences.embeddedTtsUrl}
+                    onChange={(e) => setPreferences({ ...preferences, embeddedTtsUrl: e.target.value })}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="http://127.0.0.1:8765"
+                  />
+                  <button
+                    onClick={() => testService('tts')}
+                    disabled={testing.tts || !preferences.embeddedTtsUrl}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testing.tts ? 'Testing...' : 'Test'}
+                  </button>
+                </div>
+                <p className="mt-1 text-sm text-gray-600">
+                  Local embedded server using Piper TTS with Alan (male) and Amy (female) voices
+                </p>
+                {testResults.tts && (
+                  <p className={`mt-2 text-sm ${testResults.tts.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
+                    {testResults.tts}
+                  </p>
+                )}
+              </div>
+              )}
+
+              {/* Voice Selection for Embedded Server */}
+              {preferences.ttsProvider === 'embedded' && (
+              <div className="border-t pt-4 mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Voice Selection for Embedded TTS
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Male Voice Preference
+                    </label>
+                    <select
+                      value={preferences.embeddedMaleVoiceId || 'alan'}
+                      onChange={(e) => setPreferences({ ...preferences, embeddedMaleVoiceId: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="alan">Alan (British)</option>
+                      <option value="amy">Amy (American)</option>
+                    </select>
+                    <p className="mt-1 text-sm text-gray-600">
+                      Voice used when scenario calls for male character
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Female Voice Preference
+                    </label>
+                    <select
+                      value={preferences.embeddedFemaleVoiceId || 'amy'}
+                      onChange={(e) => setPreferences({ ...preferences, embeddedFemaleVoiceId: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="amy">Amy (American)</option>
+                      <option value="alan">Alan (British)</option>
+                    </select>
+                    <p className="mt-1 text-sm text-gray-600">
+                      Voice used when scenario calls for female character
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 text-sm text-gray-500">
+                  💡 You can use Alan for all conversations or Amy for all conversations regardless of scenario gender
+                </p>
+                
+                {/* Speech Speed Control */}
+                <div className="mt-4 border-t pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Speech Speed: {preferences.embeddedSpeechSpeed}x
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-gray-500 min-w-[2rem]">1.0x</span>
+                    <input
+                      type="range"
+                      min="1.0"
+                      max="1.5"
+                      step="0.1"
+                      value={preferences.embeddedSpeechSpeed}
+                      onChange={(e) => setPreferences({ ...preferences, embeddedSpeechSpeed: e.target.value })}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                    <span className="text-sm text-gray-500 min-w-[2rem]">1.5x</span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Adjust how fast Alan and Amy speak. Higher values = faster speech.
+                  </p>
+                </div>
+              </div>
+              )}
+
+              {/* URL Configuration - show based on provider */}
+              {preferences.ttsProvider === 'speaches' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   TTS Server URL
@@ -785,7 +1112,9 @@ export function SettingsPage() {
                   </p>
                 )}
               </div>
+              )}
 
+              {preferences.ttsProvider === 'speaches' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   TTS API Key (Optional)
@@ -803,113 +1132,119 @@ export function SettingsPage() {
                     : 'API key for authentication (leave empty for local/free services)'}
                 </p>
               </div>
+              )}
 
-              <div className="border-t pt-4 mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Default Voice
-                </label>
-                <div className="flex gap-4 mb-4">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      value="male"
-                      checked={preferences.voice === 'male'}
-                      onChange={(e) => setPreferences({ ...preferences, voice: e.target.value as 'male' | 'female' })}
-                      className="mr-2"
-                    />
-                    <span>Male</span>
+              {/* External TTS Configuration - only show when external provider selected */}
+              {preferences.ttsProvider === 'speaches' && (
+              <>
+                <div className="border-t pt-4 mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Default Voice
                   </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      value="female"
-                      checked={preferences.voice === 'female'}
-                      onChange={(e) => setPreferences({ ...preferences, voice: e.target.value as 'male' | 'female' })}
-                      className="mr-2"
-                    />
-                    <span>Female</span>
-                  </label>
+                  <div className="flex gap-4 mb-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="male"
+                        checked={preferences.voice === 'male'}
+                        onChange={(e) => setPreferences({ ...preferences, voice: e.target.value as 'male' | 'female' })}
+                        className="mr-2"
+                      />
+                      <span>Male</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="female"
+                        checked={preferences.voice === 'female'}
+                        onChange={(e) => setPreferences({ ...preferences, voice: e.target.value as 'male' | 'female' })}
+                        className="mr-2"
+                      />
+                      <span>Female</span>
+                    </label>
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  TTS Speed
-                </label>
-                <input
-                  type="number"
-                  step="0.05"
-                  min="0.5"
-                  max="2.0"
-                  value={preferences.ttsSpeed}
-                  onChange={(e) => setPreferences({ ...preferences, ttsSpeed: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="1.25"
-                />
-                <p className="mt-1 text-sm text-gray-600">
-                  Speech synthesis speed (0.5 = slower, 1.0 = normal, 2.0 = faster)
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <ModelSelector
-                  value={preferences.maleTTSModel}
-                  onChange={(value) => setPreferences({ ...preferences, maleTTSModel: value })}
-                  placeholder="Select or enter male TTS model"
-                  models={models.tts}
-                  loading={loadingModels.tts}
-                  error={modelErrors.tts}
-                  onRefresh={() => fetchModels('tts')}
-                  label="Male TTS Model"
-                  description="Model for male voice synthesis (non-whisper models)"
-                />
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Male Voice ID
+                    TTS Speed
                   </label>
                   <input
-                    type="text"
-                    value={preferences.maleVoice}
-                    onChange={(e) => setPreferences({ ...preferences, maleVoice: e.target.value })}
+                    type="number"
+                    step="0.05"
+                    min="0.5"
+                    max="2.0"
+                    value={preferences.ttsSpeed}
+                    onChange={(e) => setPreferences({ ...preferences, ttsSpeed: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="alan"
+                    placeholder="1.25"
                   />
                   <p className="mt-1 text-sm text-gray-600">
-                    Voice ID for the male model
+                    Speech synthesis speed (0.5 = slower, 1.0 = normal, 2.0 = faster)
                   </p>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <ModelSelector
-                  value={preferences.femaleTTSModel}
-                  onChange={(value) => setPreferences({ ...preferences, femaleTTSModel: value })}
-                  placeholder="Select or enter female TTS model"
-                  models={models.tts}
-                  loading={loadingModels.tts}
-                  error={modelErrors.tts}
-                  onRefresh={() => fetchModels('tts')}
-                  label="Female TTS Model"
-                  description="Model for female voice synthesis (non-whisper models)"
-                />
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Female Voice ID
-                  </label>
-                  <input
-                    type="text"
-                    value={preferences.femaleVoice}
-                    onChange={(e) => setPreferences({ ...preferences, femaleVoice: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="amy"
+                <div className="grid grid-cols-2 gap-4">
+                  <ModelSelector
+                    value={preferences.maleTTSModel}
+                    onChange={(value) => setPreferences({ ...preferences, maleTTSModel: value })}
+                    placeholder="Select or enter male TTS model"
+                    models={models.tts}
+                    loading={loadingModels.tts}
+                    error={modelErrors.tts}
+                    onRefresh={() => fetchModels('tts')}
+                    label="Male TTS Model"
+                    description="Model for male voice synthesis (non-whisper models)"
                   />
-                  <p className="mt-1 text-sm text-gray-600">
-                    Voice ID for the female model
-                  </p>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Male Voice ID
+                    </label>
+                    <input
+                      type="text"
+                      value={preferences.maleVoice}
+                      onChange={(e) => setPreferences({ ...preferences, maleVoice: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="alan"
+                    />
+                    <p className="mt-1 text-sm text-gray-600">
+                      Voice ID for the male model
+                    </p>
+                  </div>
                 </div>
-              </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <ModelSelector
+                    value={preferences.femaleTTSModel}
+                    onChange={(value) => setPreferences({ ...preferences, femaleTTSModel: value })}
+                    placeholder="Select or enter female TTS model"
+                    models={models.tts}
+                    loading={loadingModels.tts}
+                    error={modelErrors.tts}
+                    onRefresh={() => fetchModels('tts')}
+                    label="Female TTS Model"
+                    description="Model for female voice synthesis (non-whisper models)"
+                  />
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Female Voice ID
+                    </label>
+                    <input
+                      type="text"
+                      value={preferences.femaleVoice}
+                      onChange={(e) => setPreferences({ ...preferences, femaleVoice: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="amy"
+                    />
+                    <p className="mt-1 text-sm text-gray-600">
+                      Voice ID for the female model
+                    </p>
+                  </div>
+                </div>
+              </>
+              )}
             </div>
           </section>
         )}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAllPreferences } from '../services/sqlite';
+import * as speechProvider from '../services/speechProvider';
 
 interface ServiceStatus {
   status: 'connected' | 'error' | 'checking' | 'unknown';
@@ -83,19 +84,23 @@ export function StatusFooter() {
 
   const checkServiceStatus = async (serviceType: 'stt' | 'tts' | 'chat'): Promise<ServiceStatus> => {
     try {
-      let baseUrl;
-      
-      switch (serviceType) {
-        case 'stt':
-          baseUrl = preferences.sttUrl;
-          break;
-        case 'tts':
-          baseUrl = preferences.ttsUrl;
-          break;
-        case 'chat':
-          baseUrl = preferences.ollamaUrl;
-          break;
+      // Use speech provider abstraction for STT/TTS
+      if (serviceType === 'stt') {
+        const connected = await speechProvider.checkSTTConnection();
+        return connected 
+          ? { status: 'connected', message: 'Online' }
+          : { status: 'error', message: 'Offline' };
       }
+      
+      if (serviceType === 'tts') {
+        const connected = await speechProvider.checkTTSConnection();
+        return connected 
+          ? { status: 'connected', message: 'Online' }
+          : { status: 'error', message: 'Offline' };
+      }
+      
+      // Original logic for chat service
+      let baseUrl = preferences.ollamaUrl;
 
       if (!baseUrl) {
         return { status: 'unknown', message: 'Not configured' };
@@ -103,11 +108,10 @@ export function StatusFooter() {
 
       const cleanUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 
-      // Quick health check endpoints
+      // Quick health check endpoints for chat
       const healthEndpoints = [
         '/health',
         '/status',
-        '/v1/models',
         '/api/tags',
         '/'
       ];

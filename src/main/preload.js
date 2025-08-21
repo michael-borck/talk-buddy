@@ -36,5 +36,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // API proxy to bypass CORS
-  fetch: ({ url, options }) => ipcRenderer.invoke('api:fetch', { url, options })
+  fetch: ({ url, options }) => ipcRenderer.invoke('api:fetch', { url, options }),
+
+  // Embedded server operations
+  embeddedServerStatus: () => ipcRenderer.invoke('embedded-server:status'),
+  embeddedServerStart: () => ipcRenderer.invoke('embedded-server:start'),
+  embeddedServerStop: () => ipcRenderer.invoke('embedded-server:stop'),
+  embeddedServerRestart: () => ipcRenderer.invoke('embedded-server:restart')
 });

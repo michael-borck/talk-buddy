@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getScenario, createSession, updateSession, getSession } from '../services/sqlite';
-import { transcribeAudio, generateSpeech } from '../services/speaches';
+import { transcribeAudio, generateSpeech } from '../services/speechProvider';
 import { generateResponse } from '../services/chat';
 import { Scenario, Session, ConversationMessage } from '../types';
 import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
 import { VoiceWaveAnimation } from '../components/VoiceWaveAnimation';
+import { ModernVoiceVisualizer } from '../components/ModernVoiceVisualizer';
+import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
+import toast from 'react-hot-toast';
 
 type ConversationState = 'not-started' | 'idle' | 'listening' | 'thinking' | 'speaking';
 
@@ -168,6 +171,8 @@ export function ConversationPage() {
       const newSession = await createSession(scenario.id);
       setSession(newSession);
       
+      toast.success('Session started! Begin speaking when ready.');
+      
       // Add initial message if provided
       if (scenario.initialMessage) {
         const initialMsg: ConversationMessage = {
@@ -194,6 +199,7 @@ export function ConversationPage() {
       }
     } catch (err) {
       console.error('Failed to start conversation:', err);
+      toast.error('Failed to start conversation. Please try again.');
       setError('Failed to start conversation');
     }
   };
@@ -276,6 +282,7 @@ export function ConversationPage() {
       
       // Check for natural ending
       if (checkForNaturalEnding(response)) {
+        toast.success('Great conversation! Session ending naturally.');
         await completeSession('natural');
       } else {
         // Speak response
@@ -289,6 +296,7 @@ export function ConversationPage() {
       }
     } catch (err) {
       console.error('Failed to process audio:', err);
+      toast.error('Speech processing failed. Check your STT settings.');
       setError('Speech-to-text failed. The STT server may not have models loaded. Consider using Web Speech API in settings.');
       setConversationState('idle');
       setTimeout(() => setError(null), 5000);
@@ -409,16 +417,9 @@ export function ConversationPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Loading state
+  // Loading state with professional skeleton
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading scenario...</p>
-        </div>
-      </div>
-    );
+    return <ConversationLoadingSkeleton />;
   }
 
   // Error state
@@ -439,27 +440,32 @@ export function ConversationPage() {
     );
   }
 
-  // Session complete state
+  // Session complete state with celebration
   if (sessionComplete) {
     return (
-      <div className="max-w-4xl mx-auto p-8">
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Session Complete!</h2>
-          <p className="text-gray-600 mb-6">
-            Great job practicing "{scenario.name}"!
+      <div className="max-w-4xl mx-auto p-8 animate-fadeIn">
+        <div className="glass-card rounded-2xl p-8 text-center">
+          <div className="mb-6">
+            <div className="text-6xl mb-4 animate-float">🎉</div>
+            <h2 className="text-3xl font-bold gradient-text mb-2">Congratulations!</h2>
+            <p className="text-xl text-gray-700">Session Complete</p>
+          </div>
+          <p className="text-gray-600 mb-8 text-lg">
+            Excellent practice with <span className="font-semibold">"{scenario.name}"</span>
           </p>
+          
           <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-100">
               <p className="text-sm text-gray-600 mb-1">Duration</p>
-              <p className="text-xl font-semibold text-gray-800">{formatTime(elapsedTime)}</p>
+              <p className="text-2xl font-bold gradient-text">{formatTime(elapsedTime)}</p>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
               <p className="text-sm text-gray-600 mb-1">Messages</p>
-              <p className="text-xl font-semibold text-gray-800">{messages.length}</p>
+              <p className="text-2xl font-bold gradient-text">{messages.length}</p>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
               <p className="text-sm text-gray-600 mb-1">Words Spoken</p>
-              <p className="text-xl font-semibold text-gray-800">
+              <p className="text-2xl font-bold gradient-text">
                 {messages.filter(m => m.role === 'user').reduce((acc, m) => acc + m.content.split(' ').length, 0)}
               </p>
             </div>
@@ -468,22 +474,22 @@ export function ConversationPage() {
             {session && (
               <button
                 onClick={() => navigate(`/analysis/${session.id}`)}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:shadow-lg transform transition-all hover:scale-105 font-medium"
               >
-                View Analysis
+                📊 View Analysis
               </button>
             )}
             <button
               onClick={() => navigate('/sessions')}
-              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              className="px-6 py-3 glass-card text-gray-700 rounded-xl hover:bg-white/90 transform transition-all hover:scale-105 font-medium"
             >
-              View Session History
+              📚 Session History
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="btn-gradient px-6 py-3 text-white rounded-xl hover:shadow-lg transform transition-all hover:scale-105 font-medium"
             >
-              Practice Again
+              🔄 Practice Again
             </button>
           </div>
         </div>
@@ -530,27 +536,35 @@ export function ConversationPage() {
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center max-w-2xl">
-          {/* Voice Wave Animation */}
+          {/* Modern Voice Visualizer */}
           <div className="mb-8">
-            <div className="relative w-64 h-32 mx-auto">
-              <VoiceWaveAnimation 
-                state={
-                  conversationState === 'speaking' ? 'speaking' :
-                  conversationState === 'thinking' ? 'thinking' :
-                  'idle'
-                }
+            <div className="relative w-80 h-80 mx-auto">
+              <ModernVoiceVisualizer 
+                state={conversationState === 'not-started' ? 'idle' : conversationState}
               />
             </div>
           </div>
 
-          {/* Status Text */}
-          <p className="text-lg text-gray-600 mb-8">
-            {conversationState === 'not-started' ? 'Ready to start practicing?' :
-             conversationState === 'listening' ? 'Listening... Release to stop' :
-             conversationState === 'thinking' ? 'Processing your response...' :
-             conversationState === 'speaking' ? 'AI is speaking... Please wait' :
-             'Your turn to speak'}
-          </p>
+          {/* Status Text with enhanced styling */}
+          <div className="mb-8">
+            <p className="text-xl font-medium mb-2">
+              <span className={`${
+                conversationState === 'listening' ? 'text-red-500' :
+                conversationState === 'thinking' ? 'text-yellow-600' :
+                conversationState === 'speaking' ? 'gradient-text' :
+                'text-gray-700'
+              }`}>
+                {conversationState === 'not-started' ? 'Ready to start practicing?' :
+                 conversationState === 'listening' ? '🎤 Listening...' :
+                 conversationState === 'thinking' ? '🤔 Processing...' :
+                 conversationState === 'speaking' ? '🗣️ AI is speaking' :
+                 '✨ Your turn to speak'}
+              </span>
+            </p>
+            {conversationState === 'listening' && (
+              <p className="text-sm text-gray-500 animate-pulse">Release button to stop recording</p>
+            )}
+          </div>
 
           {/* Error Message */}
           {error && (
@@ -559,11 +573,11 @@ export function ConversationPage() {
             </div>
           )}
 
-          {/* Action Buttons */}
+          {/* Action Buttons with enhanced styling */}
           {conversationState === 'not-started' && !session ? (
             <button
               onClick={startConversation}
-              className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-medium"
+              className="btn-gradient px-10 py-5 rounded-xl text-white text-lg font-semibold shadow-lg transform transition-all hover:scale-105"
             >
               Start Conversation
             </button>
@@ -576,13 +590,15 @@ export function ConversationPage() {
                 onTouchStart={startRecording}
                 onTouchEnd={stopRecording}
                 disabled={conversationState !== 'idle' && conversationState !== 'listening'}
-                className={`px-8 py-4 rounded-lg text-lg font-medium transition-all ${
+                className={`px-10 py-5 rounded-xl text-lg font-semibold transition-all transform ${
                   conversationState === 'listening' 
-                    ? 'bg-red-600 text-white scale-110' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                    ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white scale-110 shadow-2xl animate-pulse' 
+                    : conversationState === 'idle'
+                    ? 'btn-gradient text-white hover:scale-105 shadow-lg'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
                 }`}
               >
-                {conversationState === 'listening' ? 'Release to Stop' : 'Hold to Speak'}
+                {conversationState === 'listening' ? '🔴 Release to Stop' : '🎤 Hold to Speak'}
               </button>
               
               <div className="mt-6 space-x-4">

@@ -1,6 +1,6 @@
 {
   "name": "talk-buddy-desktop",
-  "version": "2.4.3",
+  "version": "2.5.0",
   "description": "Talk Buddy - AI-powered conversation practice desktop app",
   "author": {
     "name": "Michael Borck",
@@ -28,6 +28,7 @@
     "lucide-react": "^0.316.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.6.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^6.8.0",
     "rehype-highlight": "^7.0.2",
@@ -62,13 +63,23 @@
       "src/main/**/*",
       "node_modules/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "dist-server",
+        "to": "embedded-server",
+        "filter": ["**/*"]
+      }
+    ],
     "mac": {
       "category": "public.app-category.education",
       "icon": "assets/icon.icns",
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ]
     },
@@ -80,11 +91,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png",

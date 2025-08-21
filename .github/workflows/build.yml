@@ -35,6 +35,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Build embedded server
+        run: |
+          cd embedded-server
+          python -m pip install --upgrade pip
+          pip install piper-tts flask flask-cors openai-whisper pyinstaller
+          
+          # Download Piper voice models
+          mkdir -p models
+          curl -L -o models/en_GB-alan-low.onnx https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/alan/low/en_GB-alan-low.onnx
+          curl -L -o models/en_GB-alan-low.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/alan/low/en_GB-alan-low.onnx.json
+          curl -L -o models/en_US-amy-low.onnx https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx
+          curl -L -o models/en_US-amy-low.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx.json
+          
+          # Create PyInstaller executable
+          pyinstaller --onefile --add-data "models:models" --name embedded-server server.py
+          
+          # Copy executable to main project for Electron to bundle
+          mkdir -p ../dist-server
+          cp dist/embedded-server* ../dist-server/
+
       - name: Build Vite app
         run: npm run build
 

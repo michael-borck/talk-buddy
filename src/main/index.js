@@ -1,5 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
+const { net } = require('electron');
 const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'production' && require('electron-is-dev'));
 const Database = require('better-sqlite3');
 
@@ -10,6 +12,8 @@ if (process.platform === 'linux' && (isDev || process.argv.includes('--no-sandbo
 
 let mainWindow;
 let db;
+let embeddedServer = null;
+let embeddedServerPort = 8765;
 
 // Default scenarios data - kept separately for restoration
 const DEFAULT_SCENARIOS = [
@@ -248,6 +252,211 @@ function insertSeedScenarios(db) {
   });
 }
 
+// Embedded Server Management
+function getEmbeddedServerPath() {
+  if (isDev) {
+    // Development: use Python script directly
+    return path.join(__dirname, '../../embedded-server/server.py');
+  } else {
+    // Production: use bundled executable
+    const platform = process.platform;
+    const extension = platform === 'win32' ? '.exe' : '';
+    return path.join(process.resourcesPath, 'embedded-server', `embedded-server${extension}`);
+  }
+}
+
+function findAvailablePort(startPort = 8765) {
+  return new Promise((resolve) => {
+    const server = require('net').createServer();
+    server.listen(startPort, () => {
+      const port = server.address().port;
+      server.close(() => resolve(port));
+    });
+    server.on('error', () => {
+      resolve(findAvailablePort(startPort + 1));
+    });
+  });
+}
+
+async function startEmbeddedServer() {
+  if (embeddedServer) {
+    console.log('Embedded server already running');
+    return true;
+  }
+
+  try {
+    console.log('Starting embedded TTS/STT server...');
+    
+    // Find available port
+    embeddedServerPort = await findAvailablePort(8765);
+    console.log(`Using port ${embeddedServerPort} for embedded server`);
+    
+    const serverPath = getEmbeddedServerPath();
+    const env = {
+      ...process.env,
+      PORT: embeddedServerPort.toString(),
+      HOST: '127.0.0.1'
+    };
+
+    if (isDev) {
+      // Development: run Python script using venv
+      const venvPython = path.join(path.dirname(serverPath), 'venv', 'bin', 'python');
+      embeddedServer = spawn(venvPython, [serverPath], {
+        env,
+        cwd: path.dirname(serverPath),
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+    } else {
+      // Production: run bundled executable
+      embeddedServer = spawn(serverPath, [], {
+        env,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+    }
+
+    // Handle server output with error handling for EPIPE
+    if (embeddedServer.stdout) {
+      embeddedServer.stdout.on('data', (data) => {
+        try {
+          console.log(`[Embedded Server] ${data.toString().trim()}`);
+        } catch (err) {
+          // Ignore write errors
+        }
+      });
+    }
+
+    if (embeddedServer.stderr) {
+      embeddedServer.stderr.on('data', (data) => {
+        try {
+          console.error(`[Embedded Server Error] ${data.toString().trim()}`);
+        } catch (err) {
+          // Ignore write errors  
+        }
+      });
+    }
+
+    embeddedServer.on('error', (error) => {
+      if (error.code !== 'EPIPE') {
+        console.error('Failed to start embedded server:', error);
+      }
+      embeddedServer = null;
+    });
+
+    embeddedServer.on('exit', (code, signal) => {
+      if (code !== null || signal !== null) {
+        console.log(`Embedded server exited with code ${code}, signal ${signal}`);
+      }
+      embeddedServer = null;
+    });
+
+    // Wait for server to be ready
+    const maxRetries = 30; // 30 seconds
+    let retries = 0;
+    
+    while (retries < maxRetries) {
+      try {
+        const response = await testEmbeddedServerHealth();
+        if (response.ok) {
+          console.log('Embedded server is ready');
+          // Update database with embedded server URL
+          await updateEmbeddedServerConfig();
+          return true;
+        }
+      } catch (error) {
+        // Server not ready yet
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      retries++;
+    }
+
+    console.error('Embedded server failed to start within timeout');
+    stopEmbeddedServer();
+    return false;
+
+  } catch (error) {
+    console.error('Error starting embedded server:', error);
+    return false;
+  }
+}
+
+function stopEmbeddedServer() {
+  if (embeddedServer) {
+    console.log('Stopping embedded server...');
+    
+    // Try graceful shutdown first
+    try {
+      const request = net.request({
+        method: 'POST',
+        url: `http://127.0.0.1:${embeddedServerPort}/shutdown`
+      });
+      request.end();
+    } catch (error) {
+      console.log('Graceful shutdown failed, forcing termination');
+    }
+    
+    // Force kill after 5 seconds
+    setTimeout(() => {
+      if (embeddedServer && !embeddedServer.killed) {
+        embeddedServer.kill('SIGTERM');
+        setTimeout(() => {
+          if (embeddedServer && !embeddedServer.killed) {
+            embeddedServer.kill('SIGKILL');
+          }
+        }, 2000);
+      }
+    }, 5000);
+    
+    embeddedServer = null;
+  }
+}
+
+async function testEmbeddedServerHealth() {
+  return new Promise((resolve, reject) => {
+    const request = net.request({
+      method: 'GET',
+      url: `http://127.0.0.1:${embeddedServerPort}/health`
+    });
+
+    request.on('response', (response) => {
+      resolve({ ok: response.statusCode === 200 });
+    });
+
+    request.on('error', (error) => {
+      reject(error);
+    });
+
+    request.end();
+  });
+}
+
+async function updateEmbeddedServerConfig() {
+  try {
+    const embeddedUrl = `http://127.0.0.1:${embeddedServerPort}`;
+    
+    // Add embedded server URL to user preferences if not already set
+    const checkStmt = db.prepare('SELECT value FROM user_preferences WHERE key = ?');
+    
+    const sttProvider = checkStmt.get('sttProvider');
+    if (!sttProvider) {
+      db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)').run('sttProvider', 'embedded');
+    }
+    
+    const ttsProvider = checkStmt.get('ttsProvider');
+    if (!ttsProvider) {
+      db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)').run('ttsProvider', 'embedded');
+    }
+    
+    // Set embedded server URLs
+    db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)').run('embeddedSttUrl', embeddedUrl);
+    db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)').run('embeddedTtsUrl', embeddedUrl);
+    
+    console.log(`Updated embedded server config: ${embeddedUrl}`);
+  } catch (error) {
+    console.error('Failed to update embedded server config:', error);
+  }
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -276,6 +485,8 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    // Stop embedded server when main window closes
+    stopEmbeddedServer();
   });
 
   // Dev tools can be opened manually with Ctrl+Shift+I if needed
@@ -402,6 +613,15 @@ app.whenReady().then(() => {
     insertSeedScenarios(db);
   }
   
+  // Start embedded server
+  startEmbeddedServer().then((success) => {
+    if (success) {
+      console.log('Embedded server started successfully');
+    } else {
+      console.log('Embedded server failed to start, using external services only');
+    }
+  });
+  
   createWindow();
 
   app.on('activate', () => {
@@ -412,9 +632,14 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  stopEmbeddedServer();
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  stopEmbeddedServer();
 });
 
 // IPC Handlers for database operations
@@ -611,4 +836,31 @@ ipcMain.handle('scenarios:restoreDefaults', async () => {
     console.error('Restore defaults error:', error);
     return { success: false, error: error.message };
   }
+});
+
+// Embedded server IPC handlers
+ipcMain.handle('embedded-server:status', async () => {
+  return {
+    running: embeddedServer !== null && !embeddedServer.killed,
+    port: embeddedServerPort,
+    url: `http://127.0.0.1:${embeddedServerPort}`
+  };
+});
+
+ipcMain.handle('embedded-server:start', async () => {
+  const success = await startEmbeddedServer();
+  return { success };
+});
+
+ipcMain.handle('embedded-server:stop', async () => {
+  stopEmbeddedServer();
+  return { success: true };
+});
+
+ipcMain.handle('embedded-server:restart', async () => {
+  stopEmbeddedServer();
+  // Wait a moment for cleanup
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  const success = await startEmbeddedServer();
+  return { success };
 });
