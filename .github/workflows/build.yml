@@ -76,6 +76,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
+      - name: Free disk space (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "Available space before cleanup:"
+          df -h
+          # Remove unnecessary packages and files to free space
+          sudo apt-get clean
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          docker system prune -af
+          # Clean up embedded server build artifacts but keep the executable
+          rm -rf embedded-server/build embedded-server/dist embedded-server/__pycache__
+          find embedded-server -name "*.pyc" -delete 2>/dev/null || true
+          echo "Available space after cleanup:"
+          df -h
+
       - name: Build Electron app (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: npm run electron:build -- --linux
