@@ -1,6 +1,6 @@
 {
   "name": "talk-buddy-desktop",
-  "version": "2.5.4",
+  "version": "2.5.5",
   "description": "Talk Buddy - AI-powered conversation practice desktop app",
   "author": {
     "name": "Michael Borck",
@@ -58,6 +58,7 @@
     "directories": {
       "output": "dist"
     },
+    "compression": "maximum",
     "files": [
       "dist/**/*",
       "src/main/**/*",
@@ -112,7 +113,8 @@
         "Comment": "AI-powered conversation practice",
         "Categories": "Education;Languages;",
         "Keywords": "ai;conversation;practice;language;learning;"
-      }
+      },
+      "compression": "maximum"
     }
   },
   "browserslist": {
