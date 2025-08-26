@@ -88,9 +88,11 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL
           docker system prune -af
-          # Clean up embedded server build artifacts but keep the executable
-          rm -rf embedded-server/build embedded-server/dist embedded-server/__pycache__
+          # Clean up embedded server build artifacts (keeping dist-server for Electron)
+          rm -rf embedded-server/build embedded-server/__pycache__
           find embedded-server -name "*.pyc" -delete 2>/dev/null || true
+          # Clean up large Python cache files
+          pip cache purge 2>/dev/null || true
           echo "Available space after cleanup:"
           df -h
 
