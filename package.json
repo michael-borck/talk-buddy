@@ -1,6 +1,6 @@
 {
   "name": "talk-buddy-desktop",
-  "version": "2.5.7",
+  "version": "2.5.8",
   "description": "Talk Buddy - AI-powered conversation practice desktop app",
   "author": {
     "name": "Michael Borck",
@@ -68,7 +68,9 @@
       {
         "from": "dist-server",
         "to": "embedded-server",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
