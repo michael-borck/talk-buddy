@@ -685,7 +685,13 @@ export function SettingsPage() {
           break;
         case 'chat':
           url = preferences.ollamaUrl;
-          endpoint = url.endsWith('/') ? `${url}api/tags` : `${url}/api/tags`;
+          // Detect provider type for chat models
+          if (url.includes('api.anthropic.com') || url.includes('api.openai.com')) {
+            endpoint = url.endsWith('/') ? `${url}v1/models` : `${url}/v1/models`;
+          } else {
+            // Ollama or other providers
+            endpoint = url.endsWith('/') ? `${url}api/tags` : `${url}/api/tags`;
+          }
           break;
       }
 
@@ -714,8 +720,24 @@ export function SettingsPage() {
       let modelList = [];
       
       if (serviceType === 'chat') {
-        // Ollama format: { "models": [{ "name": "model_name", ... }] }
-        modelList = data.models?.map(model => model.name) || [];
+        if (url.includes('api.openai.com')) {
+          // OpenAI format: { "data": [{ "id": "model_id", ... }] }
+          modelList = data.data?.map(model => model.id).filter((id: string) => id.includes('gpt')) || [];
+        } else if (url.includes('api.anthropic.com')) {
+          // Anthropic format: { "data": [{ "id": "model_id", "type": "model", ... }] }
+          if (data.data && Array.isArray(data.data)) {
+            modelList = data.data
+              .filter(model => model.type === 'model' && model.id.includes('claude'))
+              .map(model => model.id) || [];
+          }
+          // If no models found from API, fallback to known models
+          if (modelList.length === 0) {
+            modelList = ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307', 'claude-3-5-sonnet-20241022'];
+          }
+        } else {
+          // Ollama format: { "models": [{ "name": "model_name", ... }] }
+          modelList = data.models?.map(model => model.name) || [];
+        }
       } else {
         // Speaches format: { "data": [{ "id": "model_id", ... }] }
         const allModels = data.data?.map(model => model.id) || [];

@@ -129,16 +129,31 @@ def text_to_speech(text: str, voice_type: str = "female", voice_id: int = None, 
             voice = piper_female_voice
             voice_name = "Amy (female)"
         
-        logger.info(f"Using voice: {voice_name} with length_scale: {length_scale}")
+        logger.info(f"Using voice: {voice_name} (note: speed control not currently supported)")
         
-        # Create temporary file for audio output
+        # Generate speech with Piper - use the simple approach
+        import subprocess
+        import json
+        
+        # Create temp file for output
         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
             temp_path = temp_file.name
         
         try:
-            # Generate speech with Piper
-            with wave.open(temp_path, 'wb') as wav_file:
-                voice.synthesize(text, wav_file, length_scale=length_scale)
+            # Use piper CLI directly which is more reliable
+            model_path = "models/en_GB-alan-low.onnx" if "alan" in voice_name.lower() else "models/en_US-amy-low.onnx"
+            
+            # Run piper command
+            process = subprocess.run(
+                ["venv/bin/piper", "--model", model_path, "--output_file", temp_path],
+                input=text.encode('utf-8'),
+                capture_output=True,
+                timeout=10
+            )
+            
+            if process.returncode != 0:
+                logger.error(f"Piper command failed: {process.stderr.decode()}")
+                return None
             
             # Read the generated audio file
             with open(temp_path, 'rb') as f:
@@ -147,7 +162,7 @@ def text_to_speech(text: str, voice_type: str = "female", voice_id: int = None, 
             return audio_data
             
         finally:
-            # Clean up temporary file
+            # Clean up temp file
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
                 

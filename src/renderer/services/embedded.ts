@@ -49,7 +49,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionRes
   
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
-  formData.append('model', 'whisper-tiny');
+  // Try without model parameter - let server use default
   formData.append('response_format', 'json');
 
   try {
@@ -95,13 +95,11 @@ export async function generateSpeech(options: SpeechGenerationOptions): Promise<
   const maleVoicePreference = await getPreference('embeddedMaleVoiceId') || 'alan';
   const femaleVoicePreference = await getPreference('embeddedFemaleVoiceId') || 'amy';
   
-  // Determine which voice to use based on gender and user preference
-  let selectedVoice = voice;
-  if (voice === 'male') {
-    selectedVoice = maleVoicePreference; // 'alan' or 'amy'
-  } else if (voice === 'female') {
-    selectedVoice = femaleVoicePreference; // 'amy' or 'alan'
-  }
+  // Simplify voice selection - just use alan/amy directly
+  let selectedVoice = (voice === 'male') ? 'alan' : 'amy';
+  
+  // Log what we're sending for debugging
+  console.log('TTS Request:', { text: options.text.substring(0, 50), voice: selectedVoice, speed });
   
   try {
     const requestBody: any = {
