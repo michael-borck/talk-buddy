@@ -19,7 +19,7 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from piper import PiperVoice
-import whisper
+from pywhispercpp.model import Model as WhisperModel
 import numpy as np
 import soundfile as sf
 
@@ -101,7 +101,18 @@ def initialize_whisper():
     
     try:
         logger.info("Loading Whisper model (this may take a moment)...")
-        whisper_model = whisper.load_model("tiny")  # Start with tiny model for speed
+        
+        # Check if running from PyInstaller bundle
+        if hasattr(sys, '_MEIPASS'):
+            # Running from PyInstaller bundle, use bundled model
+            model_path = os.path.join(sys._MEIPASS, 'whisper-models', 'ggml-tiny.bin')
+            if os.path.exists(model_path):
+                logger.info(f"Using bundled whisper model: {model_path}")
+                # pywhispercpp will use the bundled model
+                os.environ['PYWHISPER_MODEL_DIR'] = os.path.join(sys._MEIPASS, 'whisper-models')
+        
+        # Using pywhispercpp which is much lighter than openai-whisper
+        whisper_model = WhisperModel("tiny")  # Start with tiny model for speed
         logger.info("Whisper model loaded successfully")
         return True
     except Exception as e:
@@ -181,19 +192,45 @@ def speech_to_text(audio_data: bytes) -> Optional[dict]:
     try:
         logger.info(f"Processing audio data: {len(audio_data)} bytes")
         
-        # Create temporary audio file - use generic extension since Whisper can handle multiple formats
-        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_file:
-            temp_file.write(audio_data)
-            temp_path = temp_file.name
+        # pywhispercpp requires 16kHz WAV, so we need to convert
+        import subprocess
+        import wave
         
-        logger.info(f"Saved audio to temporary file: {temp_path}")
+        # Save incoming audio to temp file
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_input:
+            temp_input.write(audio_data)
+            input_path = temp_input.name
+        
+        # Convert to 16kHz WAV using ffmpeg
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_output:
+            output_path = temp_output.name
         
         try:
-            # Transcribe audio
+            # Use ffmpeg to convert to 16kHz WAV
+            subprocess.run([
+                'ffmpeg', '-i', input_path,
+                '-ar', '16000',  # 16kHz sample rate
+                '-ac', '1',      # Mono
+                '-f', 'wav',
+                output_path,
+                '-y'  # Overwrite output
+            ], capture_output=True, check=True)
+            
+            logger.info(f"Converted audio to 16kHz WAV: {output_path}")
+            
+            # Transcribe audio using pywhispercpp
             logger.info("Starting Whisper transcription...")
-            result = whisper_model.transcribe(temp_path)
-            text = result.get("text", "").strip()
-            duration = result.get("duration", 0)
+            segments = whisper_model.transcribe(output_path)
+            
+            # pywhispercpp returns list of segments
+            if segments:
+                # Combine all segment texts
+                text = ' '.join([seg.text.strip() for seg in segments])
+                # Calculate total duration from last segment's end time (t1)
+                duration = segments[-1].t1 if segments else 0
+            else:
+                text = ""
+                duration = 0
             
             logger.info(f"Transcription successful: '{text}' (duration: {duration}s)")
             
@@ -209,10 +246,13 @@ def speech_to_text(audio_data: bytes) -> Optional[dict]:
             return None
             
         finally:
-            # Clean up temporary file
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
-                logger.info(f"Cleaned up temporary file: {temp_path}")
+            # Clean up temporary files
+            if 'input_path' in locals() and os.path.exists(input_path):
+                os.unlink(input_path)
+                logger.info(f"Cleaned up input file: {input_path}")
+            if 'output_path' in locals() and os.path.exists(output_path):
+                os.unlink(output_path)
+                logger.info(f"Cleaned up output file: {output_path}")
                 
     except Exception as e:
         logger.error(f"STT conversion failed: {e}")

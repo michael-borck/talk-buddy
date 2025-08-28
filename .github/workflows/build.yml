@@ -44,7 +44,8 @@ jobs:
         run: |
           cd embedded-server
           python -m pip install --upgrade pip
-          pip install piper-tts flask flask-cors openai-whisper pyinstaller
+          # Install lightweight pywhispercpp instead of openai-whisper (saves ~1.6GB)
+          pip install piper-tts flask flask-cors pywhispercpp pyinstaller
           
           # Download Piper voice models
           mkdir -p models
@@ -53,8 +54,22 @@ jobs:
           curl -L -o models/en_US-amy-low.onnx https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx
           curl -L -o models/en_US-amy-low.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx.json
           
-          # Create PyInstaller executable
-          pyinstaller --onefile --add-data "models:models" --name embedded-server server.py
+          # Download whisper-tiny model for pywhispercpp (will be included in build)
+          mkdir -p whisper-models
+          curl -L -o whisper-models/ggml-tiny.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+          
+          # Create PyInstaller executable with optimizations
+          pyinstaller --onefile \
+            --add-data "models:models" \
+            --add-data "whisper-models:whisper-models" \
+            --exclude-module torch \
+            --exclude-module tensorflow \
+            --exclude-module PIL \
+            --exclude-module matplotlib \
+            --exclude-module pandas \
+            --exclude-module scipy \
+            --strip \
+            --name embedded-server server.py
           
           # Copy executable to main project for Electron to bundle
           mkdir -p ../dist-server
