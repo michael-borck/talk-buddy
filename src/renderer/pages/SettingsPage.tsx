@@ -700,7 +700,13 @@ export function SettingsPage() {
                     serviceType === 'tts' ? preferences.ttsApiKey : preferences.ollamaApiKey;
       
       if (apiKey && !apiKey.startsWith('env:')) {
-        headers['Authorization'] = `Bearer ${apiKey}`;
+        // Check if it's Anthropic and use their specific headers
+        if (url && url.includes('api.anthropic.com')) {
+          headers['x-api-key'] = apiKey;
+          headers['anthropic-version'] = '2023-06-01';
+        } else {
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        }
       }
 
       const response = await window.electronAPI.fetch({

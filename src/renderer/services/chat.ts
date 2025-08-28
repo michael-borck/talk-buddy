@@ -206,37 +206,60 @@ async function generateChatCompletion(
     }
   });
   
-  const request: ChatCompletionRequest = {
-    model,
-    messages: chatMessages,
-    temperature: 0.7,
-    stream: false
-  };
-  
+  // Build request based on provider format
+  let request: any;
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
   
   if (provider === 'openai') {
     headers['Authorization'] = `Bearer ${apiKey}`;
+    request = {
+      model,
+      messages: chatMessages,
+      temperature: 0.7,
+      stream: false
+    };
   } else if (provider === 'anthropic') {
     headers['x-api-key'] = apiKey;
     headers['anthropic-version'] = '2023-06-01';
+    
+    // Anthropic uses a different format - extract system message
+    const systemMessage = chatMessages.find(m => m.role === 'system');
+    const nonSystemMessages = chatMessages.filter(m => m.role !== 'system');
+    
+    request = {
+      model,
+      messages: nonSystemMessages,
+      max_tokens: 1024,
+      temperature: 0.7,
+      ...(systemMessage && { system: systemMessage.content })
+    };
   }
   
   try {
-    const endpoint = provider === 'openai' ? '/chat/completions' : '/v1/messages';
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(request),
+    const endpoint = provider === 'openai' 
+      ? '/chat/completions' 
+      : provider === 'anthropic' 
+        ? '/v1/messages' 
+        : '/v1/chat/completions';
+    
+    // Use IPC to make the request through the main process
+    const response = await window.electronAPI.fetch({
+      url: `${baseUrl}${endpoint}`,
+      options: {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(request),
+      }
     });
     
     if (!response.ok) {
-      throw new Error(`Chat API request failed: ${response.statusText}`);
+      throw new Error(`Chat API request failed: ${response.statusText || response.status}`);
     }
     
-    const data = await response.json();
+    // Parse the response data
+    const data = JSON.parse(response.data.toString());
     
     if (provider === 'openai') {
       return {
@@ -338,14 +361,17 @@ async function generateOllamaResponse(
 
     // Try 1: Standard Ollama /api/chat endpoint (newer versions)
     console.log('Trying /api/chat endpoint...');
-    let response = await fetch(`${baseUrl}/api/chat`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(chatRequest),
+    let response = await window.electronAPI.fetch({
+      url: `${baseUrl}/api/chat`,
+      options: {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(chatRequest),
+      }
     });
 
     if (response.ok) {
-      const data = await response.json();
+      const data = JSON.parse(response.data.toString());
       return {
         response: data.message.content.trim(),
         context: undefined
@@ -355,14 +381,17 @@ async function generateOllamaResponse(
 
     // Try 2: Standard Ollama /api/generate endpoint (older versions)
     console.log('Trying /api/generate endpoint...');
-    response = await fetch(`${baseUrl}/api/generate`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(request),
+    response = await window.electronAPI.fetch({
+      url: `${baseUrl}/api/generate`,
+      options: {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(request),
+      }
     });
 
     if (response.ok) {
-      const data: OllamaGenerateResponse = await response.json();
+      const data: OllamaGenerateResponse = JSON.parse(response.data.toString());
       return {
         response: data.response.trim(),
         context: data.context
@@ -372,18 +401,21 @@ async function generateOllamaResponse(
 
     // Try 3: Check if it's an OpenAI-compatible endpoint
     console.log('Trying OpenAI-compatible /v1/chat/completions endpoint...');
-    response = await fetch(`${baseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: model,
-        messages: chatRequest.messages,
-        stream: false
-      }),
+    response = await window.electronAPI.fetch({
+      url: `${baseUrl}/v1/chat/completions`,
+      options: {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: model,
+          messages: chatRequest.messages,
+          stream: false
+        }),
+      }
     });
 
     if (response.ok) {
-      const data = await response.json();
+      const data = JSON.parse(response.data.toString());
       return {
         response: data.choices[0].message.content.trim(),
         context: undefined
@@ -394,13 +426,16 @@ async function generateOllamaResponse(
     // Try 4: Check available models using correct Ollama endpoint /api/tags
     console.log('Checking available models via /api/tags...');
     try {
-      const tagsResponse = await fetch(`${baseUrl}/api/tags`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+      const tagsResponse = await window.electronAPI.fetch({
+        url: `${baseUrl}/api/tags`,
+        options: {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        }
       });
       
       if (tagsResponse.ok) {
-        const tagsData = await tagsResponse.json();
+        const tagsData = JSON.parse(tagsResponse.data.toString());
         console.log('Available models from /api/tags:', tagsData);
         
         if (tagsData.models && tagsData.models.length === 0) {
@@ -565,9 +600,12 @@ export async function checkChatConnection(): Promise<boolean> {
     
     if (provider === 'openai') {
       // Test OpenAI connection
-      const response = await fetch(`${baseUrl}/models`, {
-        headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {},
-        signal: AbortSignal.timeout(5000)
+      const response = await window.electronAPI.fetch({
+        url: `${baseUrl}/models`,
+        options: {
+          headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {},
+          // Note: signal not supported in IPC, but main process should handle timeouts
+        }
       });
       return response.ok;
     } else if (provider === 'anthropic') {
@@ -584,11 +622,14 @@ export async function checkChatConnection(): Promise<boolean> {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
     
-    const response = await fetch(`${baseUrl}/api/show`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ name: model }),
-      signal: AbortSignal.timeout(5000)
+    const response = await window.electronAPI.fetch({
+      url: `${baseUrl}/api/show`,
+      options: {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: model }),
+        // Note: signal not supported in IPC, but main process should handle timeouts
+      }
     });
     
     return response.ok;
@@ -613,15 +654,18 @@ export async function listChatModels(): Promise<string[]> {
         headers['Authorization'] = `Bearer ${apiKey}`;
       }
       
-      const response = await fetch(`${baseUrl}/models`, {
-        headers
+      const response = await window.electronAPI.fetch({
+        url: `${baseUrl}/models`,
+        options: {
+          headers
+        }
       });
       
       if (!response.ok) {
         throw new Error('Failed to fetch models');
       }
       
-      const data = await response.json();
+      const data = JSON.parse(response.data.toString());
       return data.data?.map((m: any) => m.id).filter((id: string) => id.includes('gpt')) || [];
     } else if (provider === 'anthropic') {
       // Anthropic doesn't have a models endpoint, return known models
@@ -635,15 +679,18 @@ export async function listChatModels(): Promise<string[]> {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
     
-    const response = await fetch(`${baseUrl}/api/tags`, {
-      headers
+    const response = await window.electronAPI.fetch({
+      url: `${baseUrl}/api/tags`,
+      options: {
+        headers
+      }
     });
     
     if (!response.ok) {
       throw new Error('Failed to fetch models');
     }
     
-    const data = await response.json();
+    const data = JSON.parse(response.data.toString());
     return data.models?.map((m: any) => m.name) || [];
   } catch (error) {
     console.error('Failed to list Ollama models:', error);
