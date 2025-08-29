@@ -76,12 +76,10 @@ async function getChatApiUrl(): Promise<string> {
   return url || 'https://ollama.serveur.au';
 }
 
-// Detect API provider from URL
-function detectProvider(url: string): 'openai' | 'anthropic' | 'ollama' | 'unknown' {
-  if (url.includes('api.openai.com')) return 'openai';
-  if (url.includes('api.anthropic.com')) return 'anthropic';
-  if (url.includes('ollama') || url.includes(':11434')) return 'ollama';
-  return 'unknown';
+// Get chat provider from preferences
+async function getChatProvider(): Promise<'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom'> {
+  const provider = await getPreference('chatProvider');
+  return provider || 'ollama';
 }
 
 // Get Chat model from preferences
@@ -143,25 +141,25 @@ export async function generateResponse(
   const baseUrl = await getChatApiUrl();
   const model = await getChatModel();
   const apiKey = await getChatApiKey();
-  const provider = detectProvider(baseUrl);
+  const provider = await getChatProvider();
   
-  // For OpenAI and Anthropic, use the chat completions API
-  if (provider === 'openai' || provider === 'anthropic') {
+  // For OpenAI, Anthropic, and Groq, use the chat completions API
+  if (provider === 'openai' || provider === 'anthropic' || provider === 'groq') {
     return generateChatCompletion(messages, systemPrompt, baseUrl, model, apiKey, provider);
   }
   
-  // For Ollama and unknown providers, use the Ollama API format
+  // For Ollama and custom providers, use the Ollama API format
   return generateOllamaResponse(messages, systemPrompt, context, baseUrl, model, apiKey);
 }
 
-// Generate response using OpenAI/Anthropic chat completions API
+// Generate response using OpenAI/Anthropic/Groq chat completions API
 async function generateChatCompletion(
   messages: ConversationMessage[],
   systemPrompt: string | undefined,
   baseUrl: string,
   model: string,
   apiKey: string,
-  provider: 'openai' | 'anthropic'
+  provider: 'openai' | 'anthropic' | 'groq' | 'custom' | 'ollama'
 ): Promise<{ response: string; context?: number[] }> {
   const chatMessages: ChatCompletionRequest['messages'] = [];
   
@@ -212,7 +210,7 @@ async function generateChatCompletion(
     'Content-Type': 'application/json',
   };
   
-  if (provider === 'openai') {
+  if (provider === 'openai' || provider === 'groq') {
     headers['Authorization'] = `Bearer ${apiKey}`;
     request = {
       model,
@@ -238,11 +236,9 @@ async function generateChatCompletion(
   }
   
   try {
-    const endpoint = provider === 'openai' 
-      ? '/chat/completions' 
-      : provider === 'anthropic' 
-        ? '/v1/messages' 
-        : '/v1/chat/completions';
+    const endpoint = provider === 'anthropic' 
+      ? '/v1/messages' 
+      : '/v1/chat/completions'; // OpenAI, Groq, and others use the same endpoint
     
     // Use IPC to make the request through the main process
     const response = await window.electronAPI.fetch({
@@ -261,14 +257,15 @@ async function generateChatCompletion(
     // Parse the response data
     const data = JSON.parse(response.data.toString());
     
-    if (provider === 'openai') {
-      return {
-        response: data.choices[0].message.content.trim()
-      };
-    } else {
+    if (provider === 'anthropic') {
       // Anthropic response format
       return {
         response: data.content[0].text.trim()
+      };
+    } else {
+      // OpenAI/Groq response format
+      return {
+        response: data.choices[0].message.content.trim()
       };
     }
   } catch (error) {
@@ -596,9 +593,9 @@ export async function checkChatConnection(): Promise<boolean> {
     const baseUrl = await getChatApiUrl();
     const model = await getChatModel();
     const apiKey = await getChatApiKey();
-    const provider = detectProvider(baseUrl);
+    const provider = await getChatProvider();
     
-    if (provider === 'openai') {
+    if (provider === 'openai' || provider === 'groq') {
       // Test OpenAI connection
       const response = await window.electronAPI.fetch({
         url: `${baseUrl}/models`,
@@ -646,9 +643,9 @@ export async function listChatModels(): Promise<string[]> {
   try {
     const baseUrl = await getChatApiUrl();
     const apiKey = await getChatApiKey();
-    const provider = detectProvider(baseUrl);
+    const provider = await getChatProvider();
     
-    if (provider === 'openai') {
+    if (provider === 'openai' || provider === 'groq') {
       const headers: HeadersInit = {};
       if (apiKey) {
         headers['Authorization'] = `Bearer ${apiKey}`;
@@ -666,7 +663,13 @@ export async function listChatModels(): Promise<string[]> {
       }
       
       const data = JSON.parse(response.data.toString());
-      return data.data?.map((m: any) => m.id).filter((id: string) => id.includes('gpt')) || [];
+      const models = data.data?.map((m: any) => m.id) || [];
+      // Filter models based on provider
+      if (provider === 'openai') {
+        return models.filter((id: string) => id.includes('gpt'));
+      }
+      // For Groq, return all models
+      return models;
     } else if (provider === 'anthropic') {
       // Anthropic doesn't have a models endpoint, return known models
       return ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'];

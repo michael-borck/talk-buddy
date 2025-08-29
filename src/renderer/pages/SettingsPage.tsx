@@ -276,6 +276,7 @@ export function SettingsPage() {
     ttsUrl: 'https://speaches.serveur.au',
     sttProvider: 'embedded' as 'embedded' | 'speaches',
     ttsProvider: 'embedded' as 'embedded' | 'speaches',
+    chatProvider: 'ollama' as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom',
     embeddedSttUrl: 'http://127.0.0.1:8765',
     embeddedTtsUrl: 'http://127.0.0.1:8765',
     embeddedMaleVoiceId: '',
@@ -381,6 +382,7 @@ export function SettingsPage() {
         ttsUrl: prefs.ttsUrl || prefs.speachesUrl || 'https://speaches.serveur.au',
         sttProvider: (prefs.sttProvider || 'embedded') as 'embedded' | 'speaches',
         ttsProvider: (prefs.ttsProvider || 'embedded') as 'embedded' | 'speaches',
+        chatProvider: (prefs.chatProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom',
         embeddedSttUrl: (prefs.embeddedSttUrl || 'http://127.0.0.1:8765').replace(':8766', ':8765'),
         embeddedTtsUrl: (prefs.embeddedTtsUrl || 'http://127.0.0.1:8765').replace(':8766', ':8765'),
         embeddedMaleVoiceId: prefs.embeddedMaleVoiceId || '',
@@ -419,6 +421,7 @@ export function SettingsPage() {
       await setPreference('ttsUrl', preferences.ttsUrl);
       await setPreference('sttProvider', preferences.sttProvider);
       await setPreference('ttsProvider', preferences.ttsProvider);
+      await setPreference('chatProvider', preferences.chatProvider);
       await setPreference('embeddedSttUrl', preferences.embeddedSttUrl);
       await setPreference('embeddedTtsUrl', preferences.embeddedTtsUrl);
       await setPreference('embeddedMaleVoiceId', preferences.embeddedMaleVoiceId);
@@ -685,12 +688,18 @@ export function SettingsPage() {
           break;
         case 'chat':
           url = preferences.ollamaUrl;
-          // Detect provider type for chat models
-          if (url.includes('api.anthropic.com') || url.includes('api.openai.com')) {
-            endpoint = url.endsWith('/') ? `${url}v1/models` : `${url}/v1/models`;
-          } else {
-            // Ollama or other providers
-            endpoint = url.endsWith('/') ? `${url}api/tags` : `${url}/api/tags`;
+          // Use explicit provider selection instead of URL detection
+          switch (preferences.chatProvider) {
+            case 'anthropic':
+            case 'openai':
+            case 'groq':
+              endpoint = url.endsWith('/') ? `${url}v1/models` : `${url}/v1/models`;
+              break;
+            case 'ollama':
+            case 'custom':
+            default:
+              endpoint = url.endsWith('/') ? `${url}api/tags` : `${url}/api/tags`;
+              break;
           }
           break;
       }
@@ -699,12 +708,16 @@ export function SettingsPage() {
       const apiKey = serviceType === 'stt' ? preferences.sttApiKey : 
                     serviceType === 'tts' ? preferences.ttsApiKey : preferences.ollamaApiKey;
       
-      if (apiKey && !apiKey.startsWith('env:')) {
-        // Check if it's Anthropic and use their specific headers
-        if (url && url.includes('api.anthropic.com')) {
+      // Handle headers based on service type and provider
+      if (serviceType === 'chat' && preferences.chatProvider === 'anthropic') {
+        // Anthropic requires special headers
+        if (apiKey && !apiKey.startsWith('env:')) {
           headers['x-api-key'] = apiKey;
           headers['anthropic-version'] = '2023-06-01';
-        } else {
+        }
+      } else {
+        // All other services and providers use Bearer token
+        if (apiKey && !apiKey.startsWith('env:')) {
           headers['Authorization'] = `Bearer ${apiKey}`;
         }
       }
@@ -726,23 +739,34 @@ export function SettingsPage() {
       let modelList = [];
       
       if (serviceType === 'chat') {
-        if (url.includes('api.openai.com')) {
-          // OpenAI format: { "data": [{ "id": "model_id", ... }] }
-          modelList = data.data?.map(model => model.id).filter((id: string) => id.includes('gpt')) || [];
-        } else if (url.includes('api.anthropic.com')) {
-          // Anthropic format: { "data": [{ "id": "model_id", "type": "model", ... }] }
-          if (data.data && Array.isArray(data.data)) {
-            modelList = data.data
-              .filter(model => model.type === 'model' && model.id.includes('claude'))
-              .map(model => model.id) || [];
-          }
-          // If no models found from API, fallback to known models
-          if (modelList.length === 0) {
-            modelList = ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307', 'claude-3-5-sonnet-20241022'];
-          }
-        } else {
-          // Ollama format: { "models": [{ "name": "model_name", ... }] }
-          modelList = data.models?.map(model => model.name) || [];
+        switch (preferences.chatProvider) {
+          case 'openai':
+          case 'groq':
+            // OpenAI format: { "data": [{ "id": "model_id", ... }] }
+            modelList = data.data?.map(model => model.id) || [];
+            if (preferences.chatProvider === 'openai') {
+              // Filter for GPT models only for OpenAI
+              modelList = modelList.filter((id: string) => id.includes('gpt'));
+            }
+            break;
+          case 'anthropic':
+            // Anthropic format: { "data": [{ "id": "model_id", "type": "model", ... }] }
+            if (data.data && Array.isArray(data.data)) {
+              modelList = data.data
+                .filter(model => model.type === 'model' && model.id.includes('claude'))
+                .map(model => model.id) || [];
+            }
+            // If no models found from API, fallback to known models
+            if (modelList.length === 0) {
+              modelList = ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307', 'claude-3-5-sonnet-20241022'];
+            }
+            break;
+          case 'ollama':
+          case 'custom':
+          default:
+            // Ollama format: { "models": [{ "name": "model_name", ... }] }
+            modelList = data.models?.map(model => model.name) || [];
+            break;
         }
       } else {
         // Speaches format: { "data": [{ "id": "model_id", ... }] }
@@ -1282,6 +1306,33 @@ export function SettingsPage() {
           <section className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Chat Model Service</h2>
             <div className="space-y-4">
+              {/* Provider Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chat Provider
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    { value: 'anthropic', label: 'Anthropic (Claude)' },
+                    { value: 'openai', label: 'OpenAI (GPT)' },
+                    { value: 'ollama', label: 'Ollama' },
+                    { value: 'groq', label: 'Groq' },
+                    { value: 'custom', label: 'Custom/Other' }
+                  ].map(provider => (
+                    <label key={provider.value} className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        value={provider.value}
+                        checked={preferences.chatProvider === provider.value}
+                        onChange={(e) => setPreferences({ ...preferences, chatProvider: e.target.value as any })}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm">{provider.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Chat API URL
@@ -1292,7 +1343,13 @@ export function SettingsPage() {
                     value={preferences.ollamaUrl}
                     onChange={(e) => setPreferences({ ...preferences, ollamaUrl: e.target.value })}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://api.openai.com/v1 or https://ollama.serveur.au"
+                    placeholder={
+                      preferences.chatProvider === 'anthropic' ? "https://api.anthropic.com" :
+                      preferences.chatProvider === 'openai' ? "https://api.openai.com" :
+                      preferences.chatProvider === 'groq' ? "https://api.groq.com/openai" :
+                      preferences.chatProvider === 'ollama' ? "http://localhost:11434 or https://ollama.serveur.au" :
+                      "Enter API endpoint URL"
+                    }
                   />
                   <button
                     onClick={() => testService('chat')}
