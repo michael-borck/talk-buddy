@@ -13,26 +13,16 @@ async function getEmbeddedServerStatus(): Promise<{ running: boolean; url: strin
   }
 }
 
-// Get embedded STT URL from preferences or server status
+// Get embedded STT URL - always use actual server status to avoid port mismatches
 async function getEmbeddedSTTUrl(): Promise<string> {
-  const url = await getPreference('embeddedSttUrl');
-  if (url) {
-    return url;
-  }
-  
-  // Fallback to server status
+  // Always get the actual server status to ensure we use the correct port
   const status = await getEmbeddedServerStatus();
   return status.url;
 }
 
-// Get embedded TTS URL from preferences or server status
+// Get embedded TTS URL - always use actual server status to avoid port mismatches
 async function getEmbeddedTTSUrl(): Promise<string> {
-  const url = await getPreference('embeddedTtsUrl');
-  if (url) {
-    return url;
-  }
-  
-  // Fallback to server status
+  // Always get the actual server status to ensure we use the correct port
   const status = await getEmbeddedServerStatus();
   return status.url;
 }
@@ -90,10 +80,6 @@ export async function generateSpeech(options: SpeechGenerationOptions): Promise<
   // Get speech speed from preferences (default 1.2x)
   const embeddedSpeed = await getPreference('embeddedSpeechSpeed') || '1.2';
   const speed = options.speed || parseFloat(embeddedSpeed);
-  
-  // Get voice preferences for Alan/Amy selection
-  const maleVoicePreference = await getPreference('embeddedMaleVoiceId') || 'alan';
-  const femaleVoicePreference = await getPreference('embeddedFemaleVoiceId') || 'amy';
   
   // Simplify voice selection - just use alan/amy directly
   let selectedVoice = (voice === 'male') ? 'alan' : 'amy';

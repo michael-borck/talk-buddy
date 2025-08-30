@@ -24,6 +24,10 @@ interface ElectronAPI {
   };
   platform: string;
   fetch: (params: { url: string; options: any }) => Promise<{ ok: boolean; status?: number; statusText?: string; headers?: any; data?: any; error?: string }>;
+  embeddedServerStatus: () => Promise<{ running: boolean; url: string; port: number }>;
+  embeddedServerStart: () => Promise<{ success: boolean; error?: string }>;
+  embeddedServerStop: () => Promise<{ success: boolean; error?: string }>;
+  embeddedServerRestart: () => Promise<{ success: boolean; error?: string }>;
 }
 
 declare global {

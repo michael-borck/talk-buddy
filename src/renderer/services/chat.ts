@@ -78,7 +78,7 @@ async function getChatApiUrl(): Promise<string> {
 
 // Get chat provider from preferences
 async function getChatProvider(): Promise<'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom'> {
-  const provider = await getPreference('chatProvider');
+  const provider = await getPreference('chatProvider') as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom';
   return provider || 'ollama';
 }
 
@@ -112,8 +112,8 @@ async function getPromptEnhancement(): Promise<string> {
   let basePrompt = '';
   if (promptTemplate === 'custom' && customPrompt) {
     basePrompt = customPrompt;
-  } else if (DEFAULT_PROMPTS[promptTemplate]) {
-    basePrompt = DEFAULT_PROMPTS[promptTemplate];
+  } else if (promptTemplate in DEFAULT_PROMPTS) {
+    basePrompt = DEFAULT_PROMPTS[promptTemplate as keyof typeof DEFAULT_PROMPTS];
   } else {
     basePrompt = DEFAULT_PROMPTS.natural;
   }
@@ -240,9 +240,17 @@ async function generateChatCompletion(
       ? '/v1/messages' 
       : '/v1/chat/completions'; // OpenAI, Groq, and others use the same endpoint
     
+    const fullUrl = `${baseUrl}${endpoint}`;
+    console.log('Chat API request:', {
+      url: fullUrl,
+      provider,
+      headers,
+      requestBody: request
+    });
+    
     // Use IPC to make the request through the main process
     const response = await window.electronAPI.fetch({
-      url: `${baseUrl}${endpoint}`,
+      url: fullUrl,
       options: {
         method: 'POST',
         headers,
@@ -251,11 +259,37 @@ async function generateChatCompletion(
     });
     
     if (!response.ok) {
+      // Convert response data to string
+      let errorText = '';
+      if (response.data instanceof Uint8Array) {
+        errorText = new TextDecoder().decode(response.data);
+      } else if (typeof response.data === 'string') {
+        errorText = response.data;
+      } else {
+        errorText = JSON.stringify(response.data);
+      }
+      console.error(`Chat API error response (${response.status}):`, errorText.substring(0, 500));
       throw new Error(`Chat API request failed: ${response.statusText || response.status}`);
     }
     
-    // Parse the response data
-    const data = JSON.parse(response.data.toString());
+    // Parse the response data - convert to string if needed
+    let responseText = '';
+    if (response.data instanceof Uint8Array) {
+      responseText = new TextDecoder().decode(response.data);
+    } else if (typeof response.data === 'string') {
+      responseText = response.data;
+    } else {
+      responseText = JSON.stringify(response.data);
+    }
+    console.log('Chat API response preview:', responseText.substring(0, 200));
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse response as JSON:', responseText.substring(0, 500));
+      throw new Error('Invalid response format from API - expected JSON but got: ' + responseText.substring(0, 100));
+    }
     
     if (provider === 'anthropic') {
       // Anthropic response format
@@ -368,7 +402,16 @@ async function generateOllamaResponse(
     });
 
     if (response.ok) {
-      const data = JSON.parse(response.data.toString());
+      // Convert response data to string if needed
+      let responseText = '';
+      if (response.data instanceof Uint8Array) {
+        responseText = new TextDecoder().decode(response.data);
+      } else if (typeof response.data === 'string') {
+        responseText = response.data;
+      } else {
+        responseText = JSON.stringify(response.data);
+      }
+      const data = JSON.parse(responseText);
       return {
         response: data.message.content.trim(),
         context: undefined
@@ -388,7 +431,16 @@ async function generateOllamaResponse(
     });
 
     if (response.ok) {
-      const data: OllamaGenerateResponse = JSON.parse(response.data.toString());
+      // Convert response data to string if needed
+      let responseText = '';
+      if (response.data instanceof Uint8Array) {
+        responseText = new TextDecoder().decode(response.data);
+      } else if (typeof response.data === 'string') {
+        responseText = response.data;
+      } else {
+        responseText = JSON.stringify(response.data);
+      }
+      const data: OllamaGenerateResponse = JSON.parse(responseText);
       return {
         response: data.response.trim(),
         context: data.context
@@ -412,7 +464,16 @@ async function generateOllamaResponse(
     });
 
     if (response.ok) {
-      const data = JSON.parse(response.data.toString());
+      // Convert response data to string if needed
+      let responseText = '';
+      if (response.data instanceof Uint8Array) {
+        responseText = new TextDecoder().decode(response.data);
+      } else if (typeof response.data === 'string') {
+        responseText = response.data;
+      } else {
+        responseText = JSON.stringify(response.data);
+      }
+      const data = JSON.parse(responseText);
       return {
         response: data.choices[0].message.content.trim(),
         context: undefined
@@ -432,7 +493,16 @@ async function generateOllamaResponse(
       });
       
       if (tagsResponse.ok) {
-        const tagsData = JSON.parse(tagsResponse.data.toString());
+        // Convert response data to string if needed
+        let responseText = '';
+        if (tagsResponse.data instanceof Uint8Array) {
+          responseText = new TextDecoder().decode(tagsResponse.data);
+        } else if (typeof tagsResponse.data === 'string') {
+          responseText = tagsResponse.data;
+        } else {
+          responseText = JSON.stringify(tagsResponse.data);
+        }
+        const tagsData = JSON.parse(responseText);
         console.log('Available models from /api/tags:', tagsData);
         
         if (tagsData.models && tagsData.models.length === 0) {
@@ -662,7 +732,16 @@ export async function listChatModels(): Promise<string[]> {
         throw new Error('Failed to fetch models');
       }
       
-      const data = JSON.parse(response.data.toString());
+      // Convert response data to string if needed
+      let responseText = '';
+      if (response.data instanceof Uint8Array) {
+        responseText = new TextDecoder().decode(response.data);
+      } else if (typeof response.data === 'string') {
+        responseText = response.data;
+      } else {
+        responseText = JSON.stringify(response.data);
+      }
+      const data = JSON.parse(responseText);
       const models = data.data?.map((m: any) => m.id) || [];
       // Filter models based on provider
       if (provider === 'openai') {
@@ -693,7 +772,16 @@ export async function listChatModels(): Promise<string[]> {
       throw new Error('Failed to fetch models');
     }
     
-    const data = JSON.parse(response.data.toString());
+    // Convert response data to string if needed
+    let responseText = '';
+    if (response.data instanceof Uint8Array) {
+      responseText = new TextDecoder().decode(response.data);
+    } else if (typeof response.data === 'string') {
+      responseText = response.data;
+    } else {
+      responseText = JSON.stringify(response.data);
+    }
+    const data = JSON.parse(responseText);
     return data.models?.map((m: any) => m.name) || [];
   } catch (error) {
     console.error('Failed to list Ollama models:', error);
