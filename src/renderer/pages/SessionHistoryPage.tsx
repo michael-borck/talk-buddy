@@ -13,7 +13,7 @@ import {
   Calendar, 
   Clock, 
   MessageSquare, 
-  TrendingUp, 
+ 
   Trash2, 
   Play, 
   BarChart3,
@@ -199,7 +199,7 @@ export function SessionHistoryPage() {
     return true;
   });
 
-  const filteredSessionPacks = sessionPacks.filter(pack => {
+  const filteredSessionPacks = sessionPacks.filter(() => {
     if (filter === 'standalone') return false;
     return true;
   });

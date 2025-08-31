@@ -1,5 +1,5 @@
 // Client-side SQLite service that communicates with Electron main process
-import { Scenario, Session, Pack, PackWithScenarios, PackScenario, SessionPack, SessionPackWithSessions } from '../types';
+import { Scenario, Session, Pack, PackWithScenarios, SessionPack, SessionPackWithSessions } from '../types';
 
 // Type definitions for Electron API
 interface ElectronAPI {

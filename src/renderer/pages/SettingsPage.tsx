@@ -314,7 +314,11 @@ export function SettingsPage() {
     tts: '',
     chat: ''
   });
-  const [models, setModels] = useState({
+  const [models, setModels] = useState<{
+    stt: string[];
+    tts: string[];
+    chat: string[];
+  }>({
     stt: [],
     tts: [],
     chat: []
@@ -334,12 +338,16 @@ export function SettingsPage() {
     url: 'http://127.0.0.1:8765',
     port: 8765
   });
+  // Embedded voices state - currently not displayed but available for future use
+  // @ts-ignore - Reserved for future voice selection UI
   const [embeddedVoices, setEmbeddedVoices] = useState({
     male: [] as Array<{id: number, name: string, gender: string}>,
     female: [] as Array<{id: number, name: string, gender: string}>,
     unknown: [] as Array<{id: number, name: string, gender: string}>,
     all: [] as Array<{id: number, name: string, gender: string}>
   });
+  // Voice loading state - currently not used but available for future voice selection UI
+  // @ts-ignore - Reserved for future voice loading indicators
   const [loadingVoices, setLoadingVoices] = useState(false);
 
   useEffect(() => {
@@ -403,7 +411,7 @@ export function SettingsPage() {
         ttsSpeed: prefs.ttsSpeed || '1.25',
         promptTemplate: prefs.promptTemplate || 'natural',
         customPrompt: prefs.customPrompt || '',
-        promptBehavior: prefs.promptBehavior || 'enhance',
+        promptBehavior: (prefs.promptBehavior as 'enhance' | 'override' | 'scenario-only') || 'enhance',
         includeResponseFormat: prefs.includeResponseFormat !== 'false',
         addModelOptimizations: prefs.addModelOptimizations === 'true'
       });
@@ -542,7 +550,7 @@ export function SettingsPage() {
       
       let baseUrl;
       
-      switch (serviceType) {
+      switch (serviceType as string) {
         case 'stt':
           baseUrl = preferences.sttUrl;
           break;
@@ -555,11 +563,11 @@ export function SettingsPage() {
       }
 
       // Remove trailing slash for consistency
-      const cleanUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+      const cleanUrl = baseUrl ? (baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl) : '';
 
       // First, try a simple GET request to the base URL to check if server is reachable
       const baseResponse = await window.electronAPI.fetch({
-        url: cleanUrl,
+        url: cleanUrl || '',
         options: {
           method: 'GET',
           headers: {}
@@ -623,14 +631,14 @@ export function SettingsPage() {
         // Try one more test with a HEAD request to see if server responds at all
         try {
           const headResponse = await window.electronAPI.fetch({
-            url: cleanUrl,
+            url: cleanUrl || '',
             options: {
               method: 'HEAD',
               headers: {}
             }
           });
 
-          if (headResponse.status < 500) {
+          if (headResponse.status && headResponse.status < 500) {
             setTestResults(prev => ({ 
               ...prev, 
               [serviceType]: `⚠️ Server reachable but API endpoints not found. Status: ${headResponse.status}` 
@@ -743,7 +751,7 @@ export function SettingsPage() {
           case 'openai':
           case 'groq':
             // OpenAI format: { "data": [{ "id": "model_id", ... }] }
-            modelList = data.data?.map(model => model.id) || [];
+            modelList = data.data?.map((model: any) => model.id) || [];
             if (preferences.chatProvider === 'openai') {
               // Filter for GPT models only for OpenAI
               modelList = modelList.filter((id: string) => id.includes('gpt'));
@@ -753,8 +761,8 @@ export function SettingsPage() {
             // Anthropic format: { "data": [{ "id": "model_id", "type": "model", ... }] }
             if (data.data && Array.isArray(data.data)) {
               modelList = data.data
-                .filter(model => model.type === 'model' && model.id.includes('claude'))
-                .map(model => model.id) || [];
+                .filter((model: any) => model.type === 'model' && model.id.includes('claude'))
+                .map((model: any) => model.id) || [];
             }
             // If no models found from API, fallback to known models
             if (modelList.length === 0) {
@@ -765,19 +773,19 @@ export function SettingsPage() {
           case 'custom':
           default:
             // Ollama format: { "models": [{ "name": "model_name", ... }] }
-            modelList = data.models?.map(model => model.name) || [];
+            modelList = data.models?.map((model: any) => model.name) || [];
             break;
         }
       } else {
         // Speaches format: { "data": [{ "id": "model_id", ... }] }
-        const allModels = data.data?.map(model => model.id) || [];
+        const allModels = data.data?.map((model: any) => model.id) || [];
         
         if (serviceType === 'stt') {
           // Filter for whisper models only
-          modelList = allModels.filter(model => model.toLowerCase().includes('whisper'));
+          modelList = allModels.filter((model: string) => model.toLowerCase().includes('whisper'));
         } else {
           // Filter out whisper models for TTS
-          modelList = allModels.filter(model => !model.toLowerCase().includes('whisper'));
+          modelList = allModels.filter((model: string) => !model.toLowerCase().includes('whisper'));
         }
       }
 
@@ -1492,7 +1500,7 @@ export function SettingsPage() {
                           name="promptBehavior"
                           value="enhance"
                           checked={preferences.promptBehavior === 'enhance'}
-                          onChange={(e) => setPreferences({ ...preferences, promptBehavior: 'enhance' })}
+                          onChange={() => setPreferences({ ...preferences, promptBehavior: 'enhance' })}
                           className="mr-2"
                         />
                         <div>
@@ -1508,7 +1516,7 @@ export function SettingsPage() {
                           name="promptBehavior"
                           value="override"
                           checked={preferences.promptBehavior === 'override'}
-                          onChange={(e) => setPreferences({ ...preferences, promptBehavior: 'override' })}
+                          onChange={() => setPreferences({ ...preferences, promptBehavior: 'override' })}
                           className="mr-2"
                         />
                         <div>
@@ -1523,7 +1531,7 @@ export function SettingsPage() {
                           name="promptBehavior"
                           value="scenario-only"
                           checked={preferences.promptBehavior === 'scenario-only'}
-                          onChange={(e) => setPreferences({ ...preferences, promptBehavior: 'scenario-only' })}
+                          onChange={() => setPreferences({ ...preferences, promptBehavior: 'scenario-only' })}
                           className="mr-2"
                         />
                         <div>

@@ -8,10 +8,11 @@ export function isWebSpeechAvailable(): boolean {
 }
 
 // Speech-to-Text using Web Speech API
-export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionResult> {
+// Note: audioBlob parameter is not used as Web Speech API uses microphone directly
+export async function transcribeAudio(_audioBlob: Blob): Promise<TranscriptionResult> {
   return new Promise((resolve, reject) => {
     // Check if Web Speech API is available
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       reject(new Error('Web Speech API is not supported in this browser'));
       return;
@@ -24,7 +25,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionRes
 
     const startTime = Date.now();
 
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       const duration = (Date.now() - startTime) / 1000;
       resolve({
@@ -33,7 +34,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionRes
       });
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: any) => {
       reject(new Error(`Speech recognition error: ${event.error}`));
     };
 

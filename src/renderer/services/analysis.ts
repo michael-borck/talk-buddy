@@ -185,7 +185,7 @@ function analyzeFillerWords(words: string[]): { count: number; percentage: numbe
   };
 }
 
-function analyzeEngagement(userMessages: ConversationMessage[], assistantMessages: ConversationMessage[]): {
+function analyzeEngagement(userMessages: ConversationMessage[], _assistantMessages: ConversationMessage[]): {
   score: number;
   userInitiated: number;
   questionsAsked: number;

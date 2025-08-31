@@ -221,7 +221,8 @@ export function ScenariosPage() {
         return;
       }
 
-      const _filePath = result.filePaths[0]; // File path available but not used in current implementation
+      // File path available but not used in current implementation
+      // const _filePath = result.filePaths[0];
       
       // For now, we'll use a file input approach since we can't directly read files
       const input = document.createElement('input');
