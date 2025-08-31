@@ -102,13 +102,13 @@ jobs:
 
       - name: Build Electron app (Windows)
         if: matrix.os == 'windows-latest'
-        run: npm run electron:build -- --win
+        run: npm run electron:build -- --win --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Electron app (macOS)
         if: matrix.os == 'macos-latest'
-        run: npm run electron:build -- --mac
+        run: npm run electron:build -- --mac --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -135,7 +135,7 @@ jobs:
 
       - name: Build Electron app (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: npm run electron:build -- --linux
+        run: npm run electron:build -- --linux --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -154,71 +154,3 @@ jobs:
             dist/*.yml
             dist/*.yaml
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-artifacts
-
-      - name: Create or Update Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Check if release already exists
-          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
-            echo "Release ${{ github.ref_name }} already exists, will upload assets to existing release"
-          else
-            echo "Creating new release ${{ github.ref_name }}"
-            gh release create "${{ github.ref_name }}" \
-              --title "Talk Buddy ${{ github.ref_name }}" \
-              --notes "## Talk Buddy Release ${{ github.ref_name }}
-              
-              ### Downloads
-              
-              #### Windows
-              - \`Talk Buddy-Setup-*.exe\` - Windows installer
-              
-              #### macOS
-              - \`Talk Buddy-*.dmg\` - macOS installer
-              
-              #### Linux
-              - \`Talk Buddy-*.AppImage\` - Universal Linux app
-              - \`Talk Buddy-*.deb\` - Debian/Ubuntu package
-              
-              ### Installation Instructions
-              
-              **Windows:** Download and run the .exe installer
-              
-              **macOS:** Download the .dmg file, open it, and drag Talk Buddy to Applications
-              
-              **Linux:** 
-              - AppImage: Make executable with \`chmod +x\` and run
-              - DEB: Install with \`sudo dpkg -i Talk\ Buddy-*.deb\`
-              
-              ### Requirements
-              - Microphone access for speech recognition
-              - Internet connection for AI services
-              - Speaches server for text-to-speech (configurable)
-              - Ollama or OpenAI API for conversation AI (configurable)
-              
-              ### What's New
-              - Zero TypeScript errors - commercial-grade code quality
-              - Multi-provider chat support (Anthropic, OpenAI, Groq, Ollama)
-              - Improved embedded STT/TTS with pywhispercpp
-              - Enhanced error handling and type safety
-              - Many bug fixes and improvements"
-          fi
-
-      - name: Upload Release Assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Upload all artifacts to the release
-          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" \) -exec gh release upload "${{ github.ref_name }}" {} \;
