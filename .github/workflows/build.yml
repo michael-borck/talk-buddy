@@ -167,49 +167,54 @@ jobs:
         with:
           path: release-artifacts
 
-      - name: Create Release
+      - name: Create or Update Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "Talk Buddy ${{ github.ref_name }}" \
-            --notes "## Talk Buddy Release ${{ github.ref_name }}
-            
-            ### Downloads
-            
-            #### Windows
-            - \`Talk Buddy-Setup-*.exe\` - Windows installer
-            
-            #### macOS
-            - \`Talk Buddy-*.dmg\` - macOS installer
-            
-            #### Linux
-            - \`Talk Buddy-*.AppImage\` - Universal Linux app
-            - \`Talk Buddy-*.deb\` - Debian/Ubuntu package
-            
-            ### Installation Instructions
-            
-            **Windows:** Download and run the .exe installer
-            
-            **macOS:** Download the .dmg file, open it, and drag Talk Buddy to Applications
-            
-            **Linux:** 
-            - AppImage: Make executable with \`chmod +x\` and run
-            - DEB: Install with \`sudo dpkg -i Talk\ Buddy-*.deb\`
-            
-            ### Requirements
-            - Microphone access for speech recognition
-            - Internet connection for AI services
-            - Speaches server for text-to-speech (configurable)
-            - Ollama or OpenAI API for conversation AI (configurable)
-            
-            ### What's New
-            - Collapsible dark-themed sidebar
-            - Resume in-progress sessions
-            - Improved TTS with gender-specific models
-            - Better error handling for STT/TTS services
-            - Configurable speech speed
-            - Many UI/UX improvements"
+          # Check if release already exists
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists, will upload assets to existing release"
+          else
+            echo "Creating new release ${{ github.ref_name }}"
+            gh release create "${{ github.ref_name }}" \
+              --title "Talk Buddy ${{ github.ref_name }}" \
+              --notes "## Talk Buddy Release ${{ github.ref_name }}
+              
+              ### Downloads
+              
+              #### Windows
+              - \`Talk Buddy-Setup-*.exe\` - Windows installer
+              
+              #### macOS
+              - \`Talk Buddy-*.dmg\` - macOS installer
+              
+              #### Linux
+              - \`Talk Buddy-*.AppImage\` - Universal Linux app
+              - \`Talk Buddy-*.deb\` - Debian/Ubuntu package
+              
+              ### Installation Instructions
+              
+              **Windows:** Download and run the .exe installer
+              
+              **macOS:** Download the .dmg file, open it, and drag Talk Buddy to Applications
+              
+              **Linux:** 
+              - AppImage: Make executable with \`chmod +x\` and run
+              - DEB: Install with \`sudo dpkg -i Talk\ Buddy-*.deb\`
+              
+              ### Requirements
+              - Microphone access for speech recognition
+              - Internet connection for AI services
+              - Speaches server for text-to-speech (configurable)
+              - Ollama or OpenAI API for conversation AI (configurable)
+              
+              ### What's New
+              - Zero TypeScript errors - commercial-grade code quality
+              - Multi-provider chat support (Anthropic, OpenAI, Groq, Ollama)
+              - Improved embedded STT/TTS with pywhispercpp
+              - Enhanced error handling and type safety
+              - Many bug fixes and improvements"
+          fi
 
       - name: Upload Release Assets
         env:
