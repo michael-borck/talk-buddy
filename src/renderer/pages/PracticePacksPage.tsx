@@ -13,8 +13,8 @@ import {
   Package, 
   Plus, 
   Trash2, 
-  Play, 
-  Users, 
+ 
+ 
   Clock,
   Target,
   BookOpen,

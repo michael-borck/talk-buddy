@@ -12,7 +12,7 @@ import {
   importFromFile
 } from '../services/sqlite';
 import { Scenario, Pack } from '../types';
-import { ScenarioCardSkeleton } from '../components/LoadingSkeleton';
+// ScenarioCardSkeleton component available but not currently used
 import { 
   Play, 
   Clock, 
@@ -221,7 +221,7 @@ export function ScenariosPage() {
         return;
       }
 
-      const filePath = result.filePaths[0];
+      const _filePath = result.filePaths[0]; // File path available but not used in current implementation
       
       // For now, we'll use a file input approach since we can't directly read files
       const input = document.createElement('input');

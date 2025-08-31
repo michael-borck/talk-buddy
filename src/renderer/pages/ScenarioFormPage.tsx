@@ -9,8 +9,8 @@ import {
   addScenarioToPack,
   removeScenarioFromPack
 } from '../services/sqlite';
-import { Scenario, Pack } from '../types';
-import { Save, X, Plus, Trash2, Package } from 'lucide-react';
+import { Pack } from '../types';
+import { Save, X, Plus, Package } from 'lucide-react';
 
 export function ScenarioFormPage() {
   const navigate = useNavigate();
@@ -69,7 +69,7 @@ export function ScenarioFormPage() {
           systemPrompt: scenario.systemPrompt,
           initialMessage: scenario.initialMessage,
           tags: scenario.tags || [],
-          isPublic: scenario.isPublic,
+          isPublic: scenario.isPublic || false,
           voice: scenario.voice || 'male'
         });
         

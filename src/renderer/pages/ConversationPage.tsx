@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getScenario, createSession, updateSession, getSession } from '../services/sqlite';
 import { transcribeAudio, generateSpeech } from '../services/speechProvider';
 import { generateResponse } from '../services/chat';
 import { Scenario, Session, ConversationMessage } from '../types';
 import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
-import { VoiceWaveAnimation } from '../components/VoiceWaveAnimation';
+// VoiceWaveAnimation component available but not currently used
 import { ModernVoiceVisualizer } from '../components/ModernVoiceVisualizer';
 import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
 import toast from 'react-hot-toast';
@@ -153,7 +153,7 @@ export function ConversationPage() {
         }
         
         // Calculate elapsed time from start
-        const startTime = new Date(existingSession.startTime);
+        const startTime = existingSession.startTime ? new Date(existingSession.startTime) : new Date();
         const elapsed = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
         setElapsedTime(elapsed);
         startTimeRef.current = startTime;

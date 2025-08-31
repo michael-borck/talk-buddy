@@ -15,12 +15,11 @@ import {
   Plus, 
   Play, 
   Edit, 
-  Trash2, 
+ 
   ArrowLeft,
   Clock,
   Search,
   X,
-  Filter
 } from 'lucide-react';
 
 interface ScenarioWithPacks extends Scenario {
@@ -300,7 +299,7 @@ interface AddScenariosModalProps {
   onAdd: (scenarioIds: string[]) => void;
 }
 
-function AddScenariosModal({ packId, existingScenarioIds, onClose, onAdd }: AddScenariosModalProps) {
+function AddScenariosModal({ packId: _, existingScenarioIds, onClose, onAdd }: AddScenariosModalProps) {
   const [allScenarios, setAllScenarios] = useState<ScenarioWithPacks[]>([]);
   const [filteredScenarios, setFilteredScenarios] = useState<ScenarioWithPacks[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

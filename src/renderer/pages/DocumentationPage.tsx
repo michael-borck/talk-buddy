@@ -22,8 +22,6 @@ import {
 
 import { 
   loadDocumentation, 
-  searchDocumentation, 
-  getNavigationInfo,
   documentationStructure 
 } from '../services/documentationLoader';
 
@@ -39,7 +37,8 @@ const documentationStructureWithIcons = {
   'interface-guide': { ...documentationStructure['interface-guide'], icon: Book }
 };
 
-interface DocumentationPageProps {}
+// DocumentationPage component props interface (currently empty)
+// interface DocumentationPageProps {}
 
 export function DocumentationPage(): JSX.Element {
   const navigate = useNavigate();
@@ -47,7 +46,8 @@ export function DocumentationPage(): JSX.Element {
   const [searchTerm, setSearchTerm] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentContent, setCurrentContent] = useState<string>('');
-  const [currentTitle, setCurrentTitle] = useState<string>('Help & Documentation');
+  // Current page title tracking (reserved for future use)
+  // const [currentTitle, setCurrentTitle] = useState<string>('Help & Documentation');
   const [loading, setLoading] = useState(false);
   const [breadcrumbs, setBreadcrumbs] = useState<{ label: string; path?: string }[]>([]);
 
@@ -60,7 +60,7 @@ export function DocumentationPage(): JSX.Element {
     try {
       const docData = await loadDocumentation(section, page);
       setCurrentContent(docData.content);
-      setCurrentTitle(docData.metadata.title);
+      // setCurrentTitle(docData.metadata.title);
       
       // Update breadcrumbs
       const sectionInfo = documentationStructureWithIcons[section as keyof typeof documentationStructureWithIcons];
@@ -71,7 +71,7 @@ export function DocumentationPage(): JSX.Element {
       ]);
     } catch (error) {
       setCurrentContent('# Error\n\nSorry, this documentation page could not be loaded.');
-      setCurrentTitle('Error');
+      // setCurrentTitle('Error');
       setBreadcrumbs([
         { label: 'Help', path: '' },
         { label: 'Error' }
@@ -86,7 +86,7 @@ export function DocumentationPage(): JSX.Element {
       loadDocContent(currentSection, currentPage);
     } else {
       setCurrentContent('');
-      setCurrentTitle('Help & Documentation');
+      // setCurrentTitle('Help & Documentation');
       setBreadcrumbs([]);
     }
   }, [currentSection, currentPage]);
@@ -194,7 +194,7 @@ export function DocumentationPage(): JSX.Element {
                 if (crumb.path === '') {
                   goHome();
                 } else {
-                  const params = new URLSearchParams(crumb.path.replace('?', ''));
+                  const params = new URLSearchParams(crumb.path?.replace('?', '') || '');
                   setSearchParams(Object.fromEntries(params));
                 }
               }}

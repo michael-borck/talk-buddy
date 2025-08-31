@@ -14,7 +14,8 @@ import { HelpPage } from './pages/HelpPage';
 import { DocumentationPage } from './pages/DocumentationPage';
 import { useState, useEffect } from 'react';
 import { listScenarios, listPacks, startStandaloneSession } from './services/sqlite';
-import { Home, MessageSquare, BookOpen, History, Settings, Menu, X, Mic, Package, ChevronRight, ChevronLeft, Archive, Info, HelpCircle } from 'lucide-react';
+import { Scenario, Pack } from './types';
+import { Home, BookOpen, History, Settings, ChevronRight, ChevronLeft, Archive, Info, HelpCircle, Package, Mic } from 'lucide-react';
 import { StatusFooter } from './components/StatusFooter';
 import { Toaster } from 'react-hot-toast';
 
@@ -193,8 +194,8 @@ function Sidebar() {
 function HomePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [recentScenarios, setRecentScenarios] = useState([]);
-  const [topPacks, setTopPacks] = useState([]);
+  const [recentScenarios, setRecentScenarios] = useState<Scenario[]>([]);
+  const [topPacks, setTopPacks] = useState<Pack[]>([]);
   
   useEffect(() => {
     loadHomeData();

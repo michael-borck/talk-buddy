@@ -1,4 +1,4 @@
-import React from 'react';
+// React import not needed in modern React with new JSX transform
 
 interface VoiceWaveAnimationProps {
   state: 'idle' | 'thinking' | 'speaking';

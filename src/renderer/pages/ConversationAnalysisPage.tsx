@@ -5,7 +5,7 @@ import { analyzeConversation, ConversationAnalysis } from '../services/analysis'
 import { Session } from '../types';
 import { 
   ArrowLeft, 
-  Clock, 
+ 
   MessageSquare, 
   Volume2, 
   TrendingUp, 
@@ -112,7 +112,7 @@ export function ConversationAnalysisPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Conversation Analysis</h1>
           <p className="text-gray-600">
-            Session from {new Date(session.startTime).toLocaleDateString()} at {new Date(session.startTime).toLocaleTimeString()}
+            Session from {session.startTime ? new Date(session.startTime).toLocaleDateString() : 'Unknown date'} at {session.startTime ? new Date(session.startTime).toLocaleTimeString() : 'Unknown time'}
           </p>
         </div>
       </div>

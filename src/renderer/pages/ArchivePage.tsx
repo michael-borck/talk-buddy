@@ -5,22 +5,19 @@ import {
   unarchiveScenario,
   unarchivePack,
   deleteScenario,
-  deletePack,
-  bulkArchiveScenarios,
-  bulkArchivePacks
+  deletePack
 } from '../services/sqlite';
 import { Scenario, Pack } from '../types';
 import { 
   Archive,
   Search,
-  Unarchive,
+  RotateCcw,
   Trash2,
   Package,
   MessageSquare,
   Clock,
   CheckSquare,
   Square,
-  RotateCcw,
   X
 } from 'lucide-react';
 

@@ -63,7 +63,7 @@ export interface SessionMetadata {
   averageResponseTime?: number;
   encouragementShown?: boolean;
   naturalEnding?: boolean;
-  endReason?: 'natural' | 'user_ended' | 'timeout' | 'error';
+  endReason?: 'natural' | 'user_ended' | 'timeout' | 'error' | 'user_paused' | 'ended_from_history';
 }
 
 export interface UserPreferences {
