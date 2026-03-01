@@ -1,5 +1,9 @@
 # Talk Buddy Desktop
 
+<!-- BADGES:START -->
+[![ai](https://img.shields.io/badge/-ai-ff6f00?style=flat-square)](https://github.com/topics/ai) [![conversation-practice](https://img.shields.io/badge/-conversation--practice-blue?style=flat-square)](https://github.com/topics/conversation-practice) [![cross-platform](https://img.shields.io/badge/-cross--platform-blue?style=flat-square)](https://github.com/topics/cross-platform) [![electron](https://img.shields.io/badge/-electron-47848f?style=flat-square)](https://github.com/topics/electron) [![english-learning](https://img.shields.io/badge/-english--learning-blue?style=flat-square)](https://github.com/topics/english-learning) [![interview-prep](https://img.shields.io/badge/-interview--prep-blue?style=flat-square)](https://github.com/topics/interview-prep) [![natural-language-processing](https://img.shields.io/badge/-natural--language--processing-blue?style=flat-square)](https://github.com/topics/natural-language-processing) [![speech-recognition](https://img.shields.io/badge/-speech--recognition-blue?style=flat-square)](https://github.com/topics/speech-recognition) [![text-to-speech](https://img.shields.io/badge/-text--to--speech-blue?style=flat-square)](https://github.com/topics/text-to-speech) [![typescript](https://img.shields.io/badge/-typescript-3178c6?style=flat-square)](https://github.com/topics/typescript)
+<!-- BADGES:END -->
+
 AI-powered conversation practice desktop application with real-time speech recognition and synthesis. Practice real-world conversations with an AI partner in a safe, supportive environment - all running locally on your computer.
 
 ## 🌟 Features
