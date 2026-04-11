@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getAllPreferences } from '../services/sqlite';
 import * as speechProvider from '../services/speechProvider';
+import { CHAT_PROVIDER_URLS } from '../services/chat';
 
 interface ServiceStatus {
   status: 'connected' | 'error' | 'checking' | 'unknown';
@@ -49,11 +50,18 @@ export function StatusFooter() {
   const loadPreferences = useCallback(async () => {
     try {
       const prefs = await getAllPreferences();
+      const provider = (prefs.chatProvider as ChatProvider) || 'ollama';
+      // Hosted providers have hardcoded URLs — don't trust the stored
+      // pref for those, it may be stale from a previous choice.
+      const chatUrl =
+        provider === 'anthropic' || provider === 'openai' || provider === 'groq'
+          ? CHAT_PROVIDER_URLS[provider]
+          : prefs.ollamaUrl || '';
       prefsRef.current = {
         sttUrl: prefs.sttUrl || '',
         ttsUrl: prefs.ttsUrl || '',
-        chatProvider: (prefs.chatProvider as ChatProvider) || 'ollama',
-        chatUrl: prefs.ollamaUrl || '',
+        chatProvider: provider,
+        chatUrl,
         chatApiKey: prefs.ollamaApiKey || '',
       };
     } catch (error) {

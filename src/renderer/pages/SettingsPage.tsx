@@ -4,7 +4,7 @@ import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTria
 import * as embeddedService from '../services/embedded';
 import * as speechProvider from '../services/speechProvider';
 import { EmbeddedInstallModal } from '../components/settings/EmbeddedInstallModal';
-import { DEFAULT_PROMPTS } from '../services/chat';
+import { DEFAULT_PROMPTS, CHAT_PROVIDER_URLS } from '../services/chat';
 
 // Component for API Key input with environment variable support
 function ApiKeyInput({ 
@@ -595,7 +595,18 @@ export function SettingsPage() {
           baseUrl = preferences.ttsUrl;
           break;
         case 'chat':
-          baseUrl = preferences.ollamaUrl;
+          // Hardcode canonical URLs for hosted providers — ignore the
+          // stored preference, which may be stale from a previous
+          // provider choice.
+          if (
+            preferences.chatProvider === 'anthropic' ||
+            preferences.chatProvider === 'openai' ||
+            preferences.chatProvider === 'groq'
+          ) {
+            baseUrl = CHAT_PROVIDER_URLS[preferences.chatProvider];
+          } else {
+            baseUrl = preferences.ollamaUrl;
+          }
           break;
       }
 
@@ -735,19 +746,19 @@ export function SettingsPage() {
           endpoint = url.endsWith('/') ? `${url}v1/models` : `${url}/v1/models`;
           break;
         case 'chat':
-          url = preferences.ollamaUrl;
-          // Use explicit provider selection instead of URL detection
-          switch (preferences.chatProvider) {
-            case 'anthropic':
-            case 'openai':
-            case 'groq':
-              endpoint = url.endsWith('/') ? `${url}v1/models` : `${url}/v1/models`;
-              break;
-            case 'ollama':
-            case 'custom':
-            default:
-              endpoint = url.endsWith('/') ? `${url}api/tags` : `${url}/api/tags`;
-              break;
+          // For hosted providers (Anthropic/OpenAI/Groq) use the canonical
+          // URL so users don't have to type it. Only Ollama/Custom read
+          // from the stored preference.
+          if (
+            preferences.chatProvider === 'anthropic' ||
+            preferences.chatProvider === 'openai' ||
+            preferences.chatProvider === 'groq'
+          ) {
+            url = CHAT_PROVIDER_URLS[preferences.chatProvider];
+            endpoint = `${url}/v1/models`;
+          } else {
+            url = preferences.ollamaUrl;
+            endpoint = url.endsWith('/') ? `${url}api/tags` : `${url}/api/tags`;
           }
           break;
       }
@@ -1440,41 +1451,72 @@ export function SettingsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Chat API URL
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={preferences.ollamaUrl}
-                    onChange={(e) => setPreferences({ ...preferences, ollamaUrl: e.target.value })}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder={
-                      preferences.chatProvider === 'anthropic' ? "https://api.anthropic.com" :
-                      preferences.chatProvider === 'openai' ? "https://api.openai.com" :
-                      preferences.chatProvider === 'groq' ? "https://api.groq.com/openai" :
-                      preferences.chatProvider === 'ollama' ? "http://localhost:11434 or https://ollama.serveur.au" :
-                      "Enter API endpoint URL"
-                    }
-                  />
-                  <button
-                    onClick={() => testService('chat')}
-                    disabled={testing.chat || !preferences.ollamaUrl}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {testing.chat ? 'Testing...' : 'Test'}
-                  </button>
-                </div>
-                <p className="mt-1 text-sm text-gray-600">
-                  API endpoint (OpenAI, Anthropic, Ollama, or compatible service)
-                </p>
-                {testResults.chat && (
-                  <p className={`mt-2 text-sm ${testResults.chat.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
-                    {testResults.chat}
+              {/* URL field: editable for Ollama/Custom, read-only for hosted
+                  providers that have canonical endpoints. */}
+              {(preferences.chatProvider === 'anthropic' ||
+                preferences.chatProvider === 'openai' ||
+                preferences.chatProvider === 'groq') ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chat API URL
+                  </label>
+                  <div className="flex gap-2 items-center">
+                    <div className="flex-1 px-4 py-2 border border-ink/10 bg-ivory-warm text-ink-muted font-mono text-sm">
+                      {CHAT_PROVIDER_URLS[preferences.chatProvider as keyof typeof CHAT_PROVIDER_URLS]}
+                    </div>
+                    <button
+                      onClick={() => testService('chat')}
+                      disabled={testing.chat}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {testing.chat ? 'Testing...' : 'Test'}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Standard endpoint for {preferences.chatProvider === 'anthropic' ? 'Anthropic' : preferences.chatProvider === 'openai' ? 'OpenAI' : 'Groq'} — no URL to configure.
                   </p>
-                )}
-              </div>
+                  {testResults.chat && (
+                    <p className={`mt-2 text-sm ${testResults.chat.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
+                      {testResults.chat}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chat API URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={preferences.ollamaUrl}
+                      onChange={(e) => setPreferences({ ...preferences, ollamaUrl: e.target.value })}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder={
+                        preferences.chatProvider === 'ollama' ? "http://localhost:11434 or https://ollama.serveur.au" :
+                        "Enter API endpoint URL"
+                      }
+                    />
+                    <button
+                      onClick={() => testService('chat')}
+                      disabled={testing.chat || !preferences.ollamaUrl}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {testing.chat ? 'Testing...' : 'Test'}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {preferences.chatProvider === 'ollama'
+                      ? 'Where your Ollama server lives (local or remote)'
+                      : 'API endpoint for your custom chat service'}
+                  </p>
+                  {testResults.chat && (
+                    <p className={`mt-2 text-sm ${testResults.chat.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
+                      {testResults.chat}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -83,15 +83,35 @@ interface OllamaGenerateResponse {
   eval_count?: number;
 }
 
-// Get Chat API URL from preferences
+// Canonical base URLs for the hosted chat providers we support. Users
+// do not (and should not) need to type these — picking the provider
+// alone determines the URL. Only Ollama and Custom read their URL from
+// the preference store, since Ollama can live at any self-hosted
+// address and Custom is explicitly user-defined.
+export const CHAT_PROVIDER_URLS = {
+  anthropic: 'https://api.anthropic.com',
+  openai:    'https://api.openai.com',
+  groq:      'https://api.groq.com/openai',
+} as const;
+
+export type ChatProvider = 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom';
+
+// Get Chat API URL from preferences. For known hosted providers, the
+// URL is hardcoded — ignoring whatever stale value may be in the DB
+// from a previous provider. For Ollama and Custom, read the stored
+// preference.
 async function getChatApiUrl(): Promise<string> {
+  const provider = await getChatProvider();
+  if (provider in CHAT_PROVIDER_URLS) {
+    return CHAT_PROVIDER_URLS[provider as keyof typeof CHAT_PROVIDER_URLS];
+  }
   const url = await getPreference('ollamaUrl'); // keeping key name for backward compatibility
   return url || 'https://ollama.serveur.au';
 }
 
 // Get chat provider from preferences
-async function getChatProvider(): Promise<'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom'> {
-  const provider = await getPreference('chatProvider') as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom';
+async function getChatProvider(): Promise<ChatProvider> {
+  const provider = await getPreference('chatProvider') as ChatProvider;
   return provider || 'ollama';
 }
 
