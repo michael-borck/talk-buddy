@@ -43,3 +43,22 @@ Thumbs.db
 
 # Log files
 *.log
+
+# Python (embedded-server/)
+# venv is belt-and-suspenders: Python also drops its own .gitignore
+# inside venv/, but listing it here protects against other venv layouts.
+embedded-server/venv/
+embedded-server/__pycache__/
+embedded-server/**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+# Model weights downloaded at runtime or by the CI workflow
+embedded-server/models/
+embedded-server/whisper-models/
+# PyInstaller outputs (local build.sh / CI)
+embedded-server/build/
+embedded-server/dist/
+embedded-server/*.spec
+dist-server/

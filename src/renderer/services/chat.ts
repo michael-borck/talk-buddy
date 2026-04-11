@@ -4,11 +4,20 @@ import { ConversationMessage } from '../types';
 
 // Default prompt templates (same as in SettingsPage)
 const DEFAULT_PROMPTS = {
-  natural: `IMPORTANT: To keep the conversation natural and realistic, you must:
-1. Ask only ONE question at a time
-2. Keep responses concise and conversational
-3. Wait for the user's response before asking another question
-4. Avoid listing multiple questions or options in a single response`,
+  natural: `You are having a spoken conversation. Your response will be read aloud by a text-to-speech voice, so it must sound like natural speech.
+
+HARD RULES — these are absolute, not suggestions:
+- Your response is 1-3 short sentences. Never longer.
+- Never use bullet points, numbered lists, headings, or markdown.
+- Never use stage directions like *smiles* or [pause].
+- Never say "Sure!" or "Certainly!" or any preamble — start with the actual reply.
+- Never re-state what the user just said.
+- Never narrate your own behavior ("I'll ask you a question now...").
+- Ask at most ONE question per turn, and only if it moves the conversation forward.
+- No em-dashes, no semicolons — write the way people talk.
+- If the user asks something simple, give a simple answer. Do not explain more than asked.
+
+You are the conversation partner, not an assistant explaining things. Speak like a human in the room.`,
   educational: `As a conversation partner, please:
 1. Ask one thoughtful question at a time
 2. Provide context or examples when helpful
@@ -57,6 +66,7 @@ interface OllamaGenerateRequest {
     temperature?: number;
     top_p?: number;
     seed?: number;
+    num_predict?: number;
   };
 }
 
@@ -216,20 +226,23 @@ async function generateChatCompletion(
       model,
       messages: chatMessages,
       temperature: 0.7,
+      // Hard cap — prevents weaker models from generating essay-length
+      // replies. A spoken turn should never need more than this.
+      max_tokens: 160,
       stream: false
     };
   } else if (provider === 'anthropic') {
     headers['x-api-key'] = apiKey;
     headers['anthropic-version'] = '2023-06-01';
-    
+
     // Anthropic uses a different format - extract system message
     const systemMessage = chatMessages.find(m => m.role === 'system');
     const nonSystemMessages = chatMessages.filter(m => m.role !== 'system');
-    
+
     request = {
       model,
       messages: nonSystemMessages,
-      max_tokens: 1024,
+      max_tokens: 200,
       temperature: 0.7,
       ...(systemMessage && { system: systemMessage.content })
     };
@@ -365,7 +378,11 @@ async function generateOllamaResponse(
     context,
     options: {
       temperature: 0.7,
-      top_p: 0.9
+      top_p: 0.9,
+      // Hard cap on generated tokens — prevents weaker local models
+      // from rambling into multi-paragraph replies. A spoken turn is
+      // a few sentences, never a lecture.
+      num_predict: 160
     }
   };
 

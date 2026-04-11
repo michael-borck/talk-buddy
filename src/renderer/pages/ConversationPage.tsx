@@ -458,12 +458,13 @@ export function ConversationPage() {
 
   const speakText = async (text: string, isInitialGreeting: boolean = false) => {
     try {
-      // Prevent overlapping speech - if already speaking, stop current audio
-      if (audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause();
-        audioRef.current = null;
-        teardownTtsAnalyser();
-      }
+      // Aggressive pre-flight teardown. A prior Audio may still exist
+      // (race: onended hasn't fired yet, or the element is mid-decode),
+      // and we absolutely must not overlap voices. stopSpeaking() also
+      // nulls out the onended handler so any in-flight cleanup can't
+      // come back and fire the turn cue for audio we're about to
+      // replace.
+      stopSpeaking();
 
       // For initial greetings, show thinking state while generating audio
       // For responses, we're already in speaking state from processAudio
@@ -543,11 +544,35 @@ export function ConversationPage() {
     return hasGoodbye || (hasStrictEnding && messages.length > 4);
   };
 
+  // Immediately silences any TTS audio currently playing, releases the
+  // analyser, and clears event handlers so stale onended callbacks
+  // from a half-played utterance can't flip state back to idle or fire
+  // the turn cue after the session is over.
+  const stopSpeaking = () => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.onplay = null;
+        audioRef.current.onended = null;
+        audioRef.current.onerror = null;
+        if (!audioRef.current.paused) {
+          audioRef.current.pause();
+        }
+      } catch { /* ignore */ }
+      audioRef.current = null;
+    }
+    teardownTtsAnalyser();
+  };
+
   const handleEndSession = () => {
+    // Freeze the talking AI the moment the user opens the end-session
+    // modal — otherwise the voice keeps going while the user is trying
+    // to decide, which is disorienting.
+    stopSpeaking();
     setShowEndModal(true);
   };
 
   const pauseSession = async () => {
+    stopSpeaking();
     if (session) {
       await updateSession(session.id, {
         status: 'paused',
@@ -562,6 +587,9 @@ export function ConversationPage() {
   };
 
   const completeSession = async (reason: 'natural' | 'user_ended' = 'user_ended') => {
+    // Defensive: if the user skipped the modal path (e.g. natural end),
+    // still make sure nothing is talking.
+    stopSpeaking();
     if (session) {
       await updateSession(session.id, {
         status: 'ended',

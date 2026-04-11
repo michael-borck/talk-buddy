@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAllPreferences, setPreference, resetDatabase } from '../services/sqlite';
-import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server, Mic, Volume2, MessageSquare, PenLine, Database } from 'lucide-react';
 import * as embeddedService from '../services/embedded';
 import * as speechProvider from '../services/speechProvider';
 import { EmbeddedInstallModal } from '../components/settings/EmbeddedInstallModal';
@@ -576,29 +576,38 @@ export function SettingsPage() {
     setTesting(prev => ({ ...prev, [serviceType]: true }));
     setTestResults(prev => ({ ...prev, [serviceType]: '' }));
 
+    // Whenever a test finishes (success or failure), tell the
+    // StatusFooter to re-run its checks so the bottom-of-screen status
+    // reflects the current reality without waiting for the 30s poll.
+    const notifyFooter = () => {
+      window.dispatchEvent(new CustomEvent('talkbuddy:status-refresh'));
+    };
+
     try {
       // Use speech provider abstraction for STT/TTS testing
       if (serviceType === 'stt') {
         const connected = await speechProvider.checkSTTConnection();
         const provider = preferences.sttProvider;
-        setTestResults(prev => ({ 
-          ...prev, 
-          [serviceType]: connected 
-            ? `✅ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} STT server is running and healthy` 
-            : `❌ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} STT server is not available. Check configuration.` 
+        setTestResults(prev => ({
+          ...prev,
+          [serviceType]: connected
+            ? `✅ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} STT server is running and healthy`
+            : `❌ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} STT server is not available. Check configuration.`
         }));
+        notifyFooter();
         return;
       }
-      
+
       if (serviceType === 'tts') {
         const connected = await speechProvider.checkTTSConnection();
         const provider = preferences.ttsProvider;
-        setTestResults(prev => ({ 
-          ...prev, 
-          [serviceType]: connected 
-            ? `✅ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} TTS server is running and healthy` 
-            : `❌ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} TTS server is not available. Check configuration.` 
+        setTestResults(prev => ({
+          ...prev,
+          [serviceType]: connected
+            ? `✅ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} TTS server is running and healthy`
+            : `❌ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} TTS server is not available. Check configuration.`
         }));
+        notifyFooter();
         return;
       }
       
@@ -712,12 +721,15 @@ export function SettingsPage() {
       }
 
     } catch (error) {
-      setTestResults(prev => ({ 
-        ...prev, 
-        [serviceType]: `❌ Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      setTestResults(prev => ({
+        ...prev,
+        [serviceType]: `❌ Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       }));
     } finally {
       setTesting(prev => ({ ...prev, [serviceType]: false }));
+      // Whatever path we took (STT/TTS early-return, chat fallback, or
+      // caught exception), tell the footer to re-check.
+      notifyFooter();
     }
   };
 
@@ -856,43 +868,55 @@ export function SettingsPage() {
   };
 
   const tabs = [
-    { id: 'stt', name: 'Speech-to-Text', icon: '🎤' },
-    { id: 'tts', name: 'Text-to-Speech', icon: '🔊' },
-    { id: 'chat', name: 'Chat Model', icon: '🤖' },
-    { id: 'prompts', name: 'Prompts', icon: '✍️' },
-    { id: 'data', name: 'Data & Docs', icon: '📁' }
+    { id: 'stt', name: 'Speech-to-Text', Icon: Mic },
+    { id: 'tts', name: 'Text-to-Speech', Icon: Volume2 },
+    { id: 'chat', name: 'Chat Model', Icon: MessageSquare },
+    { id: 'prompts', name: 'Prompts', Icon: PenLine },
+    { id: 'data', name: 'Data & Docs', Icon: Database }
   ];
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Settings</h1>
+    <div className="max-w-4xl mx-auto px-12 lg:px-16 py-14">
+      <div className="flex items-center mb-4">
+        <span className="editorial-rule" aria-hidden="true" />
+        <span className="text-[0.7rem] uppercase tracking-[0.22em] text-ink-muted font-sans">
+          Preferences
+        </span>
+      </div>
+      <h1 className="font-display text-ink font-medium leading-[0.95] tracking-tight-display text-[clamp(2.5rem,5vw,4rem)] mb-10">
+        Settings
+      </h1>
 
       {message && (
-        <div className={`mb-6 p-4 rounded-lg ${
-          message.includes('Failed') ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'
+        <div className={`mb-8 px-4 py-3 border-l-2 ${
+          message.includes('Failed') ? 'border-vermilion bg-ivory-warm' : 'border-ink bg-ivory-warm'
         }`}>
-          {message}
+          <p className="text-[0.9rem] text-ink font-sans">{message}</p>
         </div>
       )}
 
-      {/* Tab Navigation */}
-      <div className="mb-8">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span>{tab.icon}</span>
-                {tab.name}
-              </button>
-            ))}
+      {/* Tab Navigation — editorial: hairline baseline, ink active marker */}
+      <div className="mb-10">
+        <div className="border-b border-ink/10">
+          <nav className="-mb-px flex gap-8 flex-wrap">
+            {tabs.map((tab) => {
+              const Icon = tab.Icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-3 px-1 border-b-2 text-[0.9rem] font-sans flex items-center gap-2 transition-colors ${
+                    isActive
+                      ? 'border-vermilion text-ink font-medium'
+                      : 'border-transparent text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  <Icon size={14} strokeWidth={1.5} className={isActive ? 'text-vermilion' : ''} />
+                  {tab.name}
+                </button>
+              );
+            })}
           </nav>
         </div>
       </div>
