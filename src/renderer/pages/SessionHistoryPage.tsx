@@ -33,6 +33,17 @@ interface SessionWithScenario extends Session {
   scenarioData?: Scenario;
 }
 
+// Typographic voice markers — Mars/Venus Unicode glyphs render in the
+// normal text font (not the yellow Apple emoji font), so they inherit
+// theme color and match the scenario cards on ScenariosPage.
+function getVoiceMarker(voice?: string): { symbol: string; label: string } {
+  switch (voice) {
+    case 'female': return { symbol: '♀', label: 'Female voice' };
+    case 'male':   return { symbol: '♂', label: 'Male voice' };
+    default:       return { symbol: '◐', label: 'Default voice' };
+  }
+}
+
 export function SessionHistoryPage() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<SessionWithScenario[]>([]);
@@ -446,9 +457,18 @@ function SessionCard({
               <h3 className="text-lg font-semibold text-gray-800">
                 {session.scenarioData?.name || 'Unknown Scenario'}
               </h3>
-              <span className="text-lg" title={`${session.scenarioData?.voice || 'default'} voice`}>
-                {session.scenarioData?.voice === 'female' ? '👩' : session.scenarioData?.voice === 'male' ? '👨' : '🗣️'}
-              </span>
+              {(() => {
+                const marker = getVoiceMarker(session.scenarioData?.voice);
+                return (
+                  <span
+                    className="text-vermilion text-base leading-none font-sans"
+                    title={marker.label}
+                    aria-label={marker.label}
+                  >
+                    {marker.symbol}
+                  </span>
+                );
+              })()}
               {session.packName && (
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                   📦 {session.packName}
@@ -602,11 +622,18 @@ function SessionPackSessionCard({
           <h4 className="font-medium text-gray-800">
             {scenarioData?.name || 'Loading...'}
           </h4>
-          {scenarioData && (
-            <span className="text-lg" title={`${scenarioData.voice || 'default'} voice`}>
-              {scenarioData.voice === 'female' ? '👩' : scenarioData.voice === 'male' ? '👨' : '🗣️'}
-            </span>
-          )}
+          {scenarioData && (() => {
+            const marker = getVoiceMarker(scenarioData.voice);
+            return (
+              <span
+                className="text-vermilion text-base leading-none font-sans"
+                title={marker.label}
+                aria-label={marker.label}
+              >
+                {marker.symbol}
+              </span>
+            );
+          })()}
           <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
             {getStatusText(session.status)}
           </span>

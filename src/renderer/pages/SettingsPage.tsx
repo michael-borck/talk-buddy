@@ -4,6 +4,7 @@ import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTria
 import * as embeddedService from '../services/embedded';
 import * as speechProvider from '../services/speechProvider';
 import { EmbeddedInstallModal } from '../components/settings/EmbeddedInstallModal';
+import { DEFAULT_PROMPTS } from '../services/chat';
 
 // Component for API Key input with environment variable support
 function ApiKeyInput({ 
@@ -218,57 +219,30 @@ function ModelSelector({
 }
 
 // Prompt templates
-const PROMPT_TEMPLATES = {
-  natural: {
-    name: 'Natural Conversation',
-    description: 'Default conversational style for natural practice',
-    prompt: `IMPORTANT: To keep the conversation natural and realistic, you must:
-1. Ask only ONE question at a time
-2. Keep responses concise and conversational
-3. Wait for the user's response before asking another question
-4. Avoid listing multiple questions or options in a single response`
-  },
-  educational: {
-    name: 'Educational/Detailed',
-    description: 'More detailed responses with gentle corrections',
-    prompt: `As a conversation partner, please:
-1. Ask one thoughtful question at a time
-2. Provide context or examples when helpful
-3. Gently correct language errors by rephrasing correctly
-4. Encourage elaboration on responses
-5. Offer vocabulary alternatives when appropriate`
-  },
-  concise: {
-    name: 'Brief/Concise',
-    description: 'Very short, to-the-point responses',
-    prompt: `Keep the conversation extremely concise:
-1. Ask only ONE short question at a time
-2. Use simple, everyday language
-3. Keep responses under 2 sentences
-4. Avoid explanations or elaborations
-5. Focus on the essential information only`
-  },
-  business: {
-    name: 'Business Professional',
-    description: 'Professional business communication style',
-    prompt: `Maintain a professional business conversation by:
-1. Asking focused, relevant business questions one at a time
-2. Using appropriate business terminology and formal language
-3. Keeping exchanges concise and purposeful
-4. Following standard business etiquette
-5. Staying on topic and goal-oriented`
-  },
-  supportive: {
-    name: 'Supportive/Encouraging',
-    description: 'Extra encouragement for language learners',
-    prompt: `Be a supportive conversation partner:
-1. Ask one encouraging question at a time
-2. Celebrate attempts and progress
-3. Offer gentle hints if the user struggles
-4. Use positive reinforcement
-5. Keep a patient, understanding tone`
-  }
-};
+// UI metadata for each template. The actual `prompt` text is pulled
+// from DEFAULT_PROMPTS in services/chat.ts — the single source of truth
+// the LLM sees. That way "edit one place, not two."
+const PROMPT_TEMPLATE_META = {
+  natural:     { name: 'Natural Conversation',   description: 'Default conversational style for natural practice' },
+  educational: { name: 'Educational/Detailed',   description: 'More detailed responses with gentle corrections' },
+  concise:     { name: 'Brief/Concise',          description: 'Very short, to-the-point responses' },
+  business:    { name: 'Business Professional',  description: 'Professional business communication style' },
+  supportive:  { name: 'Supportive/Encouraging', description: 'Extra encouragement for language learners' },
+} as const;
+
+const PROMPT_TEMPLATES: Record<
+  keyof typeof PROMPT_TEMPLATE_META,
+  { name: string; description: string; prompt: string }
+> = Object.fromEntries(
+  (Object.keys(PROMPT_TEMPLATE_META) as Array<keyof typeof PROMPT_TEMPLATE_META>).map((key) => [
+    key,
+    {
+      name: PROMPT_TEMPLATE_META[key].name,
+      description: PROMPT_TEMPLATE_META[key].description,
+      prompt: DEFAULT_PROMPTS[key],
+    },
+  ])
+) as Record<keyof typeof PROMPT_TEMPLATE_META, { name: string; description: string; prompt: string }>;
 
 export function SettingsPage() {
   const [preferences, setPreferences] = useState({

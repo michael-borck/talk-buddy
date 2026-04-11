@@ -3,7 +3,10 @@ import { getPreference } from './sqlite';
 import { ConversationMessage } from '../types';
 
 // Default prompt templates (same as in SettingsPage)
-const DEFAULT_PROMPTS = {
+// Canonical prompt templates. Exported so the Settings UI can render
+// the same text the LLM actually sees — preventing the "I edited the
+// prompt but the preview still shows the old one" DRY bug.
+export const DEFAULT_PROMPTS = {
   natural: `You are having a spoken conversation. Your response will be read aloud by a text-to-speech voice, so it must sound like natural speech.
 
 HARD RULES — these are absolute, not suggestions:
