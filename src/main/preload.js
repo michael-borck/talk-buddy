@@ -24,7 +24,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App info
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
-    getPath: (name) => ipcRenderer.invoke('app:getPath', name)
+    getPath: (name) => ipcRenderer.invoke('app:getPath', name),
+    // Resolves a shell environment variable from main's process.env.
+    // Returns null if the variable is unset.
+    getEnvVar: (name) => ipcRenderer.invoke('app:getEnvVar', name),
   },
 
   // Platform info

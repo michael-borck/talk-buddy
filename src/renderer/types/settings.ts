@@ -3,7 +3,7 @@
 
 export type STTProvider = 'embedded' | 'speaches';
 export type TTSProvider = 'embedded' | 'speaches';
-export type ChatProvider = 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom';
+export type ChatProvider = 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom';
 export type PromptBehavior = 'enhance' | 'override' | 'scenario-only';
 
 export interface STTSettings {

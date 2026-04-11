@@ -8,7 +8,7 @@ interface ServiceStatus {
   message?: string;
 }
 
-type ChatProvider = 'ollama' | 'anthropic' | 'openai' | 'groq' | 'custom';
+type ChatProvider = 'ollama' | 'anthropic' | 'openai' | 'groq' | 'gemini' | 'custom';
 
 // The chat service reuses the legacy `ollamaUrl` / `ollamaApiKey` pref
 // names for ALL providers — see src/renderer/services/chat.ts where
@@ -54,7 +54,8 @@ export function StatusFooter() {
       // Hosted providers have hardcoded URLs — don't trust the stored
       // pref for those, it may be stale from a previous choice.
       const chatUrl =
-        provider === 'anthropic' || provider === 'openai' || provider === 'groq'
+        provider === 'anthropic' || provider === 'openai' ||
+        provider === 'groq'      || provider === 'gemini'
           ? CHAT_PROVIDER_URLS[provider]
           : prefs.ollamaUrl || '';
       prefsRef.current = {
@@ -76,22 +77,49 @@ export function StatusFooter() {
     }
     const cleanUrl = prefs.chatUrl.endsWith('/') ? prefs.chatUrl.slice(0, -1) : prefs.chatUrl;
 
-    // Header shape depends on the provider. Anthropic uses x-api-key,
-    // everyone else uses Bearer. This matches chat.ts's own logic.
+    // Resolve env:VAR -> real value via main process. Renderer can't
+    // see the shell environment directly.
+    let apiKey = prefs.chatApiKey;
+    if (apiKey.startsWith('env:')) {
+      try {
+        apiKey = (await window.electronAPI.app.getEnvVar(apiKey.substring(4))) || '';
+      } catch {
+        apiKey = '';
+      }
+    }
+
+    // Gemini is special: key goes in ?key=... query string, no header,
+    // and the model list endpoint is /v1beta/models.
+    if (prefs.chatProvider === 'gemini') {
+      try {
+        const url = `${cleanUrl}/v1beta/models${apiKey ? `?key=${encodeURIComponent(apiKey)}` : ''}`;
+        const response = await window.electronAPI.fetch({
+          url,
+          options: { method: 'GET', headers: {} },
+        });
+        if (response.ok || response.status === 401 || response.status === 403) {
+          return { status: 'connected', message: 'Online' };
+        }
+        return { status: 'error', message: `HTTP ${response.status}` };
+      } catch {
+        return { status: 'error', message: 'Unreachable' };
+      }
+    }
+
+    // Everyone else: header-based auth, endpoint-scan.
     const headers: Record<string, string> = {};
-    if (prefs.chatApiKey) {
+    if (apiKey) {
       if (prefs.chatProvider === 'anthropic') {
-        headers['x-api-key'] = prefs.chatApiKey;
+        headers['x-api-key'] = apiKey;
         headers['anthropic-version'] = '2023-06-01';
       } else {
-        headers['Authorization'] = `Bearer ${prefs.chatApiKey}`;
+        headers['Authorization'] = `Bearer ${apiKey}`;
       }
     }
 
     // Endpoint order: OpenAI-compatible first (covers OpenAI, Groq,
-    // Anthropic-compatible wrappers, Speaches-for-chat); then Ollama's
-    // native paths; then generic health probes. We treat 401/403 as
-    // "alive but auth rejected" — still a reachable server.
+    // Anthropic, Speaches-for-chat); then Ollama's native paths; then
+    // generic health probes. Treat 401/403 as reachable-but-rejected.
     const endpoints = [
       '/v1/models',
       '/api/tags',

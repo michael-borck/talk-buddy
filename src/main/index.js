@@ -760,6 +760,17 @@ ipcMain.handle('app:getPath', (event, name) => {
   return app.getPath(name);
 });
 
+// Return a shell environment variable. The renderer can't see process.env
+// because webPreferences.nodeIntegration is false and contextIsolation is
+// true — its `process` object is a sandboxed polyfill, not the real
+// Node process that Electron's main was spawned from. Any feature that
+// resolves `env:VAR_NAME` prefs (chat API key, STT API key, TTS API key)
+// has to hop through this IPC.
+ipcMain.handle('app:getEnvVar', (event, name) => {
+  if (!name || typeof name !== 'string') return null;
+  return process.env[name] || null;
+});
+
 // Speaches STT — multipart upload via main-process fetch. The renderer
 // sends the audio as an ArrayBuffer (FormData doesn't serialize across
 // IPC). We rebuild FormData here where global fetch handles it natively.

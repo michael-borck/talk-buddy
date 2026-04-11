@@ -4,24 +4,34 @@ import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTria
 import * as embeddedService from '../services/embedded';
 import * as speechProvider from '../services/speechProvider';
 import { EmbeddedInstallModal } from '../components/settings/EmbeddedInstallModal';
-import { DEFAULT_PROMPTS, CHAT_PROVIDER_URLS } from '../services/chat';
+import { DEFAULT_PROMPTS, CHAT_PROVIDER_URLS, CHAT_PROVIDER_ENV_VARS, resolveApiKey } from '../services/chat';
 
-// Component for API Key input with environment variable support
-function ApiKeyInput({ 
-  value, 
-  onChange, 
+// Component for API Key input with environment variable support.
+//
+// `envVarName` is the name the env-var radio populates with (e.g.
+// 'ANTHROPIC_API_KEY'). The actual preference stores `env:VAR_NAME`.
+// Kept backward-compatible with the old `envPlaceholder` prop shape
+// for callers that pre-date the provider-aware rewrite.
+function ApiKeyInput({
+  value,
+  onChange,
   placeholder = "sk-... or leave empty",
-  envPlaceholder = "env:API_KEY_NAME",
-  fieldName 
-}: { 
-  value: string; 
+  envVarName,
+  envPlaceholder,
+  fieldName,
+}: {
+  value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  envVarName?: string;
   envPlaceholder?: string;
   fieldName: string;
 }) {
+  const resolvedEnvPlaceholder = envVarName
+    ? `env:${envVarName}`
+    : envPlaceholder || 'env:API_KEY_NAME';
   const isEnvVar = value?.startsWith('env:');
-  
+
   return (
     <div className="space-y-2">
       <div className="flex gap-4">
@@ -42,19 +52,19 @@ function ApiKeyInput({
             name={`apiKeySource-${fieldName}`}
             value="env"
             checked={isEnvVar}
-            onChange={() => onChange(envPlaceholder)}
+            onChange={() => onChange(resolvedEnvPlaceholder)}
             className="mr-2"
           />
           <span className="text-sm">Environment Variable</span>
         </label>
       </div>
-      
+
       <input
         type={isEnvVar ? "text" : "password"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        placeholder={isEnvVar ? envPlaceholder : placeholder}
+        placeholder={isEnvVar ? resolvedEnvPlaceholder : placeholder}
       />
     </div>
   );
@@ -251,7 +261,7 @@ export function SettingsPage() {
     ttsUrl: 'https://speaches.locopuente.org',
     sttProvider: 'embedded' as 'embedded' | 'speaches',
     ttsProvider: 'embedded' as 'embedded' | 'speaches',
-    chatProvider: 'ollama' as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom',
+    chatProvider: 'ollama' as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom',
     embeddedSttUrl: 'http://127.0.0.1:8765',
     embeddedTtsUrl: 'http://127.0.0.1:8765',
     embeddedMaleVoiceId: '',
@@ -416,7 +426,7 @@ export function SettingsPage() {
         ttsUrl: prefs.ttsUrl || prefs.speachesUrl || 'https://speaches.locopuente.org',
         sttProvider: (prefs.sttProvider || 'embedded') as 'embedded' | 'speaches',
         ttsProvider: (prefs.ttsProvider || 'embedded') as 'embedded' | 'speaches',
-        chatProvider: (prefs.chatProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom',
+        chatProvider: (prefs.chatProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom',
         embeddedSttUrl: (prefs.embeddedSttUrl || 'http://127.0.0.1:8765').replace(':8766', ':8765'),
         embeddedTtsUrl: (prefs.embeddedTtsUrl || 'http://127.0.0.1:8765').replace(':8766', ':8765'),
         embeddedMaleVoiceId: prefs.embeddedMaleVoiceId || '',
@@ -601,7 +611,8 @@ export function SettingsPage() {
           if (
             preferences.chatProvider === 'anthropic' ||
             preferences.chatProvider === 'openai' ||
-            preferences.chatProvider === 'groq'
+            preferences.chatProvider === 'groq' ||
+            preferences.chatProvider === 'gemini'
           ) {
             baseUrl = CHAT_PROVIDER_URLS[preferences.chatProvider];
           } else {
@@ -746,9 +757,9 @@ export function SettingsPage() {
           endpoint = url.endsWith('/') ? `${url}v1/models` : `${url}/v1/models`;
           break;
         case 'chat':
-          // For hosted providers (Anthropic/OpenAI/Groq) use the canonical
-          // URL so users don't have to type it. Only Ollama/Custom read
-          // from the stored preference.
+          // For hosted providers use the canonical URL so users don't
+          // have to type it. Only Ollama/Custom read from the stored
+          // preference.
           if (
             preferences.chatProvider === 'anthropic' ||
             preferences.chatProvider === 'openai' ||
@@ -756,6 +767,13 @@ export function SettingsPage() {
           ) {
             url = CHAT_PROVIDER_URLS[preferences.chatProvider];
             endpoint = `${url}/v1/models`;
+          } else if (preferences.chatProvider === 'gemini') {
+            url = CHAT_PROVIDER_URLS.gemini;
+            // Gemini uses key=... in the query string (auth is NOT a
+            // header). We inject it here so the fetch below doesn't
+            // need to know about it.
+            const geminiKey = await resolveApiKey(preferences.ollamaApiKey);
+            endpoint = `${url}/v1beta/models${geminiKey ? `?key=${encodeURIComponent(geminiKey)}` : ''}`;
           } else {
             url = preferences.ollamaUrl;
             endpoint = url.endsWith('/') ? `${url}api/tags` : `${url}/api/tags`;
@@ -764,19 +782,25 @@ export function SettingsPage() {
       }
 
       const headers: any = {};
-      const apiKey = serviceType === 'stt' ? preferences.sttApiKey : 
-                    serviceType === 'tts' ? preferences.ttsApiKey : preferences.ollamaApiKey;
-      
-      // Handle headers based on service type and provider
+      const rawApiKey = serviceType === 'stt' ? preferences.sttApiKey :
+                        serviceType === 'tts' ? preferences.ttsApiKey : preferences.ollamaApiKey;
+      // Resolve env:VAR references to the real value BEFORE deciding
+      // whether to attach an auth header. The old code skipped auth
+      // entirely for env-var keys, which silently broke every provider
+      // that uses env vars.
+      const apiKey = await resolveApiKey(rawApiKey);
+
       if (serviceType === 'chat' && preferences.chatProvider === 'anthropic') {
-        // Anthropic requires special headers
-        if (apiKey && !apiKey.startsWith('env:')) {
+        if (apiKey) {
           headers['x-api-key'] = apiKey;
           headers['anthropic-version'] = '2023-06-01';
         }
+      } else if (serviceType === 'chat' && preferences.chatProvider === 'gemini') {
+        // Gemini — key goes in the query string (already injected into
+        // endpoint above), no auth header.
       } else {
         // All other services and providers use Bearer token
-        if (apiKey && !apiKey.startsWith('env:')) {
+        if (apiKey) {
           headers['Authorization'] = `Bearer ${apiKey}`;
         }
       }
@@ -815,9 +839,28 @@ export function SettingsPage() {
                 .filter((model: any) => model.type === 'model' && model.id.includes('claude'))
                 .map((model: any) => model.id) || [];
             }
-            // If no models found from API, fallback to known models
+            // If no models found from API, fallback to known recent models.
             if (modelList.length === 0) {
-              modelList = ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307', 'claude-3-5-sonnet-20241022'];
+              modelList = [
+                'claude-opus-4-5',
+                'claude-sonnet-4-5',
+                'claude-haiku-4-5-20251001',
+                'claude-3-5-sonnet-20241022',
+                'claude-3-5-haiku-20241022',
+                'claude-3-opus-20240229',
+              ];
+            }
+            break;
+          case 'gemini':
+            // Gemini format: { "models": [{ "name": "models/gemini-1.5-flash", ... }] }
+            // The `name` field has a 'models/' prefix that callers strip.
+            if (data.models && Array.isArray(data.models)) {
+              modelList = data.models
+                .map((m: any) => (m.name || '').replace(/^models\//, ''))
+                .filter((id: string) => id && id.toLowerCase().includes('gemini'));
+            }
+            if (modelList.length === 0) {
+              modelList = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash-8b', 'gemini-2.0-flash-exp'];
             }
             break;
           case 'ollama':
@@ -1433,8 +1476,9 @@ export function SettingsPage() {
                   {[
                     { value: 'anthropic', label: 'Anthropic (Claude)' },
                     { value: 'openai', label: 'OpenAI (GPT)' },
-                    { value: 'ollama', label: 'Ollama' },
+                    { value: 'gemini', label: 'Google (Gemini)' },
                     { value: 'groq', label: 'Groq' },
+                    { value: 'ollama', label: 'Ollama' },
                     { value: 'custom', label: 'Custom/Other' }
                   ].map(provider => (
                     <label key={provider.value} className="flex items-center space-x-2">
@@ -1455,7 +1499,8 @@ export function SettingsPage() {
                   providers that have canonical endpoints. */}
               {(preferences.chatProvider === 'anthropic' ||
                 preferences.chatProvider === 'openai' ||
-                preferences.chatProvider === 'groq') ? (
+                preferences.chatProvider === 'groq' ||
+                preferences.chatProvider === 'gemini') ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Chat API URL
@@ -1473,7 +1518,12 @@ export function SettingsPage() {
                     </button>
                   </div>
                   <p className="mt-1 text-sm text-gray-600">
-                    Standard endpoint for {preferences.chatProvider === 'anthropic' ? 'Anthropic' : preferences.chatProvider === 'openai' ? 'OpenAI' : 'Groq'} — no URL to configure.
+                    Standard endpoint for {
+                      preferences.chatProvider === 'anthropic' ? 'Anthropic' :
+                      preferences.chatProvider === 'openai' ? 'OpenAI' :
+                      preferences.chatProvider === 'gemini' ? 'Google Gemini' :
+                      'Groq'
+                    } — no URL to configure.
                   </p>
                   {testResults.chat && (
                     <p className={`mt-2 text-sm ${testResults.chat.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
@@ -1520,19 +1570,27 @@ export function SettingsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Chat API Key (Optional)
+                  Chat API Key{preferences.chatProvider === 'ollama' ? ' (Optional)' : ''}
                 </label>
                 <ApiKeyInput
                   value={preferences.ollamaApiKey}
                   onChange={(value) => setPreferences({ ...preferences, ollamaApiKey: value })}
-                  placeholder="sk-... or leave empty"
-                  envPlaceholder="env:OPENAI_API_KEY"
+                  placeholder={
+                    preferences.chatProvider === 'anthropic' ? 'sk-ant-... or leave empty' :
+                    preferences.chatProvider === 'openai' ? 'sk-... or leave empty' :
+                    preferences.chatProvider === 'groq' ? 'gsk_... or leave empty' :
+                    preferences.chatProvider === 'gemini' ? 'AIza... or leave empty' :
+                    'Leave empty for local services'
+                  }
+                  envVarName={CHAT_PROVIDER_ENV_VARS[preferences.chatProvider as keyof typeof CHAT_PROVIDER_ENV_VARS] || 'API_KEY'}
                   fieldName="chatApiKey"
                 />
                 <p className="mt-1 text-sm text-gray-600">
-                  {preferences.ollamaApiKey?.startsWith('env:') 
-                    ? 'Using environment variable for authentication'
-                    : 'API key for authentication (leave empty for local services)'}
+                  {preferences.ollamaApiKey?.startsWith('env:')
+                    ? `Reading from shell environment variable ${preferences.ollamaApiKey.substring(4)}`
+                    : preferences.chatProvider === 'ollama'
+                      ? 'API key for authentication (leave empty for local services)'
+                      : 'API key required for this provider'}
                 </p>
               </div>
 

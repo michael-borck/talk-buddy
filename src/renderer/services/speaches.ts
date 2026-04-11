@@ -8,6 +8,7 @@
 // fetch has no CORS layer and works against any reachable server.
 import { getPreference } from './sqlite';
 import { TranscriptionResult, SpeechGenerationOptions } from '../types';
+import { resolveApiKey } from './chat';
 
 // Get the STT server URL from preferences
 async function getSTTUrl(): Promise<string> {
@@ -31,24 +32,15 @@ async function getTTSUrl(): Promise<string> {
   return url;
 }
 
-// Get STT API key from preferences
+// Get STT API key from preferences. Env-var references are resolved
+// through the main process — see resolveApiKey in services/chat.ts.
 async function getSTTApiKey(): Promise<string> {
-  const apiKey = (await getPreference('sttApiKey')) || '';
-  if (apiKey.startsWith('env:')) {
-    const envVarName = apiKey.substring(4);
-    return process.env[envVarName] || '';
-  }
-  return apiKey;
+  return resolveApiKey(await getPreference('sttApiKey'));
 }
 
 // Get TTS API key from preferences
 async function getTTSApiKey(): Promise<string> {
-  const apiKey = (await getPreference('ttsApiKey')) || '';
-  if (apiKey.startsWith('env:')) {
-    const envVarName = apiKey.substring(4);
-    return process.env[envVarName] || '';
-  }
-  return apiKey;
+  return resolveApiKey(await getPreference('ttsApiKey'));
 }
 
 function stripTrailingSlash(url: string): string {

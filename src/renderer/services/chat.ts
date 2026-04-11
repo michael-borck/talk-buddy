@@ -92,9 +92,44 @@ export const CHAT_PROVIDER_URLS = {
   anthropic: 'https://api.anthropic.com',
   openai:    'https://api.openai.com',
   groq:      'https://api.groq.com/openai',
+  gemini:    'https://generativelanguage.googleapis.com',
 } as const;
 
-export type ChatProvider = 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom';
+// Default environment variable names each hosted provider reads when
+// a user stores their key as env:VAR. The Settings UI also uses this
+// map to populate the env-var placeholder when the radio is clicked,
+// so picking Anthropic and clicking "Environment Variable" writes
+// 'env:ANTHROPIC_API_KEY', not a hardcoded OpenAI string.
+export const CHAT_PROVIDER_ENV_VARS = {
+  anthropic: 'ANTHROPIC_API_KEY',
+  openai:    'OPENAI_API_KEY',
+  groq:      'GROQ_API_KEY',
+  gemini:    'GEMINI_API_KEY',
+  ollama:    'OLLAMA_API_KEY',
+  custom:    'API_KEY',
+} as const;
+
+export type ChatProvider = 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom';
+
+// Resolves a stored API key. If the value is an `env:VAR_NAME`
+// reference, hops through the main process to read the real shell
+// environment variable — renderer's `process.env` is a sandboxed
+// polyfill with no visibility into the environment Electron was
+// launched from. Returns an empty string if the env var is unset so
+// callers can still decide whether to send an Authorization header.
+export async function resolveApiKey(storedValue: string | null | undefined): Promise<string> {
+  if (!storedValue) return '';
+  if (!storedValue.startsWith('env:')) return storedValue;
+  const envVarName = storedValue.substring(4).trim();
+  if (!envVarName) return '';
+  try {
+    const resolved = await window.electronAPI.app.getEnvVar(envVarName);
+    return resolved || '';
+  } catch (err) {
+    console.warn(`resolveApiKey: failed to read env var ${envVarName}:`, err);
+    return '';
+  }
+}
 
 // Get Chat API URL from preferences. For known hosted providers, the
 // URL is hardcoded — ignoring whatever stale value may be in the DB
@@ -121,17 +156,11 @@ async function getChatModel(): Promise<string> {
   return model || 'llama2';
 }
 
-// Get Chat API key from preferences
+// Get Chat API key from preferences. Env-var references are resolved
+// through the main process via resolveApiKey().
 async function getChatApiKey(): Promise<string> {
-  const apiKey = await getPreference('ollamaApiKey') || '';
-  
-  // Check if it's an environment variable reference
-  if (apiKey.startsWith('env:')) {
-    const envVarName = apiKey.substring(4);
-    return process.env[envVarName] || '';
-  }
-  
-  return apiKey;
+  const stored = await getPreference('ollamaApiKey');
+  return resolveApiKey(stored);
 }
 
 // Get configured prompt enhancement
@@ -175,14 +204,132 @@ export async function generateResponse(
   const model = await getChatModel();
   const apiKey = await getChatApiKey();
   const provider = await getChatProvider();
-  
+
+  // Gemini — Google's generative language API, auth via query string
+  // and a completely different request/response shape from OpenAI.
+  if (provider === 'gemini') {
+    return generateGeminiResponse(messages, systemPrompt, baseUrl, model, apiKey);
+  }
+
   // For OpenAI, Anthropic, and Groq, use the chat completions API
   if (provider === 'openai' || provider === 'anthropic' || provider === 'groq') {
     return generateChatCompletion(messages, systemPrompt, baseUrl, model, apiKey, provider);
   }
-  
+
   // For Ollama and custom providers, use the Ollama API format
   return generateOllamaResponse(messages, systemPrompt, context, baseUrl, model, apiKey);
+}
+
+// Generate response via Gemini's generateContent endpoint. Notes:
+//   * Auth is a ?key=... query string param, NOT an Authorization header
+//   * System prompt goes under `systemInstruction`, not in the messages array
+//   * Roles are 'user' and 'model' (not 'assistant')
+//   * Response body nests the text at candidates[0].content.parts[0].text
+//   * Generation knobs go under `generationConfig`
+async function generateGeminiResponse(
+  messages: ConversationMessage[],
+  systemPrompt: string | undefined,
+  baseUrl: string,
+  model: string,
+  apiKey: string
+): Promise<{ response: string; context?: number[] }> {
+  if (!apiKey) {
+    throw new Error('Gemini requires an API key. Set it in Settings → Chat Model.');
+  }
+  if (!model) {
+    throw new Error('Gemini requires a model name (e.g. gemini-1.5-flash). Pick one in Settings → Chat Model.');
+  }
+
+  // Build the system instruction from scenario prompt + template enhancement.
+  const promptEnhancement = await getPromptEnhancement();
+  const promptBehavior = (await getPreference('promptBehavior')) || 'enhance';
+  let finalSystemPrompt = '';
+  if (systemPrompt) {
+    switch (promptBehavior) {
+      case 'override':      finalSystemPrompt = promptEnhancement; break;
+      case 'scenario-only': finalSystemPrompt = systemPrompt; break;
+      case 'enhance':
+      default:              finalSystemPrompt = systemPrompt + '\n\n' + promptEnhancement; break;
+    }
+  } else {
+    finalSystemPrompt = promptEnhancement;
+  }
+
+  // Gemini uses 'user' and 'model' roles. Assistant messages become 'model'.
+  const contents = messages
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+  const body: Record<string, unknown> = {
+    contents,
+    generationConfig: {
+      temperature: 0.7,
+      topP: 0.9,
+      // Hard cap — Gemini's field is maxOutputTokens, not max_tokens.
+      maxOutputTokens: 160,
+    },
+  };
+  if (finalSystemPrompt) {
+    body.systemInstruction = { parts: [{ text: finalSystemPrompt }] };
+  }
+
+  const url = `${baseUrl}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  console.log('Gemini API request:', { url: url.replace(/key=[^&]+/, 'key=***'), model });
+
+  try {
+    const response = await window.electronAPI.fetch({
+      url,
+      options: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    });
+
+    const bodyText =
+      response.data instanceof Uint8Array
+        ? new TextDecoder().decode(response.data)
+        : typeof response.data === 'string'
+        ? response.data
+        : JSON.stringify(response.data);
+
+    if (!response.ok) {
+      console.error(`Gemini ${response.status} ${response.statusText}`, bodyText);
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(`Gemini auth failed (${response.status}). Check GEMINI_API_KEY in Settings.`);
+      }
+      if (response.status === 404) {
+        throw new Error(`Gemini model '${model}' not found. Try gemini-1.5-flash or gemini-1.5-pro.`);
+      }
+      throw new Error(`Gemini failed (${response.status}): ${bodyText.slice(0, 200)}`);
+    }
+
+    let data: any;
+    try {
+      data = JSON.parse(bodyText);
+    } catch (err) {
+      throw new Error(`Gemini returned invalid JSON: ${bodyText.slice(0, 200)}`);
+    }
+
+    // Defensive parse — the candidates array can be absent if the
+    // request was blocked by a safety filter (promptFeedback).
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      const blocked = data?.promptFeedback?.blockReason;
+      if (blocked) {
+        throw new Error(`Gemini blocked the request: ${blocked}`);
+      }
+      throw new Error('Gemini returned no text in response.');
+    }
+
+    return { response: text.trim() };
+  } catch (err) {
+    if (err instanceof Error) throw err;
+    throw new Error('Failed to reach Gemini — network error.');
+  }
 }
 
 // Generate response using OpenAI/Anthropic/Groq chat completions API

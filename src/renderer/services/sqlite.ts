@@ -18,6 +18,7 @@ interface ElectronAPI {
   app: {
     getVersion: () => Promise<string>;
     getPath: (name: string) => Promise<string>;
+    getEnvVar: (name: string) => Promise<string | null>;
   };
   scenarios: {
     restoreDefaults: () => Promise<{ success: boolean; restoredCount?: number; error?: string }>;
