@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { getScenario, createSession, updateSession, getSession } from '../services/sqlite';
+import { getScenario, createSession, updateSession, getSession, getPreference } from '../services/sqlite';
 import { transcribeAudio, generateSpeech } from '../services/speechProvider';
 import { generateResponse } from '../services/chat';
 import { Scenario, Session, ConversationMessage } from '../types';
 import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
-// VoiceWaveAnimation component available but not currently used
-import { ModernVoiceVisualizer } from '../components/ModernVoiceVisualizer';
+import { EditorialVoiceVisualizer } from '../components/EditorialVoiceVisualizer';
 import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
+import { playYourTurnCue, CueStyle } from '../services/audioCues';
 import toast from 'react-hot-toast';
 
 type ConversationState = 'not-started' | 'idle' | 'listening' | 'thinking' | 'speaking';
@@ -38,6 +38,15 @@ export function ConversationPage() {
   const startTimeRef = useRef<Date | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const initialMessageSpokenRef = useRef<boolean>(false);
+
+  // Audio analyser refs — fed into the visualizer so motion responds
+  // to the real signal instead of procedural sine waves.
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const activeAnalyserRef = useRef<AnalyserNode | null>(null);
+  const ttsSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const amplitudeRef = useRef<number>(0);
+  const amplitudeRafRef = useRef<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
 
   // Load scenario
@@ -92,6 +101,146 @@ export function ConversationPage() {
       }
     };
   }, [session, messages, elapsedTime, sessionComplete]);
+
+  // Audio-analyser teardown on unmount — release any dangling nodes.
+  useEffect(() => {
+    return () => {
+      stopAmplitudeLoop();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Spacebar push-to-talk. Guards: no text-input focus, no open modals,
+  // no key-repeat storms, and only fires when the session is in a state
+  // where speaking makes sense.
+  useEffect(() => {
+    const isTypingTarget = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+    };
+
+    const handleKeyDown = (ev: KeyboardEvent) => {
+      if (ev.code !== 'Space' || ev.repeat) return;
+      if (showInfo || showEndModal || sessionComplete) return;
+      if (isTypingTarget(ev.target)) return;
+      if (conversationState !== 'idle') return;
+      ev.preventDefault();
+      void startRecording();
+    };
+
+    const handleKeyUp = (ev: KeyboardEvent) => {
+      if (ev.code !== 'Space') return;
+      if (isTypingTarget(ev.target)) return;
+      if (conversationState !== 'listening') return;
+      ev.preventDefault();
+      stopRecording();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationState, showInfo, showEndModal, sessionComplete]);
+
+  // --- Audio analyser helpers ----------------------------------------------
+
+  const getAudioContext = (): AudioContext => {
+    if (!audioContextRef.current) {
+      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      audioContextRef.current = new Ctor();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      void audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  };
+
+  const startAmplitudeLoop = () => {
+    if (amplitudeRafRef.current !== null) return;
+    const buffer = new Uint8Array(128);
+    const tick = () => {
+      const analyser = activeAnalyserRef.current;
+      if (analyser) {
+        analyser.getByteFrequencyData(buffer);
+        // Mean of low-mid bins (speech range sits in the lower half).
+        let sum = 0;
+        const limit = Math.min(64, buffer.length);
+        for (let i = 0; i < limit; i++) sum += buffer[i];
+        const mean = sum / limit / 255; // 0..1
+        // Light smoothing so the visual doesn't jitter.
+        amplitudeRef.current = amplitudeRef.current * 0.6 + mean * 0.4;
+      } else {
+        amplitudeRef.current = amplitudeRef.current * 0.85;
+      }
+      amplitudeRafRef.current = requestAnimationFrame(tick);
+    };
+    amplitudeRafRef.current = requestAnimationFrame(tick);
+  };
+
+  const stopAmplitudeLoop = () => {
+    if (amplitudeRafRef.current !== null) {
+      cancelAnimationFrame(amplitudeRafRef.current);
+      amplitudeRafRef.current = null;
+    }
+    amplitudeRef.current = 0;
+  };
+
+  const setupMicAnalyser = (stream: MediaStream) => {
+    try {
+      const audioContext = getAudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.7;
+      source.connect(analyser);
+      activeAnalyserRef.current = analyser;
+      startAmplitudeLoop();
+    } catch (err) {
+      console.warn('Mic analyser setup failed:', err);
+    }
+  };
+
+  const teardownMicAnalyser = () => {
+    activeAnalyserRef.current = null;
+    stopAmplitudeLoop();
+  };
+
+  const setupTtsAnalyser = (audio: HTMLAudioElement) => {
+    try {
+      const audioContext = getAudioContext();
+      // createMediaElementSource can only be called once per element. Since
+      // we create a fresh <audio> for every utterance this is fine.
+      const source = audioContext.createMediaElementSource(audio);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.7;
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+      ttsSourceRef.current = source;
+      activeAnalyserRef.current = analyser;
+      startAmplitudeLoop();
+    } catch (err) {
+      console.warn('TTS analyser setup failed:', err);
+    }
+  };
+
+  const teardownTtsAnalyser = () => {
+    activeAnalyserRef.current = null;
+    ttsSourceRef.current = null;
+    stopAmplitudeLoop();
+  };
 
   const loadScenario = async () => {
     if (!scenarioId) return;
@@ -207,20 +356,24 @@ export function ConversationPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
-      
+
       mediaRecorderRef.current.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
-      
+
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        teardownMicAnalyser();
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
         await processAudio(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
       };
-      
+
       mediaRecorderRef.current.start();
+      setupMicAnalyser(stream);
       setConversationState('listening');
     } catch (err) {
       console.error('Failed to start recording:', err);
@@ -309,43 +462,58 @@ export function ConversationPage() {
       if (audioRef.current && !audioRef.current.paused) {
         audioRef.current.pause();
         audioRef.current = null;
+        teardownTtsAnalyser();
       }
-      
+
       // For initial greetings, show thinking state while generating audio
       // For responses, we're already in speaking state from processAudio
       if (isInitialGreeting) {
         setConversationState('thinking');
       }
-      
+
       const audioBlob = await generateSpeech({
         text,
         voice: scenario?.voice
       });
-      
+
       const audioUrl = URL.createObjectURL(audioBlob);
-      audioRef.current = new Audio(audioUrl);
-      
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      setupTtsAnalyser(audio);
+
       // Set speaking state when audio actually starts
-      audioRef.current.onplay = () => {
+      audio.onplay = () => {
         setConversationState('speaking');
       };
-      
-      // Keep speaking state throughout playback
-      audioRef.current.onended = () => {
-        setConversationState('idle');
+
+      // Playback finished — tear down the analyser, play the cue, return to idle.
+      audio.onended = async () => {
+        teardownTtsAnalyser();
         URL.revokeObjectURL(audioUrl);
+        setConversationState('idle');
+
+        if (audioEnabled) {
+          try {
+            const style = ((await getPreference('conversationCue')) as CueStyle | null) || 'rise';
+            playYourTurnCue(style);
+          } catch (err) {
+            console.warn('Failed to play turn cue:', err);
+          }
+        }
       };
-      
-      audioRef.current.onerror = () => {
+
+      audio.onerror = () => {
         console.error('Audio playback error');
+        teardownTtsAnalyser();
         setConversationState('idle');
       };
-      
+
       // Play audio - this will block until play() starts
-      await audioRef.current.play();
+      await audio.play();
       // Audio is now playing, animation continues until onended fires
     } catch (err) {
       console.error('Failed to speak text:', err);
+      teardownTtsAnalyser();
       setConversationState('idle');
     }
   };
@@ -425,71 +593,91 @@ export function ConversationPage() {
   // Error state
   if (error || !scenario) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
-          <p className="text-gray-800 mb-4">{error || 'Scenario not found'}</p>
+      <div className="flex items-center justify-center h-full bg-ivory">
+        <div className="text-center max-w-md px-8">
+          <AlertCircle size={32} strokeWidth={1.5} className="text-vermilion mx-auto mb-6" />
+          <p className="font-display text-2xl text-ink mb-6 leading-tight">
+            {error || 'Scenario not found'}
+          </p>
           <button
             onClick={() => navigate('/scenarios')}
-            className="text-blue-600 hover:text-blue-700"
+            className="text-[0.95rem] text-ink hover:text-vermilion transition-colors border-b border-ink hover:border-vermilion pb-0.5"
           >
-            Back to Scenarios
+            Back to scenarios
           </button>
         </div>
       </div>
     );
   }
 
-  // Session complete state with celebration
+  // Session complete state — editorial summary
   if (sessionComplete) {
+    const wordsSpoken = messages
+      .filter((m) => m.role === 'user')
+      .reduce((acc, m) => acc + m.content.split(' ').length, 0);
     return (
-      <div className="max-w-4xl mx-auto p-8 animate-fadeIn">
-        <div className="glass-card rounded-2xl p-8 text-center">
-          <div className="mb-6">
-            <div className="text-6xl mb-4 animate-float">🎉</div>
-            <h2 className="text-3xl font-bold gradient-text mb-2">Congratulations!</h2>
-            <p className="text-xl text-gray-700">Session Complete</p>
+      <div className="min-h-full bg-ivory px-12 lg:px-20 py-16 animate-fadeIn">
+        <div className="max-w-3xl">
+          <div className="flex items-center mb-6">
+            <span className="editorial-rule" aria-hidden="true" />
+            <span className="text-[0.7rem] uppercase tracking-[0.22em] text-ink-muted font-medium">
+              Session complete
+            </span>
           </div>
-          <p className="text-gray-600 mb-8 text-lg">
-            Excellent practice with <span className="font-semibold">"{scenario.name}"</span>
+
+          <h1 className="font-display text-ink font-medium leading-[0.95] tracking-tight-display text-[clamp(2.5rem,5vw,4.25rem)] mb-10">
+            A good<br />
+            conversation.
+          </h1>
+
+          <p className="font-sans text-ink-muted text-[1.05rem] mb-12 max-w-[50ch] leading-relaxed">
+            You just practiced <em className="font-display italic text-ink">{scenario.name}</em>.
+            Take the transcript with you, or begin another session.
           </p>
-          
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-100">
-              <p className="text-sm text-gray-600 mb-1">Duration</p>
-              <p className="text-2xl font-bold gradient-text">{formatTime(elapsedTime)}</p>
+
+          <dl className="grid grid-cols-3 gap-10 max-w-2xl mb-14 border-t border-ink/10 pt-8">
+            <div>
+              <dt className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet font-sans mb-2">
+                Duration
+              </dt>
+              <dd className="font-display text-3xl text-ink tabular-nums">
+                {formatTime(elapsedTime)}
+              </dd>
             </div>
-            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
-              <p className="text-sm text-gray-600 mb-1">Messages</p>
-              <p className="text-2xl font-bold gradient-text">{messages.length}</p>
+            <div>
+              <dt className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet font-sans mb-2">
+                Messages
+              </dt>
+              <dd className="font-display text-3xl text-ink tabular-nums">{messages.length}</dd>
             </div>
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
-              <p className="text-sm text-gray-600 mb-1">Words Spoken</p>
-              <p className="text-2xl font-bold gradient-text">
-                {messages.filter(m => m.role === 'user').reduce((acc, m) => acc + m.content.split(' ').length, 0)}
-              </p>
+            <div>
+              <dt className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet font-sans mb-2">
+                Words spoken
+              </dt>
+              <dd className="font-display text-3xl text-ink tabular-nums">{wordsSpoken}</dd>
             </div>
-          </div>
-          <div className="flex justify-center gap-4">
+          </dl>
+
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
             {session && (
               <button
                 onClick={() => navigate(`/analysis/${session.id}`)}
-                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:shadow-lg transform transition-all hover:scale-105 font-medium"
+                className="btn-gradient px-8 py-3.5 text-[0.95rem]"
               >
-                📊 View Analysis
+                Read the analysis
               </button>
             )}
             <button
-              onClick={() => navigate('/sessions')}
-              className="px-6 py-3 glass-card text-gray-700 rounded-xl hover:bg-white/90 transform transition-all hover:scale-105 font-medium"
+              onClick={() => window.location.reload()}
+              className="text-[0.95rem] text-ink hover:text-vermilion transition-colors border-b border-ink hover:border-vermilion pb-0.5"
             >
-              📚 Session History
+              Begin another session →
             </button>
             <button
-              onClick={() => window.location.reload()}
-              className="btn-gradient px-6 py-3 text-white rounded-xl hover:shadow-lg transform transition-all hover:scale-105 font-medium"
+              onClick={() => navigate('/sessions')}
+              className="text-[0.95rem] text-ink-muted hover:text-vermilion transition-colors"
             >
-              🔄 Practice Again
+              Session history
             </button>
           </div>
         </div>
@@ -497,92 +685,114 @@ export function ConversationPage() {
     );
   }
 
+  const visualizerState = conversationState === 'not-started' ? 'idle' : conversationState;
+  const statusLabel =
+    conversationState === 'not-started'
+      ? 'ready'
+      : conversationState === 'listening'
+      ? 'listening.'
+      : conversationState === 'thinking'
+      ? 'thinking.'
+      : conversationState === 'speaking'
+      ? 'speaking.'
+      : 'your turn.';
+
+  const statusHint =
+    conversationState === 'not-started'
+      ? 'Press begin to start the session.'
+      : conversationState === 'listening'
+      ? 'Release to stop — or let go of the space bar.'
+      : conversationState === 'idle'
+      ? 'Hold the space bar, or press and hold the button to speak.'
+      : '';
+
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="flex flex-col h-full bg-ivory">
+      {/* Header — hairline, editorial */}
+      <header className="border-b border-ink/10 px-8 py-5">
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
+          <div className="flex items-center gap-5">
             <button
               onClick={() => navigate('/scenarios')}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-1 text-ink-muted hover:text-vermilion transition-colors"
+              aria-label="Back to scenarios"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} strokeWidth={1.5} />
             </button>
             <div>
-              <h1 className="text-xl font-semibold text-gray-800">{scenario.name}</h1>
-              <p className="text-sm text-gray-600">{scenario.category} • {scenario.difficulty}</p>
+              <h1 className="font-display text-[1.35rem] text-ink font-medium leading-tight tracking-tight-display">
+                {scenario.name}
+              </h1>
+              <p className="text-[0.72rem] uppercase tracking-[0.18em] text-ink-quiet font-sans mt-1">
+                {scenario.category} · {scenario.difficulty}
+              </p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <span className="text-lg font-medium text-gray-700">{formatTime(elapsedTime)}</span>
+
+          <div className="flex items-center gap-6">
+            <span className="font-display text-xl text-ink tabular-nums">
+              {formatTime(elapsedTime)}
+            </span>
             <button
               onClick={() => setShowInfo(true)}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-1 text-ink-muted hover:text-vermilion transition-colors"
+              aria-label="Scenario info"
             >
-              <Info size={20} />
+              <Info size={18} strokeWidth={1.5} />
             </button>
             <button
               onClick={() => setAudioEnabled(!audioEnabled)}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-1 text-ink-muted hover:text-vermilion transition-colors"
+              aria-label={audioEnabled ? 'Mute' : 'Unmute'}
             >
-              {audioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+              {audioEnabled ? (
+                <Volume2 size={18} strokeWidth={1.5} />
+              ) : (
+                <VolumeX size={18} strokeWidth={1.5} />
+              )}
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center max-w-2xl">
-          {/* Modern Voice Visualizer */}
-          <div className="mb-8">
-            <div className="relative w-80 h-80 mx-auto">
-              <ModernVoiceVisualizer 
-                state={conversationState === 'not-started' ? 'idle' : conversationState}
-              />
-            </div>
+      {/* Main — centered visualizer, editorial status, restrained button */}
+      <div className="flex-1 flex items-center justify-center px-8 py-12">
+        <div className="flex flex-col items-center max-w-xl">
+          <div className="mb-10">
+            <EditorialVoiceVisualizer
+              state={visualizerState}
+              amplitudeRef={amplitudeRef}
+              size={280}
+            />
           </div>
 
-          {/* Status Text with enhanced styling */}
-          <div className="mb-8">
-            <p className="text-xl font-medium mb-2">
-              <span className={`${
-                conversationState === 'listening' ? 'text-red-500' :
-                conversationState === 'thinking' ? 'text-yellow-600' :
-                conversationState === 'speaking' ? 'gradient-text' :
-                'text-gray-700'
-              }`}>
-                {conversationState === 'not-started' ? 'Ready to start practicing?' :
-                 conversationState === 'listening' ? '🎤 Listening...' :
-                 conversationState === 'thinking' ? '🤔 Processing...' :
-                 conversationState === 'speaking' ? '🗣️ AI is speaking' :
-                 '✨ Your turn to speak'}
-              </span>
+          {/* Status — Fraunces italic label, Inter Tight hint */}
+          <div className="text-center mb-10 min-h-[4.5rem]">
+            <p className="font-display italic text-[2rem] text-ink leading-none mb-3 tracking-tight-display">
+              {statusLabel}
             </p>
-            {conversationState === 'listening' && (
-              <p className="text-sm text-gray-500 animate-pulse">Release button to stop recording</p>
+            {statusHint && (
+              <p className="text-[0.82rem] text-ink-muted font-sans">{statusHint}</p>
             )}
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 text-sm">{error}</p>
+            <div className="mb-6 px-5 py-3 border-l-2 border-vermilion bg-ivory-warm max-w-md">
+              <p className="text-ink text-sm font-sans leading-relaxed">{error}</p>
             </div>
           )}
 
-          {/* Action Buttons with enhanced styling */}
+          {/* Primary action */}
           {conversationState === 'not-started' && !session ? (
             <button
               onClick={startConversation}
-              className="btn-gradient px-10 py-5 rounded-xl text-white text-lg font-semibold shadow-lg transform transition-all hover:scale-105"
+              className="btn-gradient px-10 py-4 text-[1rem]"
             >
-              Start Conversation
+              Begin the session
             </button>
           ) : (
-            <div className="space-y-4">
+            <div className="flex flex-col items-center gap-8">
               <button
                 onMouseDown={startRecording}
                 onMouseUp={stopRecording}
@@ -590,29 +800,31 @@ export function ConversationPage() {
                 onTouchStart={startRecording}
                 onTouchEnd={stopRecording}
                 disabled={conversationState !== 'idle' && conversationState !== 'listening'}
-                className={`px-10 py-5 rounded-xl text-lg font-semibold transition-all transform ${
-                  conversationState === 'listening' 
-                    ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white scale-110 shadow-2xl animate-pulse' 
+                className={`px-10 py-4 text-[1rem] font-sans font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-30 ${
+                  conversationState === 'listening'
+                    ? 'bg-vermilion text-ivory'
                     : conversationState === 'idle'
-                    ? 'btn-gradient text-white hover:scale-105 shadow-lg'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
+                    ? 'bg-ink text-ivory hover:bg-vermilion'
+                    : 'bg-ink/20 text-ink-muted'
                 }`}
+                style={{ borderRadius: '2px' }}
               >
-                {conversationState === 'listening' ? '🔴 Release to Stop' : '🎤 Hold to Speak'}
+                {conversationState === 'listening' ? 'Release to stop' : 'Hold to speak'}
               </button>
-              
-              <div className="mt-6 space-x-4">
+
+              <div className="flex items-center gap-6 text-[0.82rem] font-sans">
                 <button
                   onClick={pauseSession}
-                  className="text-gray-600 hover:text-gray-800 text-sm"
+                  className="text-ink-muted hover:text-ink transition-colors"
                 >
-                  Pause Session
+                  Pause
                 </button>
+                <span className="text-ink/20" aria-hidden="true">·</span>
                 <button
                   onClick={handleEndSession}
-                  className="text-red-600 hover:text-red-800 text-sm"
+                  className="text-ink-muted hover:text-vermilion transition-colors"
                 >
-                  End Session
+                  End session
                 </button>
               </div>
             </div>
@@ -620,22 +832,48 @@ export function ConversationPage() {
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Modals — editorial */}
       {showInfo && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Scenario Information</h2>
-            <p className="text-gray-600 mb-4">{scenario.description}</p>
-            <div className="space-y-2 text-sm text-gray-600">
-              <p><strong>Difficulty:</strong> {scenario.difficulty}</p>
-              <p><strong>Estimated Duration:</strong> {scenario.estimatedMinutes} minutes</p>
-              {scenario.tags && scenario.tags.length > 0 && (
-                <p><strong>Tags:</strong> {scenario.tags.join(', ')}</p>
-              )}
+        <div
+          className="fixed inset-0 bg-ink/60 flex items-center justify-center p-6 z-50 animate-fadeIn"
+          onClick={() => setShowInfo(false)}
+        >
+          <div
+            className="bg-ivory max-w-md w-full p-8 border border-ink/15"
+            style={{ borderRadius: '2px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center mb-5">
+              <span className="editorial-rule" aria-hidden="true" />
+              <span className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-muted font-sans">
+                Scenario
+              </span>
             </div>
+            <h2 className="font-display text-2xl text-ink font-medium mb-4 leading-tight tracking-tight-display">
+              {scenario.name}
+            </h2>
+            <p className="text-ink-muted text-[0.92rem] leading-relaxed mb-6 font-sans">
+              {scenario.description}
+            </p>
+            <dl className="space-y-2 text-[0.82rem] font-sans text-ink-muted">
+              <div className="flex gap-2">
+                <dt className="uppercase tracking-[0.12em] text-ink-quiet">Difficulty</dt>
+                <dd className="text-ink">{scenario.difficulty}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="uppercase tracking-[0.12em] text-ink-quiet">Duration</dt>
+                <dd className="text-ink">~{scenario.estimatedMinutes} min</dd>
+              </div>
+              {scenario.tags && scenario.tags.length > 0 && (
+                <div className="flex gap-2">
+                  <dt className="uppercase tracking-[0.12em] text-ink-quiet">Tags</dt>
+                  <dd className="text-ink">{scenario.tags.join(', ')}</dd>
+                </div>
+              )}
+            </dl>
             <button
               onClick={() => setShowInfo(false)}
-              className="mt-6 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="mt-8 text-[0.9rem] text-ink hover:text-vermilion transition-colors border-b border-ink hover:border-vermilion pb-0.5"
             >
               Close
             </button>
@@ -644,24 +882,33 @@ export function ConversationPage() {
       )}
 
       {showEndModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">End Session?</h2>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to end this practice session?
+        <div
+          className="fixed inset-0 bg-ink/60 flex items-center justify-center p-6 z-50 animate-fadeIn"
+          onClick={() => setShowEndModal(false)}
+        >
+          <div
+            className="bg-ivory max-w-md w-full p-8 border border-ink/15"
+            style={{ borderRadius: '2px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="font-display text-2xl text-ink font-medium mb-4 leading-tight tracking-tight-display">
+              End this session?
+            </h2>
+            <p className="text-ink-muted text-[0.92rem] leading-relaxed mb-8 font-sans">
+              Your transcript so far will be saved to the session history.
             </p>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowEndModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-              >
-                Continue
-              </button>
+            <div className="flex gap-6 items-center">
               <button
                 onClick={() => completeSession('user_ended')}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="btn-gradient px-6 py-3 text-[0.9rem]"
               >
-                End Session
+                End session
+              </button>
+              <button
+                onClick={() => setShowEndModal(false)}
+                className="text-[0.9rem] text-ink-muted hover:text-ink transition-colors"
+              >
+                Keep talking
               </button>
             </div>
           </div>

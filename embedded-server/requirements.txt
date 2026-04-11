@@ -1,7 +1,24 @@
-flask==2.3.3
-flask-cors==4.0.0
-pyttsx3==2.90
-piper-tts==1.3.0
-pywhispercpp==1.3.3
-soundfile==0.12.1
-numpy==1.24.3
+# Talk Buddy — embedded speech server dependencies.
+#
+# Kept in sync with .github/workflows/build.yml (the release pipeline) so
+# `pip install -r requirements.txt` locally matches what ships in
+# packaged builds. Run `embedded-server/setup.sh` for the full dev setup.
+#
+# Deliberately unpinned: the workflow doesn't pin either, and pinning here
+# would drift from what CI builds against. If you hit a breaking upstream
+# release, pin the offender in one spot and leave a comment explaining why.
+
+# Web framework — speech server exposes OpenAI-compatible endpoints
+flask
+flask-cors
+
+# TTS — Piper voice synthesis
+piper-tts
+
+# STT — whisper.cpp bindings (chosen over openai-whisper to avoid pulling
+# in ~1.6GB of torch)
+pywhispercpp
+
+# Audio I/O — used directly by server.py for WAV encoding
+numpy
+soundfile

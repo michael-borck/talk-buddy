@@ -24,10 +24,53 @@ interface ElectronAPI {
   };
   platform: string;
   fetch: (params: { url: string; options: any }) => Promise<{ ok: boolean; status?: number; statusText?: string; headers?: any; data?: any; error?: string }>;
+  speaches: {
+    transcribe: (params: {
+      url: string;
+      apiKey: string;
+      audioBuffer: Uint8Array;
+      model: string;
+      filename?: string;
+    }) => Promise<{
+      ok: boolean;
+      status: number;
+      statusText: string;
+      data?: { text: string; duration?: number } | null;
+      body?: string;
+      error?: string;
+    }>;
+    speak: (params: {
+      url: string;
+      apiKey: string;
+      payload: Record<string, unknown>;
+    }) => Promise<{
+      ok: boolean;
+      status: number;
+      statusText: string;
+      audio?: Uint8Array;
+      contentType?: string;
+      body?: string;
+      error?: string;
+    }>;
+  };
   embeddedServerStatus: () => Promise<{ running: boolean; url: string; port: number }>;
   embeddedServerStart: () => Promise<{ success: boolean; error?: string }>;
   embeddedServerStop: () => Promise<{ success: boolean; error?: string }>;
   embeddedServerRestart: () => Promise<{ success: boolean; error?: string }>;
+  embeddedInstall: {
+    check: () => Promise<{
+      installed: boolean;
+      mode: 'dev' | 'prod';
+      path: string;
+      hasSetupScript: boolean;
+      pythonAvailable: boolean | null;
+    }>;
+    run: () => Promise<{ ok: boolean; error?: string; cancelled?: boolean }>;
+    cancel: () => Promise<{ ok: boolean; error?: string }>;
+    onOutput: (
+      callback: (payload: { stream: 'stdout' | 'stderr' | 'info' | 'error'; text: string }) => void
+    ) => () => void;
+  };
 }
 
 declare global {

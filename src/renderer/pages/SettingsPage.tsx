@@ -3,6 +3,7 @@ import { getAllPreferences, setPreference, resetDatabase } from '../services/sql
 import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server } from 'lucide-react';
 import * as embeddedService from '../services/embedded';
 import * as speechProvider from '../services/speechProvider';
+import { EmbeddedInstallModal } from '../components/settings/EmbeddedInstallModal';
 
 // Component for API Key input with environment variable support
 function ApiKeyInput({ 
@@ -295,6 +296,7 @@ export function SettingsPage() {
     maleVoice: 'am_adam',
     femaleVoice: 'af_bella',
     ttsSpeed: '1.25',
+    conversationCue: 'rise' as 'rise' | 'click' | 'none',
     promptTemplate: 'natural',
     customPrompt: '',
     promptBehavior: 'enhance' as 'enhance' | 'override' | 'scenario-only',
@@ -338,6 +340,15 @@ export function SettingsPage() {
     url: 'http://127.0.0.1:8765',
     port: 8765
   });
+  // Tracks whether the embedded server is actually installed (venv present
+  // in dev, or bundled binary present in prod). Distinct from `running` —
+  // installed can be true even if the server hasn't been started yet.
+  const [embeddedInstalled, setEmbeddedInstalled] = useState<boolean | null>(null);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  // When the user clicks Embedded while it's not installed, we defer
+  // flipping the provider state until install succeeds — otherwise the
+  // UI would silently switch to a provider that can't respond.
+  const [pendingProviderSwitch, setPendingProviderSwitch] = useState<null | 'stt' | 'tts' | 'both'>(null);
   // Embedded voices state - currently not displayed but available for future use
   // @ts-ignore - Reserved for future voice selection UI
   const [embeddedVoices, setEmbeddedVoices] = useState({
@@ -353,7 +364,48 @@ export function SettingsPage() {
   useEffect(() => {
     loadPreferences();
     checkEmbeddedServerStatus();
+    void refreshEmbeddedInstallState();
   }, []);
+
+  const refreshEmbeddedInstallState = async () => {
+    try {
+      const state = await window.electronAPI.embeddedInstall.check();
+      setEmbeddedInstalled(state.installed);
+    } catch (err) {
+      console.warn('Failed to check embedded install state:', err);
+      setEmbeddedInstalled(false);
+    }
+  };
+
+  // Intercepts attempts to switch to the embedded provider. If the server
+  // isn't installed yet, opens the install modal instead of silently
+  // flipping to a broken state. Called from both STT and TTS radio groups.
+  const handleProviderChange = (
+    field: 'sttProvider' | 'ttsProvider',
+    newValue: 'embedded' | 'speaches'
+  ) => {
+    if (newValue === 'embedded' && embeddedInstalled === false) {
+      setPendingProviderSwitch(field === 'sttProvider' ? 'stt' : 'tts');
+      setShowInstallModal(true);
+      return;
+    }
+    setPreferences({ ...preferences, [field]: newValue });
+  };
+
+  const handleInstallSuccess = async () => {
+    await refreshEmbeddedInstallState();
+    // If the user clicked Embedded before install started, honor that
+    // intent now that the server is actually available.
+    if (pendingProviderSwitch === 'stt') {
+      setPreferences({ ...preferences, sttProvider: 'embedded' });
+    } else if (pendingProviderSwitch === 'tts') {
+      setPreferences({ ...preferences, ttsProvider: 'embedded' });
+    }
+    setPendingProviderSwitch(null);
+    // Kick the embedded server start in the background so the user can
+    // start using it immediately after closing the modal.
+    void window.electronAPI.embeddedServerStart().then(() => checkEmbeddedServerStatus());
+  };
 
   const checkEmbeddedServerStatus = async () => {
     try {
@@ -409,6 +461,7 @@ export function SettingsPage() {
         maleVoice: prefs.maleVoice || 'am_adam',
         femaleVoice: prefs.femaleVoice || 'af_bella',
         ttsSpeed: prefs.ttsSpeed || '1.25',
+        conversationCue: ((prefs.conversationCue as 'rise' | 'click' | 'none') || 'rise'),
         promptTemplate: prefs.promptTemplate || 'natural',
         customPrompt: prefs.customPrompt || '',
         promptBehavior: (prefs.promptBehavior as 'enhance' | 'override' | 'scenario-only') || 'enhance',
@@ -448,6 +501,7 @@ export function SettingsPage() {
       await setPreference('maleVoice', preferences.maleVoice);
       await setPreference('femaleVoice', preferences.femaleVoice);
       await setPreference('ttsSpeed', preferences.ttsSpeed);
+      await setPreference('conversationCue', preferences.conversationCue);
       await setPreference('promptTemplate', preferences.promptTemplate);
       await setPreference('customPrompt', preferences.customPrompt);
       await setPreference('promptBehavior', preferences.promptBehavior);
@@ -854,27 +908,41 @@ export function SettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   STT Provider
                 </label>
-                <div className="flex gap-4 mb-4">
+                <div className="flex gap-4 mb-4 items-center">
                   <label className="flex items-center">
                     <input
                       type="radio"
                       value="embedded"
                       checked={preferences.sttProvider === 'embedded'}
-                      onChange={(e) => setPreferences({ ...preferences, sttProvider: e.target.value as 'embedded' | 'speaches' })}
+                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches')}
                       className="mr-2"
                     />
                     <Server size={16} className="mr-1" />
                     <span>Embedded Server (Offline)</span>
-                    <span className={`ml-2 px-2 py-1 text-xs rounded ${embeddedServerStatus.running ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {embeddedServerStatus.running ? 'Running' : 'Stopped'}
-                    </span>
+                    {embeddedInstalled === false ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPendingProviderSwitch('stt');
+                          setShowInstallModal(true);
+                        }}
+                        className="ml-2 text-xs text-vermilion hover:text-vermilion-deep border-b border-vermilion pb-px"
+                      >
+                        Not installed — Set up
+                      </button>
+                    ) : (
+                      <span className={`ml-2 px-2 py-1 text-xs rounded ${embeddedServerStatus.running ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {embeddedServerStatus.running ? 'Running' : 'Stopped'}
+                      </span>
+                    )}
                   </label>
                   <label className="flex items-center">
                     <input
                       type="radio"
                       value="speaches"
                       checked={preferences.sttProvider === 'speaches'}
-                      onChange={(e) => setPreferences({ ...preferences, sttProvider: e.target.value as 'embedded' | 'speaches' })}
+                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches')}
                       className="mr-2"
                     />
                     <ExternalLink size={16} className="mr-1" />
@@ -882,7 +950,7 @@ export function SettingsPage() {
                   </label>
                 </div>
                 <p className="text-sm text-gray-600">
-                  {preferences.sttProvider === 'embedded' 
+                  {preferences.sttProvider === 'embedded'
                     ? 'Uses local Whisper model for offline speech-to-text processing'
                     : 'Uses external Speaches server for speech-to-text processing'
                   }
@@ -1003,27 +1071,41 @@ export function SettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   TTS Provider
                 </label>
-                <div className="flex gap-4 mb-4">
+                <div className="flex gap-4 mb-4 items-center">
                   <label className="flex items-center">
                     <input
                       type="radio"
                       value="embedded"
                       checked={preferences.ttsProvider === 'embedded'}
-                      onChange={(e) => setPreferences({ ...preferences, ttsProvider: e.target.value as 'embedded' | 'speaches' })}
+                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'embedded' | 'speaches')}
                       className="mr-2"
                     />
                     <Server size={16} className="mr-1" />
                     <span>Embedded Server (Offline)</span>
-                    <span className={`ml-2 px-2 py-1 text-xs rounded ${embeddedServerStatus.running ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {embeddedServerStatus.running ? 'Running' : 'Stopped'}
-                    </span>
+                    {embeddedInstalled === false ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPendingProviderSwitch('tts');
+                          setShowInstallModal(true);
+                        }}
+                        className="ml-2 text-xs text-vermilion hover:text-vermilion-deep border-b border-vermilion pb-px"
+                      >
+                        Not installed — Set up
+                      </button>
+                    ) : (
+                      <span className={`ml-2 px-2 py-1 text-xs rounded ${embeddedServerStatus.running ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {embeddedServerStatus.running ? 'Running' : 'Stopped'}
+                      </span>
+                    )}
                   </label>
                   <label className="flex items-center">
                     <input
                       type="radio"
                       value="speaches"
                       checked={preferences.ttsProvider === 'speaches'}
-                      onChange={(e) => setPreferences({ ...preferences, ttsProvider: e.target.value as 'embedded' | 'speaches' })}
+                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'embedded' | 'speaches')}
                       className="mr-2"
                     />
                     <ExternalLink size={16} className="mr-1" />
@@ -1241,6 +1323,25 @@ export function SettingsPage() {
                   />
                   <p className="mt-1 text-sm text-gray-600">
                     Speech synthesis speed (0.5 = slower, 1.0 = normal, 2.0 = faster)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Your-turn cue
+                  </label>
+                  <select
+                    value={preferences.conversationCue}
+                    onChange={(e) => setPreferences({ ...preferences, conversationCue: e.target.value as 'rise' | 'click' | 'none' })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="rise">Rise — a soft two-note lift</option>
+                    <option value="click">Click — a quick tactile tick</option>
+                    <option value="none">None — silence</option>
+                  </select>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Subtle audio cue played when the AI finishes speaking and it's your turn.
+                    Respects the mute toggle in the conversation view.
                   </p>
                 </div>
 
@@ -1697,6 +1798,15 @@ export function SettingsPage() {
           </button>
         </div>
       </div>
+
+      <EmbeddedInstallModal
+        open={showInstallModal}
+        onClose={() => {
+          setShowInstallModal(false);
+          setPendingProviderSwitch(null);
+        }}
+        onSuccess={handleInstallSuccess}
+      />
     </div>
   );
 }

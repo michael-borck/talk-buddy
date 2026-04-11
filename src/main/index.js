@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 const { net } = require('electron');
 const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'production' && require('electron-is-dev'));
@@ -14,6 +15,7 @@ let mainWindow;
 let db;
 let embeddedServer = null;
 let embeddedServerPort = 8765;
+let embeddedInstallProcess = null;
 
 // Default scenarios data - kept separately for restoration
 const DEFAULT_SCENARIOS = [
@@ -265,6 +267,29 @@ function getEmbeddedServerPath() {
   }
 }
 
+// Check whether the embedded server is ready to spawn. In dev, this
+// means the Python venv exists and has a python binary. In prod, it
+// means the bundled standalone executable exists.
+function getEmbeddedInstallState() {
+  const serverPath = getEmbeddedServerPath();
+  if (isDev) {
+    const venvPython = path.join(path.dirname(serverPath), 'venv', 'bin', 'python');
+    const setupScript = path.join(path.dirname(serverPath), 'setup.sh');
+    return {
+      installed: fs.existsSync(venvPython),
+      path: venvPython,
+      setupScript: fs.existsSync(setupScript) ? setupScript : null,
+      mode: 'dev',
+    };
+  }
+  return {
+    installed: fs.existsSync(serverPath),
+    path: serverPath,
+    setupScript: null,
+    mode: 'prod',
+  };
+}
+
 function findAvailablePort(startPort = 8765) {
   return new Promise((resolve) => {
     const server = require('net').createServer();
@@ -284,13 +309,22 @@ async function startEmbeddedServer() {
     return true;
   }
 
+  // Fast path: if the embedded server isn't installed, don't spawn
+  // anything — just log a tidy one-liner. The user can set it up from
+  // Settings → STT/TTS if they want offline speech.
+  const installState = getEmbeddedInstallState();
+  if (!installState.installed) {
+    console.log('[Embedded] Not installed. Using external services. Run Settings → Embedded → Set up to enable offline mode.');
+    return false;
+  }
+
   try {
     console.log('Starting embedded TTS/STT server...');
-    
+
     // Find available port
     embeddedServerPort = await findAvailablePort(8765);
     console.log(`Using port ${embeddedServerPort} for embedded server`);
-    
+
     const serverPath = getEmbeddedServerPath();
     const env = {
       ...process.env,
@@ -600,6 +634,7 @@ app.whenReady().then(() => {
       ('maleVoice', 'am_adam'),
       ('femaleVoice', 'af_bella'),
       ('ttsSpeed', '1.25'),
+      ('conversationCue', 'rise'),
       ('promptTemplate', 'natural'),
       ('customPrompt', ''),
       ('promptBehavior', 'enhance'),
@@ -613,14 +648,17 @@ app.whenReady().then(() => {
     insertSeedScenarios(db);
   }
   
-  // Start embedded server
-  startEmbeddedServer().then((success) => {
-    if (success) {
-      console.log('Embedded server started successfully');
-    } else {
-      console.log('Embedded server failed to start, using external services only');
-    }
-  });
+  // Start embedded server if it's already installed. If not, stay quiet —
+  // the user can set it up from Settings and we'll auto-start afterward.
+  if (getEmbeddedInstallState().installed) {
+    startEmbeddedServer().then((success) => {
+      if (success) {
+        console.log('Embedded server started successfully');
+      } else {
+        console.log('[Embedded] Start attempt returned false — check logs above.');
+      }
+    });
+  }
   
   createWindow();
 
@@ -698,6 +736,93 @@ ipcMain.handle('app:getVersion', () => {
 
 ipcMain.handle('app:getPath', (event, name) => {
   return app.getPath(name);
+});
+
+// Speaches STT — multipart upload via main-process fetch. The renderer
+// sends the audio as an ArrayBuffer (FormData doesn't serialize across
+// IPC). We rebuild FormData here where global fetch handles it natively.
+// Main process has no CORS enforcement, so this bypasses the browser
+// preflight that blocks direct renderer fetches to speaches.locopuente.org.
+ipcMain.handle('speaches:transcribe', async (event, { url, apiKey, audioBuffer, model, filename }) => {
+  try {
+    const formData = new FormData();
+    // audioBuffer arrives as a Uint8Array over IPC; wrap in Blob for FormData.
+    const blob = new Blob([audioBuffer], { type: 'audio/webm' });
+    formData.append('file', blob, filename || 'audio.webm');
+    formData.append('model', model);
+    formData.append('response_format', 'json');
+
+    const headers = {};
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    const bodyText = await response.text();
+    let parsed = null;
+    try { parsed = JSON.parse(bodyText); } catch { /* keep as text */ }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data: parsed,
+      body: bodyText,
+    };
+  } catch (err) {
+    console.error('speaches:transcribe failed:', err);
+    return {
+      ok: false,
+      status: 0,
+      statusText: 'network_error',
+      error: err && err.message ? err.message : String(err),
+    };
+  }
+});
+
+// Speaches TTS — JSON POST returning binary audio. The response body is
+// returned as a Uint8Array that the renderer wraps in a Blob.
+ipcMain.handle('speaches:speak', async (event, { url, apiKey, payload }) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      return {
+        ok: false,
+        status: response.status,
+        statusText: response.statusText,
+        body: bodyText,
+      };
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+      ok: true,
+      status: response.status,
+      statusText: response.statusText,
+      audio: new Uint8Array(arrayBuffer),
+      contentType: response.headers.get('content-type') || 'audio/mpeg',
+    };
+  } catch (err) {
+    console.error('speaches:speak failed:', err);
+    return {
+      ok: false,
+      status: 0,
+      statusText: 'network_error',
+      error: err && err.message ? err.message : String(err),
+    };
+  }
 });
 
 // Proxy for external API requests to bypass CORS
@@ -863,4 +988,96 @@ ipcMain.handle('embedded-server:restart', async () => {
   await new Promise(resolve => setTimeout(resolve, 2000));
   const success = await startEmbeddedServer();
   return { success };
+});
+
+// Check whether the embedded server is installed and which setup script
+// (if any) is available to install it.
+ipcMain.handle('embedded-server:check-install', async () => {
+  const state = getEmbeddedInstallState();
+  // In dev mode, also tell the renderer whether python3 is available on
+  // PATH so the Settings UI can give a specific pre-flight error before
+  // the user even clicks Set Up.
+  let pythonAvailable = null;
+  if (state.mode === 'dev') {
+    pythonAvailable = await new Promise((resolve) => {
+      const probe = spawn('python3', ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] });
+      probe.on('error', () => resolve(false));
+      probe.on('exit', (code) => resolve(code === 0));
+    });
+  }
+  return {
+    installed: state.installed,
+    mode: state.mode,
+    path: state.path,
+    hasSetupScript: state.setupScript !== null,
+    pythonAvailable,
+  };
+});
+
+// Run the embedded-server setup script, streaming stdout + stderr to the
+// renderer over 'embedded-install:output' so the Settings modal can show
+// live progress. Returns the final exit code.
+//
+// Only valid in dev mode. In a packaged build the embedded server ships
+// as a pre-built executable and never needs installing at runtime.
+ipcMain.handle('embedded-server:install', async () => {
+  const state = getEmbeddedInstallState();
+  if (state.mode !== 'dev') {
+    return { ok: false, error: 'Install flow is only available in dev builds — packaged releases bundle the embedded server.' };
+  }
+  if (!state.setupScript) {
+    return { ok: false, error: 'setup.sh not found in embedded-server/ — the repo may be incomplete.' };
+  }
+  if (embeddedInstallProcess) {
+    return { ok: false, error: 'Install already in progress.' };
+  }
+
+  const sendOutput = (stream, text) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('embedded-install:output', { stream, text });
+    }
+  };
+
+  sendOutput('info', `Running ${state.setupScript}\n`);
+
+  return new Promise((resolve) => {
+    const child = spawn('bash', [state.setupScript], {
+      cwd: path.dirname(state.setupScript),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    embeddedInstallProcess = child;
+
+    child.stdout.on('data', (chunk) => sendOutput('stdout', chunk.toString()));
+    child.stderr.on('data', (chunk) => sendOutput('stderr', chunk.toString()));
+
+    child.on('error', (err) => {
+      embeddedInstallProcess = null;
+      sendOutput('error', `Failed to spawn setup.sh: ${err.message}\n`);
+      resolve({ ok: false, error: err.message });
+    });
+
+    child.on('exit', (code, signal) => {
+      embeddedInstallProcess = null;
+      if (signal) {
+        sendOutput('info', `\nInstall cancelled (${signal}).\n`);
+        resolve({ ok: false, cancelled: true });
+        return;
+      }
+      if (code === 0) {
+        sendOutput('info', '\nInstall complete.\n');
+        resolve({ ok: true });
+      } else {
+        sendOutput('error', `\nInstall exited with code ${code}.\n`);
+        resolve({ ok: false, error: `Exit code ${code}` });
+      }
+    });
+  });
+});
+
+ipcMain.handle('embedded-server:install-cancel', async () => {
+  if (embeddedInstallProcess) {
+    embeddedInstallProcess.kill('SIGTERM');
+    return { ok: true };
+  }
+  return { ok: false, error: 'No install in progress.' };
 });

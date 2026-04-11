@@ -13,19 +13,16 @@ import {
 } from '../services/sqlite';
 import { Scenario, Pack } from '../types';
 // ScenarioCardSkeleton component available but not currently used
-import { 
-  Play, 
-  Clock, 
-  Trophy, 
-  Filter, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Grid, 
-  List, 
+import {
+  Trophy,
+  Filter,
+  Plus,
+  Edit,
+  Trash2,
+  Grid,
+  List,
   RefreshCw,
   Search,
-  Package,
   X,
   Archive,
   Download,
@@ -537,240 +534,234 @@ function ScenarioCard({
   isSelected,
   deletingId 
 }: ScenarioCardProps) {
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'beginner': return 'bg-green-100 text-green-800';
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const getVoiceMarker = (voice?: string): { symbol: string; label: string } => {
+    switch (voice) {
+      case 'female': return { symbol: '♀', label: 'Female voice' };
+      case 'male':   return { symbol: '♂', label: 'Male voice' };
+      default:       return { symbol: '◐', label: 'Default voice' };
     }
   };
 
-  const getGenderIcon = (voice?: string) => {
-    switch (voice) {
-      case 'female': return '👩';
-      case 'male': return '👨';
-      default: return '🗣️';
-    }
-  };
+  const marker = getVoiceMarker(scenario.voice);
+  const disabled = deletingId === scenario.id;
+
+  // Shared action icon cluster — ink-muted glyphs, vermilion on hover,
+  // no colored backgrounds. Used in both grid and list view.
+  const actionIcons = (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => onEdit(scenario.id)}
+        className="p-1.5 text-ink-muted hover:text-vermilion transition-colors"
+        title="Edit"
+        aria-label="Edit scenario"
+      >
+        <Edit size={14} strokeWidth={1.5} />
+      </button>
+      <button
+        onClick={() => onExport(scenario.id)}
+        className="p-1.5 text-ink-muted hover:text-vermilion transition-colors"
+        title="Export"
+        aria-label="Export scenario"
+      >
+        <Download size={14} strokeWidth={1.5} />
+      </button>
+      <button
+        onClick={(e) => onArchive(scenario.id, e)}
+        disabled={disabled}
+        className="p-1.5 text-ink-muted hover:text-vermilion transition-colors disabled:opacity-30"
+        title="Archive"
+        aria-label="Archive scenario"
+      >
+        <Archive size={14} strokeWidth={1.5} />
+      </button>
+      <button
+        onClick={(e) => onDelete(scenario.id, e)}
+        disabled={disabled}
+        className="p-1.5 text-ink-muted hover:text-vermilion transition-colors disabled:opacity-30"
+        title="Delete permanently"
+        aria-label="Delete scenario"
+      >
+        <Trash2 size={14} strokeWidth={1.5} />
+      </button>
+    </div>
+  );
 
   if (viewMode === 'list') {
     return (
-      <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-        <div className="flex items-start gap-4">
+      <article className="group border border-ink/10 hover:border-ink/30 bg-ivory-warm transition-colors">
+        <div className="p-6 flex items-start gap-5">
           <button
             onClick={() => onToggleSelect(scenario.id)}
-            className="mt-1"
+            className="mt-1.5 text-ink-muted hover:text-ink transition-colors"
+            aria-label={isSelected ? 'Deselect scenario' : 'Select scenario'}
           >
             {isSelected ? (
-              <CheckSquare size={20} className="text-blue-600" />
+              <CheckSquare size={16} strokeWidth={1.5} className="text-vermilion" />
             ) : (
-              <Square size={20} className="text-gray-400" />
+              <Square size={16} strokeWidth={1.5} />
             )}
           </button>
-          
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-lg font-semibold text-gray-800">{scenario.name}</h3>
-              <span className="text-lg" title={`${scenario.voice || 'default'} voice`}>
-                {getGenderIcon(scenario.voice)}
-              </span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getDifficultyColor(scenario.difficulty)}`}>
-                {scenario.difficulty}
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-3 mb-1.5">
+              <h3 className="font-display text-[1.2rem] text-ink font-medium leading-snug tracking-tight-display">
+                {scenario.name}
+              </h3>
+              <span
+                className="text-vermilion text-base leading-none font-sans"
+                title={marker.label}
+                aria-label={marker.label}
+              >
+                {marker.symbol}
               </span>
               {scenario.isDefault && (
-                <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <span className="text-[0.6rem] uppercase tracking-[0.18em] text-ink-quiet font-sans">
                   Default
                 </span>
               )}
             </div>
-            
-            <p className="text-gray-600 mb-3 line-clamp-2">{scenario.description}</p>
-            
-            <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
-              <span className="flex items-center gap-1">
-                <Clock size={16} />
-                {scenario.estimatedMinutes}m
-              </span>
-              <span className="capitalize">{scenario.category}</span>
+
+            <p className="text-[0.9rem] text-ink-muted line-clamp-2 leading-relaxed font-sans mb-3">
+              {scenario.description}
+            </p>
+
+            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-[0.68rem] uppercase tracking-[0.14em] text-ink-quiet font-sans">
+              <span>{scenario.difficulty}</span>
+              <span aria-hidden="true">·</span>
+              <span>{scenario.estimatedMinutes} min</span>
+              <span aria-hidden="true">·</span>
+              <span>{scenario.category}</span>
               {scenario.tags && scenario.tags.length > 0 && (
-                <span>Tags: {scenario.tags.join(', ')}</span>
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="normal-case tracking-normal text-ink-muted">
+                    {scenario.tags.join(', ')}
+                  </span>
+                </>
               )}
             </div>
 
-            {/* Pack indicators */}
             {scenario.packs && scenario.packs.length > 0 && (
-              <div className="flex items-center gap-2 mb-3">
-                <Package size={16} className="text-purple-600" />
-                <div className="flex flex-wrap gap-1">
-                  {scenario.packs.map((pack) => (
+              <div className="flex items-center flex-wrap gap-2 mt-3">
+                <span className="text-[0.62rem] uppercase tracking-[0.18em] text-ink-quiet font-sans">
+                  In packs
+                </span>
+                {scenario.packs.map((pack) => (
+                  <span
+                    key={pack.id}
+                    className="inline-flex items-center gap-1.5 text-[0.75rem] text-ink font-sans"
+                  >
                     <span
-                      key={pack.id}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-purple-50 text-purple-700"
-                    >
-                      <div 
-                        className="w-2 h-2 rounded-full" 
-                        style={{ backgroundColor: pack.color }}
-                      ></div>
-                      {pack.name}
-                    </span>
-                  ))}
-                </div>
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: pack.color }}
+                      aria-hidden="true"
+                    />
+                    {pack.name}
+                  </span>
+                ))}
               </div>
             )}
           </div>
-          
-          <div className="ml-4 flex items-center gap-2">
+
+          <div className="flex flex-col items-end gap-4 flex-shrink-0">
             <button
               onClick={() => onStart(scenario.id)}
-              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-              title="Start conversation"
+              className="text-[0.85rem] text-ink hover:text-vermilion border-b border-ink hover:border-vermilion pb-0.5 transition-colors font-sans"
             >
-              <Play size={18} />
+              Start →
             </button>
-            <button
-              onClick={() => onEdit(scenario.id)}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              title="Edit scenario"
-            >
-              <Edit size={18} />
-            </button>
-            <button
-              onClick={() => onExport(scenario.id)}
-              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-              title="Export scenario"
-            >
-              <Download size={18} />
-            </button>
-            <button
-              onClick={(e) => onArchive(scenario.id, e)}
-              disabled={deletingId === scenario.id}
-              className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-50"
-              title="Archive scenario"
-            >
-              <Archive size={18} />
-            </button>
-            <button
-              onClick={(e) => onDelete(scenario.id, e)}
-              disabled={deletingId === scenario.id}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-              title="Delete permanently"
-            >
-              <Trash2 size={18} />
-            </button>
+            {actionIcons}
           </div>
         </div>
-      </div>
+      </article>
     );
   }
 
+  // Grid view — stacked vertical layout, title gets its own row,
+  // action icons live in the bottom border row next to the Start link.
   return (
-    <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2 flex-1 pr-2">
-            <button
-              onClick={() => onToggleSelect(scenario.id)}
-              className="mr-2"
-            >
-              {isSelected ? (
-                <CheckSquare size={20} className="text-blue-600" />
-              ) : (
-                <Square size={20} className="text-gray-400" />
-              )}
-            </button>
-            <h3 className="text-lg font-semibold text-gray-800">{scenario.name}</h3>
-            <span className="text-lg" title={`${scenario.voice || 'default'} voice`}>
-              {getGenderIcon(scenario.voice)}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onEdit(scenario.id)}
-              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-              title="Edit"
-            >
-              <Edit size={16} />
-            </button>
-            <button
-              onClick={() => onExport(scenario.id)}
-              className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
-              title="Export"
-            >
-              <Download size={16} />
-            </button>
-            <button
-              onClick={(e) => onArchive(scenario.id, e)}
-              disabled={deletingId === scenario.id}
-              className="p-1 text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
-              title="Archive"
-            >
-              <Archive size={16} />
-            </button>
-            <button
-              onClick={(e) => onDelete(scenario.id, e)}
-              disabled={deletingId === scenario.id}
-              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-              title="Delete permanently"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-        
-        <p className="text-gray-600 text-sm mb-4 line-clamp-3">{scenario.description}</p>
-        
-        <div className="flex items-center gap-2 mb-4">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getDifficultyColor(scenario.difficulty)}`}>
-            {scenario.difficulty}
+    <article className="group border border-ink/10 hover:border-ink/30 bg-ivory-warm transition-colors flex flex-col">
+      <div className="p-6 flex-1 flex flex-col">
+        {/* Row 1: checkbox + voice marker — a small meta strip */}
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => onToggleSelect(scenario.id)}
+            className="text-ink-muted hover:text-ink transition-colors"
+            aria-label={isSelected ? 'Deselect scenario' : 'Select scenario'}
+          >
+            {isSelected ? (
+              <CheckSquare size={16} strokeWidth={1.5} className="text-vermilion" />
+            ) : (
+              <Square size={16} strokeWidth={1.5} />
+            )}
+          </button>
+          <span
+            className="text-vermilion text-xl leading-none font-sans"
+            title={marker.label}
+            aria-label={marker.label}
+          >
+            {marker.symbol}
           </span>
+        </div>
+
+        {/* Title — gets its own row, can wrap freely */}
+        <h3 className="font-display text-[1.2rem] text-ink font-medium leading-snug tracking-tight-display mb-3">
+          {scenario.name}
+        </h3>
+
+        {/* Description */}
+        <p className="text-[0.88rem] text-ink-muted line-clamp-3 leading-relaxed font-sans mb-5">
+          {scenario.description}
+        </p>
+
+        {/* Meta strip */}
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[0.66rem] uppercase tracking-[0.14em] text-ink-quiet font-sans mb-4">
+          <span>{scenario.difficulty}</span>
+          <span aria-hidden="true">·</span>
+          <span>{scenario.estimatedMinutes} min</span>
+          <span aria-hidden="true">·</span>
+          <span>{scenario.category}</span>
           {scenario.isDefault && (
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              Default
-            </span>
+            <>
+              <span aria-hidden="true">·</span>
+              <span>Default</span>
+            </>
           )}
         </div>
 
-        {/* Pack indicators */}
         {scenario.packs && scenario.packs.length > 0 && (
-          <div className="mb-4">
-            <div className="flex items-center gap-1 mb-2">
-              <Package size={14} className="text-purple-600" />
-              <span className="text-xs text-purple-600 font-medium">In packs:</span>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {scenario.packs.map((pack) => (
+          <div className="flex items-center flex-wrap gap-2 mb-5">
+            {scenario.packs.map((pack) => (
+              <span
+                key={pack.id}
+                className="inline-flex items-center gap-1.5 text-[0.72rem] text-ink-muted font-sans"
+              >
                 <span
-                  key={pack.id}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-purple-50 text-purple-700"
-                >
-                  <div 
-                    className="w-2 h-2 rounded-full" 
-                    style={{ backgroundColor: pack.color }}
-                  ></div>
-                  {pack.name}
-                </span>
-              ))}
-            </div>
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: pack.color }}
+                  aria-hidden="true"
+                />
+                {pack.name}
+              </span>
+            ))}
           </div>
         )}
-        
-        <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-          <span className="flex items-center gap-1">
-            <Clock size={16} />
-            {scenario.estimatedMinutes}m
-          </span>
-          <span className="capitalize">{scenario.category}</span>
+
+        {/* Spacer to push action row to bottom */}
+        <div className="flex-1" />
+
+        {/* Action row: Start link on left, icon cluster on right,
+            separated from the body by a hairline. */}
+        <div className="flex items-center justify-between pt-4 border-t border-ink/10">
+          <button
+            onClick={() => onStart(scenario.id)}
+            className="text-[0.85rem] text-ink hover:text-vermilion border-b border-ink hover:border-vermilion pb-0.5 transition-colors font-sans"
+          >
+            Start conversation →
+          </button>
+          {actionIcons}
         </div>
-        
-        <button
-          onClick={() => onStart(scenario.id)}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-        >
-          <Play size={18} />
-          Start Conversation
-        </button>
       </div>
-    </div>
+    </article>
   );
 }
