@@ -123,10 +123,10 @@ export function initDatabase(): Database.Database {
 
     -- Insert default preferences if not exist
     INSERT OR IGNORE INTO user_preferences (key, value) VALUES 
-      ('speachesUrl', 'http://localhost:8000'),
+      ('speachesUrl', 'https://speaches.locopuente.org'),
       ('ollamaUrl', 'http://localhost:11434'),
       ('ollamaModel', 'llama2'),
-      ('voice', 'male');
+      ('voice', 'female');
   `);
 
   return db;

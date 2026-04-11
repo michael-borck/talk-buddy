@@ -271,9 +271,9 @@ const PROMPT_TEMPLATES = {
 
 export function SettingsPage() {
   const [preferences, setPreferences] = useState({
-    speachesUrl: 'https://speaches.serveur.au',
-    sttUrl: 'https://speaches.serveur.au',
-    ttsUrl: 'https://speaches.serveur.au',
+    speachesUrl: 'https://speaches.locopuente.org',
+    sttUrl: 'https://speaches.locopuente.org',
+    ttsUrl: 'https://speaches.locopuente.org',
     sttProvider: 'embedded' as 'embedded' | 'speaches',
     ttsProvider: 'embedded' as 'embedded' | 'speaches',
     chatProvider: 'ollama' as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom',
@@ -287,13 +287,13 @@ export function SettingsPage() {
     ollamaUrl: 'https://ollama.serveur.au',
     ollamaApiKey: '',
     ollamaModel: 'llama2',
-    voice: 'male' as 'male' | 'female',
-    sttModel: 'Systran/faster-distil-whisper-small.en',
-    ttsModel: 'speaches-ai/Kokoro-82M-v1.0-ONNX-int8',
-    maleTTSModel: 'speaches-ai/piper-en_GB-alan-low',
-    femaleTTSModel: 'speaches-ai/piper-en_US-amy-low',
-    maleVoice: 'alan',
-    femaleVoice: 'amy',
+    voice: 'female' as 'male' | 'female',
+    sttModel: 'Systran/faster-whisper-small',
+    ttsModel: 'speaches-ai/Kokoro-82M-v1.0-ONNX',
+    maleTTSModel: 'speaches-ai/Kokoro-82M-v1.0-ONNX',
+    femaleTTSModel: 'speaches-ai/Kokoro-82M-v1.0-ONNX',
+    maleVoice: 'am_adam',
+    femaleVoice: 'af_bella',
     ttsSpeed: '1.25',
     promptTemplate: 'natural',
     customPrompt: '',
@@ -385,9 +385,9 @@ export function SettingsPage() {
     try {
       const prefs = await getAllPreferences();
       setPreferences({
-        speachesUrl: prefs.speachesUrl || 'https://speaches.serveur.au',
-        sttUrl: prefs.sttUrl || prefs.speachesUrl || 'https://speaches.serveur.au',
-        ttsUrl: prefs.ttsUrl || prefs.speachesUrl || 'https://speaches.serveur.au',
+        speachesUrl: prefs.speachesUrl || 'https://speaches.locopuente.org',
+        sttUrl: prefs.sttUrl || prefs.speachesUrl || 'https://speaches.locopuente.org',
+        ttsUrl: prefs.ttsUrl || prefs.speachesUrl || 'https://speaches.locopuente.org',
         sttProvider: (prefs.sttProvider || 'embedded') as 'embedded' | 'speaches',
         ttsProvider: (prefs.ttsProvider || 'embedded') as 'embedded' | 'speaches',
         chatProvider: (prefs.chatProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'custom',
@@ -401,13 +401,13 @@ export function SettingsPage() {
         ollamaUrl: prefs.ollamaUrl || 'https://ollama.serveur.au',
         ollamaApiKey: prefs.ollamaApiKey || '',
         ollamaModel: prefs.ollamaModel || 'llama2',
-        voice: (prefs.voice || 'male') as 'male' | 'female',
-        sttModel: prefs.sttModel || 'Systran/faster-distil-whisper-small.en',
-        ttsModel: prefs.ttsModel || 'speaches-ai/Kokoro-82M-v1.0-ONNX-int8',
-        maleTTSModel: prefs.maleTTSModel || 'speaches-ai/piper-en_GB-alan-low',
-        femaleTTSModel: prefs.femaleTTSModel || 'speaches-ai/piper-en_US-amy-low',
-        maleVoice: prefs.maleVoice || 'alan',
-        femaleVoice: prefs.femaleVoice || 'amy',
+        voice: (prefs.voice || 'female') as 'male' | 'female',
+        sttModel: prefs.sttModel || 'Systran/faster-whisper-small',
+        ttsModel: prefs.ttsModel || 'speaches-ai/Kokoro-82M-v1.0-ONNX',
+        maleTTSModel: prefs.maleTTSModel || 'speaches-ai/Kokoro-82M-v1.0-ONNX',
+        femaleTTSModel: prefs.femaleTTSModel || 'speaches-ai/Kokoro-82M-v1.0-ONNX',
+        maleVoice: prefs.maleVoice || 'am_adam',
+        femaleVoice: prefs.femaleVoice || 'af_bella',
         ttsSpeed: prefs.ttsSpeed || '1.25',
         promptTemplate: prefs.promptTemplate || 'natural',
         customPrompt: prefs.customPrompt || '',
@@ -901,7 +901,7 @@ export function SettingsPage() {
                     value={preferences.sttUrl}
                     onChange={(e) => setPreferences({ ...preferences, sttUrl: e.target.value })}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://speaches.serveur.au"
+                    placeholder="https://speaches.locopuente.org"
                   />
                   <button
                     onClick={() => testService('stt')}
@@ -1153,7 +1153,7 @@ export function SettingsPage() {
                     value={preferences.ttsUrl}
                     onChange={(e) => setPreferences({ ...preferences, ttsUrl: e.target.value })}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://speaches.serveur.au"
+                    placeholder="https://speaches.locopuente.org"
                   />
                   <button
                     onClick={() => testService('tts')}
@@ -1266,7 +1266,7 @@ export function SettingsPage() {
                       value={preferences.maleVoice}
                       onChange={(e) => setPreferences({ ...preferences, maleVoice: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="alan"
+                      placeholder="am_adam"
                     />
                     <p className="mt-1 text-sm text-gray-600">
                       Voice ID for the male model
@@ -1296,7 +1296,7 @@ export function SettingsPage() {
                       value={preferences.femaleVoice}
                       onChange={(e) => setPreferences({ ...preferences, femaleVoice: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="amy"
+                      placeholder="af_bella"
                     />
                     <p className="mt-1 text-sm text-gray-600">
                       Voice ID for the female model
@@ -1662,7 +1662,7 @@ export function SettingsPage() {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    window.electronAPI.shell.openExternal('https://speaches.serveur.au/docs');
+                    window.electronAPI.shell.openExternal('https://speaches.locopuente.org/docs');
                   }}
                   className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
                 >

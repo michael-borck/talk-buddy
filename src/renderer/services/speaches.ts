@@ -8,7 +8,7 @@ async function getSTTUrl(): Promise<string> {
   // Fall back to speachesUrl for backward compatibility
   if (!url) {
     const speachesUrl = await getPreference('speachesUrl');
-    return speachesUrl || 'https://speaches.serveur.au';
+    return speachesUrl || 'https://speaches.locopuente.org';
   }
   return url;
 }
@@ -19,7 +19,7 @@ async function getTTSUrl(): Promise<string> {
   // Fall back to speachesUrl for backward compatibility
   if (!url) {
     const speachesUrl = await getPreference('speachesUrl');
-    return speachesUrl || 'https://speaches.serveur.au';
+    return speachesUrl || 'https://speaches.locopuente.org';
   }
   return url;
 }
@@ -53,7 +53,7 @@ async function getTTSApiKey(): Promise<string> {
 // Speech-to-Text using Speaches API
 export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionResult> {
   const baseUrl = await getSTTUrl();
-  const sttModel = await getPreference('sttModel') || 'Systran/faster-distil-whisper-small.en';
+  const sttModel = await getPreference('sttModel') || 'Systran/faster-whisper-small';
   const apiKey = await getSTTApiKey();
   
   const formData = new FormData();
@@ -95,10 +95,10 @@ export async function generateSpeech(options: SpeechGenerationOptions): Promise<
   const isMale = (options.voice || preferredVoice) === 'male';
   
   // Get gender-specific model and voice
-  const maleTTSModel = await getPreference('maleTTSModel') || 'speaches-ai/piper-en_GB-alan-low';
-  const femaleTTSModel = await getPreference('femaleTTSModel') || 'speaches-ai/piper-en_US-amy-low';
-  const maleVoice = await getPreference('maleVoice') || 'alan';
-  const femaleVoice = await getPreference('femaleVoice') || 'amy';
+  const maleTTSModel = await getPreference('maleTTSModel') || 'speaches-ai/Kokoro-82M-v1.0-ONNX';
+  const femaleTTSModel = await getPreference('femaleTTSModel') || 'speaches-ai/Kokoro-82M-v1.0-ONNX';
+  const maleVoice = await getPreference('maleVoice') || 'am_adam';
+  const femaleVoice = await getPreference('femaleVoice') || 'af_bella';
   const ttsSpeed = parseFloat(await getPreference('ttsSpeed') || '1.25');
   
   // Use the appropriate model and voice based on gender

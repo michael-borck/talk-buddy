@@ -68,7 +68,7 @@ export function STTSettings({ settings, onUpdate }: STTSettingsProps) {
     } else if (provider === 'speaches') {
       onUpdate({ 
         provider,
-        url: 'https://speaches.serveur.au',
+        url: 'https://speaches.locopuente.org',
         apiKey: settings.apiKey || ''
       });
     }

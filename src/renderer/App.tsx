@@ -15,7 +15,7 @@ import { DocumentationPage } from './pages/DocumentationPage';
 import { useState, useEffect } from 'react';
 import { listScenarios, listPacks, startStandaloneSession } from './services/sqlite';
 import { Scenario, Pack } from './types';
-import { Home, BookOpen, History, Settings, ChevronRight, ChevronLeft, Archive, Info, HelpCircle, Package, Mic } from 'lucide-react';
+import { Home, BookOpen, History, Settings, ChevronRight, ChevronLeft, Archive, Info, HelpCircle, Package } from 'lucide-react';
 import { StatusFooter } from './components/StatusFooter';
 import { Toaster } from 'react-hot-toast';
 
@@ -23,35 +23,42 @@ function App() {
   return (
     <HashRouter>
       <div className="flex flex-col h-screen relative">
-        {/* Toast notifications */}
-        <Toaster 
+        {/* Toast notifications — editorial: ink card with vermilion rule */}
+        <Toaster
           position="top-center"
           toastOptions={{
             duration: 4000,
             style: {
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
-              padding: '16px',
-              borderRadius: '12px',
+              background: '#0F0F0E',
+              color: '#F6F1E7',
+              padding: '14px 18px',
+              borderRadius: '2px',
               fontSize: '14px',
-              fontWeight: '500',
+              fontFamily: '"Inter Tight", ui-sans-serif, system-ui, sans-serif',
+              fontWeight: '400',
+              letterSpacing: '0.005em',
+              border: '1px solid rgba(246, 241, 231, 0.12)',
+              boxShadow: 'none',
             },
             success: {
-              style: {
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              },
+              iconTheme: { primary: '#D94B2B', secondary: '#0F0F0E' },
             },
             error: {
+              iconTheme: { primary: '#D94B2B', secondary: '#0F0F0E' },
               style: {
-                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                background: '#0F0F0E',
+                color: '#F6F1E7',
+                borderLeft: '2px solid #D94B2B',
+                padding: '14px 18px',
+                borderRadius: '2px',
+                fontSize: '14px',
+                fontFamily: '"Inter Tight", ui-sans-serif, system-ui, sans-serif',
               },
             },
           }}
         />
-        
-        {/* Gradient background */}
-        <div className="fixed inset-0 bg-gradient-to-br from-purple-50 via-white to-blue-50" 
-             style={{ background: 'var(--gradient-mesh), linear-gradient(to bottom right, #faf5ff, #ffffff, #eff6ff)' }} />
+
+        {/* Ivory paper background — no gradient mesh */}
         <div className="flex flex-1 overflow-hidden relative z-10">
           <Sidebar />
           <main className="flex-1 overflow-auto">
@@ -108,82 +115,93 @@ function Sidebar() {
   ];
 
   return (
-    <nav className={`${isCollapsed ? 'w-20' : 'w-64'} glass-card-dark border-r border-gray-700/50 flex flex-col transition-all duration-300 h-full`}>
-      <div className={`${isCollapsed ? 'p-2' : 'p-4'} flex-1 flex flex-col`}>
+    <nav className={`${isCollapsed ? 'w-20' : 'w-64'} glass-card-dark flex flex-col transition-all duration-300 h-full`}>
+      <div className={`${isCollapsed ? 'p-3' : 'p-6'} flex-1 flex flex-col`}>
         {/* Header with collapse button */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center flex-col gap-2' : 'justify-between'} mb-6`}>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center flex-col gap-3' : 'justify-between'} mb-10`}>
           {!isCollapsed && (
-            <button 
+            <button
               onClick={() => navigate('/about')}
-              className="flex items-center gap-2 hover:bg-gray-700 p-2 rounded-lg transition-colors"
+              className="flex items-baseline gap-2 hover:opacity-80 transition-opacity"
               title="About Talk Buddy"
             >
-              <Mic size={24} className="text-blue-400" />
-              <div>
-                <h1 className="text-xl font-bold text-white">Talk Buddy</h1>
-                <p className="text-xs text-gray-400">Desktop Edition</p>
-              </div>
+              <span className="font-display text-[1.65rem] leading-none text-ivory font-medium tracking-tight-display">
+                Talk<span className="text-vermilion">.</span>Buddy
+              </span>
             </button>
           )}
           {isCollapsed && (
-            <button 
+            <button
               onClick={() => navigate('/about')}
-              className="text-blue-400 hover:bg-gray-700 p-3 rounded-lg transition-colors"
+              className="hover:opacity-80 transition-opacity"
               title="Talk Buddy"
+              aria-label="About Talk Buddy"
             >
-              <Mic size={28} />
+              <span className="font-display text-2xl leading-none text-ivory font-medium">
+                T<span className="text-vermilion">.</span>B
+              </span>
             </button>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 ${isCollapsed ? 'w-12 h-12' : 'w-9 h-9'} rounded-lg transition-all hover:scale-110 ${isCollapsed ? 'mt-2' : ''}`}
+            className={`flex items-center justify-center text-ivory/60 hover:text-ivory ${isCollapsed ? 'w-9 h-9' : 'w-7 h-7'} transition-colors`}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {isCollapsed ? (
-              <ChevronRight size={24} className="animate-pulse" />
-            ) : (
-              <ChevronLeft size={20} />
-            )}
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={16} />}
           </button>
         </div>
-        
+
+        {/* Section label */}
+        {!isCollapsed && (
+          <div className="mb-4 text-[0.65rem] uppercase tracking-[0.18em] text-ivory/40 font-medium">
+            Navigate
+          </div>
+        )}
+
         {/* Navigation items */}
-        <div className="space-y-2">
+        <div className={isCollapsed ? 'space-y-1' : 'space-y-0.5'}>
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.path === '/' 
-              ? location.pathname === '/' 
+            const isActive = item.path === '/'
+              ? location.pathname === '/'
               : location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-            
+
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 ${isCollapsed ? 'px-0 py-3' : 'px-3 py-2'} rounded-lg transition-all ${
+                className={`w-full group flex items-center gap-3 ${isCollapsed ? 'px-0 py-3 justify-center' : 'px-3 py-2.5'} transition-colors relative ${
                   isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                } ${isCollapsed ? 'justify-center' : ''}`}
+                    ? 'text-ivory'
+                    : 'text-ivory/55 hover:text-ivory'
+                }`}
                 title={isCollapsed ? item.label : ''}
               >
-                <Icon size={isCollapsed ? 24 : 20} />
-                {!isCollapsed && <span className="font-medium">{item.label}</span>}
+                {isActive && !isCollapsed && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-vermilion" aria-hidden="true" />
+                )}
+                <Icon size={isCollapsed ? 20 : 16} strokeWidth={1.5} />
+                {!isCollapsed && (
+                  <span className="font-sans text-[0.9rem] font-normal tracking-[0.005em]">
+                    {item.label}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
       </div>
-      
+
       {/* Version info at bottom */}
       {!isCollapsed && appVersion && (
-        <div className="mt-auto p-4 text-center">
+        <div className="mt-auto p-6 border-t border-ivory/10">
           <button
             onClick={() => navigate('/about')}
-            className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+            className="text-[0.7rem] text-ivory/40 hover:text-ivory/70 transition-colors tracking-wider uppercase"
             title="About Talk Buddy"
           >
-            v{appVersion}
+            Version {appVersion}
           </button>
         </div>
       )}
@@ -253,166 +271,186 @@ function HomePage() {
   };
   
   return (
-    <div className="max-w-6xl mx-auto p-8 animate-fadeIn">
-      {/* Hero Section with enhanced styling */}
-      <div className="text-center mb-12">
-        <div className="mb-6 animate-float">
-          <div className="inline-flex p-4 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 shadow-2xl glow-purple">
-            <Mic size={48} className="text-white" />
+    <div className="min-h-full px-12 lg:px-20 py-16 animate-fadeIn">
+      {/* Editorial masthead */}
+      <div className="grid grid-cols-12 gap-8 mb-20">
+        {/* Left: title and primary action — spans 8 columns, asymmetric */}
+        <div className="col-span-12 lg:col-span-8 animate-reveal">
+          <div className="flex items-center mb-6">
+            <span className="editorial-rule" aria-hidden="true" />
+            <span className="text-[0.7rem] uppercase tracking-[0.22em] text-ink-muted font-medium">
+              A quiet place to practice speaking
+            </span>
           </div>
-        </div>
-        <h1 className="text-5xl font-black mb-4">
-          <span className="gradient-text">Practice Conversations</span>
-          <br />
-          <span className="text-gray-800">with AI</span>
-        </h1>
-        <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
-          Improve your speaking skills through realistic conversation scenarios. 
-          Get instant feedback and track your progress over time.
-        </p>
-        
-        {/* Stats row */}
-        <div className="flex justify-center gap-8 mb-8">
-          <div className="text-center">
-            <div className="text-3xl font-bold gradient-text">500+</div>
-            <div className="text-sm text-gray-600">Conversations</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold gradient-text">98%</div>
-            <div className="text-sm text-gray-600">Satisfaction</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold gradient-text">2 min</div>
-            <div className="text-sm text-gray-600">Avg. Session</div>
-          </div>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button
-            onClick={startPracticeSession}
-            disabled={loading}
-            className="btn-gradient text-white px-10 py-4 rounded-xl text-lg font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform transition-all hover:scale-105"
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Loading...
+
+          <h1 className="font-display text-ink font-medium leading-[0.95] tracking-tight-display text-[clamp(3rem,7vw,6rem)] mb-8">
+            Rehearse the<br />
+            conversation<br />
+            <em className="italic font-light text-ink-soft">before it happens.</em>
+            <span className="caret" aria-hidden="true" />
+          </h1>
+
+          <p className="max-w-[46ch] text-[1.05rem] leading-[1.7] text-ink-muted mb-10 font-sans">
+            Scenarios you write, voices that respond, transcripts you can revisit.
+            Talk Buddy is a studio for the conversations that matter —
+            the difficult ones, the first ones, the ones you want to get right.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+            <button
+              onClick={startPracticeSession}
+              disabled={loading}
+              className="btn-gradient px-8 py-3.5 text-[0.95rem] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2.5">
+                  <span className="inline-block w-3.5 h-3.5 border border-ivory/40 border-t-ivory rounded-full animate-spin" />
+                  Preparing…
+                </span>
+              ) : (
+                'Begin a session'
+              )}
+            </button>
+            <button
+              onClick={() => navigate('/scenarios')}
+              className="group text-[0.95rem] text-ink hover:text-vermilion transition-colors font-sans"
+            >
+              <span className="border-b border-ink group-hover:border-vermilion pb-0.5 transition-colors">
+                Browse all scenarios
               </span>
-            ) : (
-              'Quick Start Practice'
-            )}
-          </button>
-          <button
-            onClick={() => navigate('/scenarios')}
-            className="glass-card px-10 py-4 rounded-xl text-lg font-semibold text-purple-700 hover:bg-white/90 transition-all transform hover:scale-105"
-          >
-            Browse Scenarios
-          </button>
+              <span className="ml-2 inline-block transition-transform group-hover:translate-x-0.5">→</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Right: a single tall editorial marker */}
+        <div className="hidden lg:flex col-span-4 flex-col justify-end pl-8 border-l border-ink/10">
+          <div className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet mb-3">
+            Edition
+          </div>
+          <div className="font-display text-ink text-5xl leading-none mb-6">
+            №&nbsp;{new Date().getFullYear()}
+          </div>
+          <div className="text-[0.78rem] text-ink-muted leading-relaxed font-sans max-w-[22ch]">
+            Local-first. Your recordings and transcripts stay on this device.
+          </div>
         </div>
       </div>
 
-      {/* Recent Content */}
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Recent Scenarios */}
-        <div className="glass-card rounded-xl p-6 card-hover">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500">
-                <BookOpen size={20} className="text-white" />
-              </div>
-              Recent Scenarios
+      {/* Two-column editorial index */}
+      <div className="grid grid-cols-12 gap-10 border-t border-ink/10 pt-12">
+        {/* Recent Scenarios — wider left column */}
+        <section className="col-span-12 lg:col-span-7 animate-reveal-delayed">
+          <header className="flex items-baseline justify-between mb-6">
+            <h2 className="font-display text-2xl text-ink font-medium flex items-baseline gap-3">
+              <BookOpen size={16} strokeWidth={1.5} className="text-vermilion self-center" />
+              Recent scenarios
             </h2>
             <button
               onClick={() => navigate('/scenarios')}
-              className="text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors"
+              className="text-[0.8rem] text-ink-muted hover:text-vermilion transition-colors tracking-wide font-sans"
             >
-              View All →
+              Index →
             </button>
-          </div>
-          
+          </header>
+
           {recentScenarios.length > 0 ? (
-            <div className="space-y-3">
-              {recentScenarios.map((scenario) => (
-                <div
+            <ul className="divide-y divide-ink/10">
+              {recentScenarios.map((scenario, idx) => (
+                <li
                   key={scenario.id}
                   onClick={() => handleStartScenario(scenario.id)}
-                  className="p-3 border border-purple-100 rounded-lg hover:bg-purple-50/50 cursor-pointer transition-all hover:border-purple-300 hover:shadow-md"
+                  className="group py-5 cursor-pointer transition-colors hover:bg-ivory-50 -mx-3 px-3"
                 >
-                  <h3 className="font-medium text-gray-800">{scenario.name}</h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">{scenario.description}</p>
-                  <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                    <span className="capitalize">{scenario.difficulty}</span>
-                    <span>•</span>
-                    <span>{scenario.estimatedMinutes}m</span>
+                  <div className="flex items-baseline gap-5">
+                    <span className="font-display text-sm text-ink-quiet tabular-nums w-6 pt-0.5">
+                      {String(idx + 1).padStart(2, '0')}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-display text-[1.15rem] text-ink font-medium group-hover:text-vermilion transition-colors leading-snug">
+                        {scenario.name}
+                      </h3>
+                      {scenario.description && (
+                        <p className="mt-1.5 text-[0.88rem] text-ink-muted line-clamp-2 leading-relaxed font-sans">
+                          {scenario.description}
+                        </p>
+                      )}
+                      <div className="mt-2.5 flex items-center gap-3 text-[0.72rem] uppercase tracking-[0.12em] text-ink-quiet font-sans">
+                        <span>{scenario.difficulty}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{scenario.estimatedMinutes} min</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <BookOpen size={48} className="mx-auto mb-4 text-gray-300" />
-              <p>No scenarios yet.</p>
+            <div className="py-10 text-ink-muted font-sans text-sm">
+              <p className="mb-3">No scenarios yet.</p>
               <button
                 onClick={() => navigate('/scenarios/new')}
-                className="text-blue-600 hover:text-blue-700 text-sm mt-2"
+                className="text-vermilion hover:text-vermilion-deep transition-colors border-b border-vermilion pb-0.5"
               >
-                Create your first scenario
+                Write your first scenario →
               </button>
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Top Practice Packs */}
-        <div className="glass-card rounded-xl p-6 card-hover">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
-                <Package size={20} className="text-white" />
-              </div>
-              Practice Packs
+        {/* Practice Packs — narrower right column */}
+        <aside className="col-span-12 lg:col-span-5 lg:pl-8 lg:border-l lg:border-ink/10 animate-reveal-delayed">
+          <header className="flex items-baseline justify-between mb-6">
+            <h2 className="font-display text-2xl text-ink font-medium flex items-baseline gap-3">
+              <Package size={16} strokeWidth={1.5} className="text-vermilion self-center" />
+              Practice packs
             </h2>
             <button
               onClick={() => navigate('/packs')}
-              className="text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors"
+              className="text-[0.8rem] text-ink-muted hover:text-vermilion transition-colors tracking-wide font-sans"
             >
-              View All →
+              All →
             </button>
-          </div>
-          
+          </header>
+
           {topPacks.length > 0 ? (
-            <div className="space-y-3">
+            <ul className="space-y-5">
               {topPacks.map((pack) => (
-                <div
+                <li
                   key={pack.id}
                   onClick={() => navigate(`/packs/${pack.id}`)}
-                  className="p-3 border border-purple-100 rounded-lg hover:bg-purple-50/50 cursor-pointer transition-all hover:border-purple-300 hover:shadow-md"
+                  className="group cursor-pointer"
                 >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div 
-                      className="w-3 h-3 rounded" 
+                  <div className="flex items-baseline gap-3 mb-1.5">
+                    <span
+                      className="w-2 h-2 rounded-full translate-y-[-1px]"
                       style={{ backgroundColor: pack.color }}
-                    ></div>
-                    <h3 className="font-medium text-gray-800">{pack.name}</h3>
+                      aria-hidden="true"
+                    />
+                    <h3 className="font-display text-[1.05rem] text-ink font-medium group-hover:text-vermilion transition-colors">
+                      {pack.name}
+                    </h3>
                   </div>
                   {pack.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">{pack.description}</p>
+                    <p className="text-[0.85rem] text-ink-muted line-clamp-2 pl-5 leading-relaxed font-sans">
+                      {pack.description}
+                    </p>
                   )}
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <Package size={48} className="mx-auto mb-4 text-gray-300" />
-              <p>No practice packs yet.</p>
+            <div className="py-6 text-ink-muted font-sans text-sm">
+              <p className="mb-3">No practice packs yet.</p>
               <button
                 onClick={() => navigate('/packs')}
-                className="text-purple-600 hover:text-purple-700 text-sm mt-2"
+                className="text-vermilion hover:text-vermilion-deep transition-colors border-b border-vermilion pb-0.5"
               >
-                Create your first pack
+                Assemble a pack →
               </button>
             </div>
           )}
-        </div>
+        </aside>
       </div>
     </div>
   );

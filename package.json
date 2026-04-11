@@ -10,6 +10,8 @@
   "homepage": "./",
   "private": true,
   "scripts": {
+    "postinstall": "electron-rebuild -f -w better-sqlite3 || true",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
     "dev": "concurrently -k \"vite\" \"wait-on tcp:3307 && electron . --dev --no-sandbox\"",
     "build": "vite build",
     "preview": "vite preview",
@@ -35,6 +37,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@testing-library/jest-dom": "^6.2.0",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.2",
