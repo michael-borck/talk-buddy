@@ -268,15 +268,35 @@ function getEmbeddedServerPath() {
 }
 
 // Check whether the embedded server is ready to spawn. In dev, this
-// means the Python venv exists and has a python binary. In prod, it
-// means the bundled standalone executable exists.
+// means BOTH the Python venv exists AND the Piper voice models are
+// downloaded — a venv without models leaves the server "running" but
+// with TTS silently broken (health check reports services.tts=false).
+// Treating missing models as "not installed" lets the UI surface the
+// "Set up now" prompt so the user can re-run setup.sh, which is
+// idempotent and will only download what's missing.
+//
+// In prod, this means the bundled standalone executable exists
+// (PyInstaller wraps the models into the binary via --add-data).
 function getEmbeddedInstallState() {
   const serverPath = getEmbeddedServerPath();
   if (isDev) {
-    const venvPython = path.join(path.dirname(serverPath), 'venv', 'bin', 'python');
-    const setupScript = path.join(path.dirname(serverPath), 'setup.sh');
+    const rootDir = path.dirname(serverPath);
+    const venvPython = path.join(rootDir, 'venv', 'bin', 'python');
+    const setupScript = path.join(rootDir, 'setup.sh');
+    // Model files the TTS engine needs. If any are missing, we treat
+    // the install as incomplete and let the setup flow fill them in.
+    const requiredModels = [
+      path.join(rootDir, 'models', 'en_GB-alan-low.onnx'),
+      path.join(rootDir, 'models', 'en_GB-alan-low.onnx.json'),
+      path.join(rootDir, 'models', 'en_US-amy-low.onnx'),
+      path.join(rootDir, 'models', 'en_US-amy-low.onnx.json'),
+    ];
+    const venvOk = fs.existsSync(venvPython);
+    const modelsOk = requiredModels.every((p) => fs.existsSync(p));
     return {
-      installed: fs.existsSync(venvPython),
+      installed: venvOk && modelsOk,
+      venvOk,
+      modelsOk,
       path: venvPython,
       setupScript: fs.existsSync(setupScript) ? setupScript : null,
       mode: 'dev',
@@ -284,6 +304,8 @@ function getEmbeddedInstallState() {
   }
   return {
     installed: fs.existsSync(serverPath),
+    venvOk: fs.existsSync(serverPath),
+    modelsOk: true,
     path: serverPath,
     setupScript: null,
     mode: 'prod',
@@ -1007,6 +1029,8 @@ ipcMain.handle('embedded-server:check-install', async () => {
   }
   return {
     installed: state.installed,
+    venvOk: state.venvOk,
+    modelsOk: state.modelsOk,
     mode: state.mode,
     path: state.path,
     hasSetupScript: state.setupScript !== null,

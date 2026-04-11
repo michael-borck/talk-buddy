@@ -12,6 +12,7 @@ import tempfile
 import threading
 import io
 import base64
+import urllib.request
 import wave
 from typing import Dict, List, Optional
 from pathlib import Path
@@ -35,10 +36,57 @@ piper_male_voice = None
 piper_female_voice = None
 whisper_model = None
 
+# HuggingFace base URL for Piper voice downloads. Matches what
+# setup.sh and .github/workflows/build.yml use — single source of
+# truth would live in a shared config file, but duplication across
+# three callers is acceptable for a stable upstream path.
+_PIPER_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en"
+_PIPER_MODELS = {
+    "en_GB-alan-low.onnx":      f"{_PIPER_BASE}/en_GB/alan/low/en_GB-alan-low.onnx",
+    "en_GB-alan-low.onnx.json": f"{_PIPER_BASE}/en_GB/alan/low/en_GB-alan-low.onnx.json",
+    "en_US-amy-low.onnx":       f"{_PIPER_BASE}/en_US/amy/low/en_US-amy-low.onnx",
+    "en_US-amy-low.onnx.json":  f"{_PIPER_BASE}/en_US/amy/low/en_US-amy-low.onnx.json",
+}
+
+
+def _download_piper_models_if_missing():
+    """Self-heal: if the models directory is missing any Piper files,
+    download them from HuggingFace before PiperVoice.load() runs.
+
+    This is a runtime safety net for dev environments where setup.sh
+    was skipped or ran before the download step existed. In a packaged
+    release the models are bundled via PyInstaller --add-data so this
+    block is a no-op."""
+    # Don't try to download in a PyInstaller bundle — models ship inside.
+    if hasattr(sys, "_MEIPASS"):
+        return
+
+    os.makedirs("models", exist_ok=True)
+    for filename, url in _PIPER_MODELS.items():
+        dest = os.path.join("models", filename)
+        if os.path.exists(dest) and os.path.getsize(dest) > 0:
+            continue
+        logger.info(f"Piper model missing, downloading: {filename}")
+        try:
+            urllib.request.urlretrieve(url, dest)
+            logger.info(f"  → saved {dest} ({os.path.getsize(dest)} bytes)")
+        except Exception as e:
+            logger.error(f"  ✗ download failed for {url}: {e}")
+            # Leave any partial file removed so the next attempt retries cleanly.
+            try:
+                if os.path.exists(dest):
+                    os.remove(dest)
+            except OSError:
+                pass
+
+
 def initialize_tts():
     """Initialize Piper TTS with Alan (male) and Amy (female) voices"""
     global piper_male_voice, piper_female_voice
-    
+
+    # Runtime self-heal — download any missing model files before load.
+    _download_piper_models_if_missing()
+
     try:
         # Load male voice (Alan - British)
         male_model_path = "models/en_GB-alan-low.onnx"
@@ -48,7 +96,7 @@ def initialize_tts():
         else:
             logger.error(f"Male voice model not found: {male_model_path}")
             return False
-        
+
         # Load female voice (Amy - American)
         female_model_path = "models/en_US-amy-low.onnx"
         if os.path.exists(female_model_path):
@@ -57,10 +105,10 @@ def initialize_tts():
         else:
             logger.error(f"Female voice model not found: {female_model_path}")
             return False
-        
+
         logger.info("Piper TTS initialized with Alan (male) and Amy (female) voices")
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to initialize Piper TTS: {e}")
         return False

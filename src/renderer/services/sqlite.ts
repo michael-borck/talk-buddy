@@ -60,6 +60,8 @@ interface ElectronAPI {
   embeddedInstall: {
     check: () => Promise<{
       installed: boolean;
+      venvOk: boolean;
+      modelsOk: boolean;
       mode: 'dev' | 'prod';
       path: string;
       hasSetupScript: boolean;

@@ -28,6 +28,8 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
     pythonAvailable: boolean | null;
     hasSetupScript: boolean;
     mode: 'dev' | 'prod';
+    venvOk: boolean;
+    modelsOk: boolean;
   }>(null);
   const [chunks, setChunks] = useState<LogChunk[]>([]);
   const logRef = useRef<HTMLPreElement>(null);
@@ -43,6 +45,8 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
         pythonAvailable: state.pythonAvailable,
         hasSetupScript: state.hasSetupScript,
         mode: state.mode,
+        venvOk: state.venvOk,
+        modelsOk: state.modelsOk,
       });
     });
   }, [open]);
@@ -132,16 +136,33 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
         <div className="flex-1 overflow-y-auto px-7 py-6">
           {finished === null && chunks.length === 0 && !running && (
             <>
-              <p className="text-[0.92rem] text-ink-muted leading-relaxed font-sans mb-5">
-                This installs a local Python speech engine (Piper for TTS,
-                whisper.cpp for STT) so Talk Buddy can run entirely offline —
-                no Speaches server, no network, nothing leaves your machine.
-              </p>
-              <p className="text-[0.92rem] text-ink-muted leading-relaxed font-sans mb-5">
-                First install downloads roughly <strong className="text-ink">500&nbsp;MB</strong> of
-                Python packages and voice models and takes a few minutes.
-                You can cancel anytime.
-              </p>
+              {preflight && preflight.venvOk && !preflight.modelsOk ? (
+                <>
+                  <p className="text-[0.92rem] text-ink leading-relaxed font-sans mb-5">
+                    <strong>Python packages are installed</strong>, but the Piper voice models
+                    (Alan &amp; Amy) are missing. That's why Text-to-Speech reports offline even
+                    though the server is running.
+                  </p>
+                  <p className="text-[0.92rem] text-ink-muted leading-relaxed font-sans mb-5">
+                    Clicking <strong className="text-ink">Set up now</strong> will run setup.sh
+                    again — it will skip the Python install step and only download the four ONNX
+                    files (~60&nbsp;MB total) into <code className="text-ink">embedded-server/models/</code>.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[0.92rem] text-ink-muted leading-relaxed font-sans mb-5">
+                    This installs a local Python speech engine (Piper for TTS,
+                    whisper.cpp for STT) so Talk Buddy can run entirely offline —
+                    no Speaches server, no network, nothing leaves your machine.
+                  </p>
+                  <p className="text-[0.92rem] text-ink-muted leading-relaxed font-sans mb-5">
+                    First install downloads roughly <strong className="text-ink">500&nbsp;MB</strong> of
+                    Python packages and voice models and takes a few minutes.
+                    You can cancel anytime.
+                  </p>
+                </>
+              )}
 
               {prodMode && (
                 <div className="px-4 py-3 border-l-2 border-vermilion bg-ivory-warm mb-5">

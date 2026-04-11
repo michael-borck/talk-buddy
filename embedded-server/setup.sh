@@ -63,6 +63,33 @@ echo "[setup] (This can take several minutes on first install — it downloads"
 echo "[setup]  ~500MB of model + ML wheels. Subsequent runs are cached.)"
 pip install -r requirements.txt
 
+# -- Piper voice models --------------------------------------------------
+# The embedded server's TTS uses Piper ONNX voice files. Mirrors what the
+# release workflow does in .github/workflows/build.yml. Without these,
+# /health reports services.tts=false even though the server is "running."
+mkdir -p models
+PIPER_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en"
+
+download_if_missing() {
+  local dest="$1"
+  local url="$2"
+  if [ -s "$dest" ]; then
+    echo "[setup] OK $(basename "$dest") (already present)"
+  else
+    echo "[setup] Downloading $(basename "$dest") ..."
+    curl -fL --progress-bar "$url" -o "$dest" || {
+      echo "[setup] ERROR: failed to download $url"
+      rm -f "$dest"
+      exit 1
+    }
+  fi
+}
+
+download_if_missing "models/en_GB-alan-low.onnx"      "$PIPER_BASE/en_GB/alan/low/en_GB-alan-low.onnx"
+download_if_missing "models/en_GB-alan-low.onnx.json" "$PIPER_BASE/en_GB/alan/low/en_GB-alan-low.onnx.json"
+download_if_missing "models/en_US-amy-low.onnx"       "$PIPER_BASE/en_US/amy/low/en_US-amy-low.onnx"
+download_if_missing "models/en_US-amy-low.onnx.json"  "$PIPER_BASE/en_US/amy/low/en_US-amy-low.onnx.json"
+
 # -- done ----------------------------------------------------------------
 echo ""
 echo "[setup] Done. Embedded speech server is ready."
