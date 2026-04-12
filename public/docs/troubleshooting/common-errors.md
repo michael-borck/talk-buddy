@@ -20,8 +20,8 @@ Quick solutions to the most frequently encountered Talk Buddy errors and issues.
 **Registry Issues (Advanced)**:
 ```cmd
 # Clear Talk Buddy registry entries (run as admin)
-reg delete "HKCU\Software\Talk Buddy" /f
-reg delete "HKLM\Software\Talk Buddy" /f
+reg delete "HKCU\Software\TalkBuddy" /f
+reg delete "HKLM\Software\TalkBuddy" /f
 ```
 
 #### macOS
@@ -31,17 +31,17 @@ reg delete "HKLM\Software\Talk Buddy" /f
 **Solutions**:
 1. **Security bypass**: Right-click app → Open → Open anyway
 2. **System Preferences**: Security & Privacy → Allow Talk Buddy
-3. **Clear quarantine**: `xattr -cr /Applications/Talk Buddy.app`
+3. **Clear quarantine**: `xattr -cr /Applications/TalkBuddy.app`
 4. **Re-download**: Delete app and download fresh copy
 5. **Check macOS version**: Ensure macOS 10.14 or later
 
 **Terminal Commands**:
 ```bash
 # Remove quarantine attribute
-sudo xattr -rd com.apple.quarantine /Applications/Talk Buddy.app
+sudo xattr -rd com.apple.quarantine /Applications/TalkBuddy.app
 
 # Fix permissions
-sudo chmod -R 755 /Applications/Talk Buddy.app
+sudo chmod -R 755 /Applications/TalkBuddy.app
 ```
 
 #### Linux
@@ -49,7 +49,7 @@ sudo chmod -R 755 /Applications/Talk Buddy.app
 **Common Causes**: File permissions, missing dependencies
 
 **Solutions**:
-1. **Make executable**: `chmod +x Talk Buddy*.AppImage`
+1. **Make executable**: `chmod +x TalkBuddy*.AppImage`
 2. **Install dependencies**: 
    ```bash
    # Ubuntu/Debian
@@ -68,9 +68,9 @@ sudo chmod -R 755 /Applications/Talk Buddy.app
 
 **Solutions**:
 1. **Clear data directory**: 
-   - **Windows**: `%APPDATA%/Talk Buddy/`
-   - **macOS**: `~/Library/Application Support/Talk Buddy/`
-   - **Linux**: `~/.config/Talk Buddy/`
+   - **Windows**: `%APPDATA%/TalkBuddy/`
+   - **macOS**: `~/Library/Application Support/TalkBuddy/`
+   - **Linux**: `~/.config/TalkBuddy/`
 2. **Check disk space**: Ensure at least 500MB free
 3. **Run with elevated permissions**: Administrator/sudo access
 4. **Backup and reset**: Export scenarios before clearing data
@@ -78,8 +78,8 @@ sudo chmod -R 755 /Applications/Talk Buddy.app
 **Manual Database Reset**:
 ```bash
 # Navigate to Talk Buddy data directory
-cd ~/.config/Talk Buddy  # Linux
-cd ~/Library/Application\ Support/Talk Buddy  # macOS
+cd ~/.config/TalkBuddy  # Linux
+cd ~/Library/Application\ Support/TalkBuddy  # macOS
 
 # Backup existing data
 cp talkbuddy.db talkbuddy.db.backup
@@ -94,7 +94,7 @@ rm talkbuddy.db
 
 ### "STT Service Unavailable" or "Speech Recognition Failed"
 
-**Symptoms**: Red STT indicator, microphone not working, no speech recognition
+**Symptoms**: Red Listening indicator, microphone not working, no speech recognition
 **Quick Diagnosis**: Check microphone permissions and service connectivity
 
 **Solutions by Priority**:
@@ -110,10 +110,10 @@ rm talkbuddy.db
    - Try different microphone if available
 
 3. **Verify Service Configuration**:
-   - Go to Talk Buddy Settings
-   - Check STT service URL is correct
-   - Click "Test STT" to verify connection
-   - Try switching between local and online services
+   - Go to Talk Buddy Settings → Listening tab
+   - Check the service URL is correct
+   - Click "Test Listening" to verify connection
+   - Try switching between Built-in (offline) and Cloud server options
 
 4. **Network/Firewall Issues**:
    - Check internet connection for online services
@@ -140,7 +140,7 @@ rm talkbuddy.db
    ```
 
 2. **Online AI Service Issues**:
-   - Check API key is valid and not expired
+   - Check your secret key is valid and not expired (AI Brain tab in Settings)
    - Verify service URL is correct
    - Test API access outside Talk Buddy
    - Check account usage limits/billing
@@ -153,7 +153,7 @@ rm talkbuddy.db
 
 ### "TTS Service Error" or "Voice Synthesis Failed"
 
-**Symptoms**: No AI voice output, silent responses, red TTS indicator
+**Symptoms**: No AI voice output, silent responses, red Voice indicator
 **Quick Diagnosis**: Check audio output and service configuration
 
 **Solutions**:
@@ -163,9 +163,9 @@ rm talkbuddy.db
    - Verify correct audio output device selected
 
 2. **Service Configuration**:
-   - Test TTS service in Settings page
+   - Go to Settings → Voice tab and test the service
    - Try different voice options (male/female)
-   - Check TTS service URL and connectivity
+   - Check the Voice service URL and connectivity
 
 3. **Compatibility Issues**:
    - Update audio drivers
@@ -273,7 +273,7 @@ rm talkbuddy.db
 
 ### "No Audio Output" or "Can't Hear AI Voice"
 
-**Symptoms**: Silent AI responses, no TTS output, audio issues
+**Symptoms**: Silent AI responses, no voice output, audio issues
 **Quick Fix**: Check system volume and audio device selection
 
 **Solutions**:
@@ -283,7 +283,7 @@ rm talkbuddy.db
    - Check correct audio output device selected
 
 2. **Talk Buddy Audio Settings**:
-   - Test TTS in Settings page
+   - Test voice in the Voice tab in Settings
    - Try different voice options
    - Check voice speed/volume settings
 
@@ -295,17 +295,17 @@ rm talkbuddy.db
 ### "Poor Audio Quality" or "Distorted Voice"
 
 **Symptoms**: Robotic voice, audio artifacts, unclear speech
-**Common Causes**: Poor TTS model, network issues, audio driver problems
+**Common Causes**: Poor voice model, network issues, audio driver problems
 
 **Solutions**:
 1. **Service Quality**:
-   - Try different TTS model/voice
-   - Switch between local and online TTS services
-   - Check TTS service configuration
+   - Try different voice model (Voice tab in Settings)
+   - Switch between Built-in (offline) and Cloud server in the Voice tab
+   - Check voice service configuration
 
 2. **Network Issues**:
-   - Verify stable internet connection for online TTS
-   - Use local TTS services for consistent quality
+   - Verify stable internet connection when using a Cloud server for voice
+   - Switch to Built-in (offline) in the Voice tab for consistent quality
    - Check for network congestion
 
 3. **System Audio**:
@@ -327,8 +327,8 @@ rm talkbuddy.db
    - Test with default scenarios first
 
 2. **Service Dependencies**:
-   - Ensure AI service is connected
-   - Verify STT/TTS services are working
+   - Ensure AI service is connected (AI Brain tab)
+   - Verify Listening and Voice services are working
    - Check all services show green status
 
 3. **Data Integrity**:
@@ -407,9 +407,9 @@ netstat -an | grep :11434
 ```
 
 ### Log Locations
-- **Windows**: `%APPDATA%/Talk Buddy/logs/`
-- **macOS**: `~/Library/Application Support/Talk Buddy/logs/`
-- **Linux**: `~/.config/Talk Buddy/logs/`
+- **Windows**: `%APPDATA%/TalkBuddy/logs/`
+- **macOS**: `~/Library/Application Support/TalkBuddy/logs/`
+- **Linux**: `~/.config/TalkBuddy/logs/`
 
 ---
 

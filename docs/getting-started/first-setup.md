@@ -60,8 +60,8 @@ For better privacy and offline use:
 
 2. **Test Speech Services** (if available):
    - Go to Settings
-   - Click "Test STT" to test speech recognition
-   - Click "Test TTS" to test voice synthesis
+   - Click "Test Listening" to test speech recognition
+   - Click "Test Voice" to test voice synthesis
 
 3. **Test AI Service**:
    - Go to Scenarios in the sidebar
@@ -97,9 +97,9 @@ Talk Buddy comes with sample scenarios to get you started:
 
 ### Status Footer
 The footer shows connection status for:
-- **STT**: Speech-to-Text service status
-- **TTS**: Text-to-Speech service status  
-- **Chat**: AI conversation service status
+- **Listening**: Speech-to-text service status
+- **Voice**: Text-to-speech service status
+- **AI Brain**: AI conversation service status
 
 ### Quick Actions
 - Click the **Talk Buddy** title to access the About page
@@ -110,16 +110,16 @@ The footer shows connection status for:
 
 ### Voice Preferences
 1. Go to **Settings**
-2. Under **Voice Settings**:
+2. Under the **Voice** tab:
    - Choose Male or Female voice
    - Adjust speech speed if available
    - Test different voice models
 
 ### Service Configuration
 1. In **Settings**, configure:
-   - **Speech Service URLs**: Change if using local services
-   - **AI Model Settings**: Select your preferred conversation model
-   - **API Keys**: Add if using paid services
+   - **Speech Service URLs**: Change if using local services (see the **Listening** and **Voice** tabs)
+   - **AI Model Settings**: Select your preferred conversation model (see the **AI Brain** tab)
+   - **Secret keys**: Add if using paid services
 
 ## Data and Privacy
 

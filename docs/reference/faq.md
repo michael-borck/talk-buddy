@@ -37,7 +37,7 @@ Get quick answers to common Talk Buddy questions.
 - **Permissions**: Ensure Talk Buddy has microphone access in system settings
 - **Hardware**: Test your microphone in other applications
 - **Connection**: Verify speech services are connected (check status footer)
-- **Settings**: Go to Settings and test STT (Speech-to-Text) service
+- **Settings**: Go to Settings → Listening tab and test the speech recognition service
 
 ### Q: The AI doesn't respond to my speech. What's wrong?
 **A:** This usually indicates a service connection issue:
@@ -169,14 +169,14 @@ Get quick answers to common Talk Buddy questions.
 ### Q: Can I use different AI models?
 **A:** Yes! Talk Buddy supports various AI services:
 - **Local models**: Ollama with different language models
-- **Online services**: Various AI providers (check Settings)
+- **Online services**: Anthropic, OpenAI, Gemini, Groq, and others (see the AI Brain tab in Settings)
 - **Custom endpoints**: Configure your own AI service URLs
 - See [AI Model Integration guide](../services/ai-model-integration.md)
 
 ### Q: How do I set up local services for privacy?
 **A:** For maximum privacy, use local services:
-1. **Install Ollama** for AI conversations
-2. **Set up Speaches** for speech processing
+1. **Install Ollama** for AI conversations (configure in the AI Brain tab)
+2. **Set up Speaches** for speech processing (configure Built-in (offline) in the Listening and Voice tabs)
 3. **Configure Talk Buddy** to use localhost URLs
 4. **Test connections** to ensure everything works
 5. Follow [Service Setup guides](../services/) for detailed instructions

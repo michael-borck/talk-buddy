@@ -85,10 +85,16 @@ Standards used to evaluate performance and learning outcomes in conversation pra
 ## Service Architecture
 
 ### **Local Services**
-Software components that run on your own computer, providing AI, STT, or TTS functionality without internet connection.
+Software components that run on your own computer, providing AI, speech recognition, or voice synthesis functionality without internet connection. In Talk Buddy's Settings, the local/embedded Speaches option is labelled **Built-in (offline)**.
 
 ### **Online Services**
-Cloud-based services that provide AI, STT, or TTS functionality via internet connection.
+Cloud-based services that provide AI, speech recognition, or voice synthesis functionality via internet connection. In Talk Buddy's Settings, remote provider options are labelled **Cloud server**.
+
+### **Built-in (offline)**
+Provider option available in the Listening and Voice tabs that uses the embedded Speaches server bundled with Talk Buddy, enabling fully offline speech processing.
+
+### **Cloud server**
+Provider option available in the Listening and Voice tabs that connects to an external Speaches-compatible or cloud-based speech service over the internet.
 
 ### **API (Application Programming Interface)**
 Technical interface that allows Talk Buddy to communicate with external AI and speech services.
@@ -179,8 +185,8 @@ Containerization technology that simplifies installation and running of local AI
 ### **GPU Acceleration**
 Use of graphics processing units to speed up AI model processing and response generation.
 
-### **API Key**
-Authentication credential required to access online AI or speech services.
+### **API Key / Secret Key**
+Authentication credential required to access online AI or speech services. In Talk Buddy's Settings interface this is referred to as a **secret key**.
 
 ### **Firewall**
 Network security system that may need configuration to allow Talk Buddy to access online services.
@@ -197,10 +203,25 @@ Text file containing settings and preferences for Talk Buddy or related services
 Left-side menu in Talk Buddy providing access to different pages and functions.
 
 ### **Status Footer**
-Bottom area of Talk Buddy showing connection status for AI, STT, and TTS services.
+Bottom area of Talk Buddy showing connection status for AI (AI Brain), speech recognition (Listening), and voice synthesis (Voice) services.
 
 ### **Settings Page**
-Configuration interface for adjusting Talk Buddy preferences and service connections.
+Configuration interface for adjusting Talk Buddy preferences and service connections. Organized into tabs: **Listening**, **Voice**, **AI Brain**, **Conversation Style**, and **Your Data**.
+
+### **Listening (Settings tab)**
+The Settings tab where you configure speech recognition (speech-to-text) services, including choosing between Built-in (offline) and Cloud server providers, setting the service URL, and testing microphone input.
+
+### **Voice (Settings tab)**
+The Settings tab where you configure voice synthesis (text-to-speech) services, including choosing between Built-in (offline) and Cloud server providers, selecting voice models, and testing audio output.
+
+### **AI Brain (Settings tab)**
+The Settings tab where you configure the AI conversation model, including provider selection (Anthropic, OpenAI, Gemini, Groq, Ollama, and others), model choice, secret keys, and generation parameters.
+
+### **Conversation Style (Settings tab)**
+The Settings tab where you manage system prompts and persona instructions that shape how the AI behaves across practice scenarios.
+
+### **Your Data (Settings tab)**
+The Settings tab where you manage locally stored data, including importing, exporting, and clearing scenarios, practice packs, and session history.
 
 ### **Scenario Editor**
 Interface for creating and modifying conversation practice scenarios.
@@ -301,8 +322,8 @@ Assessment activities that mirror real-world communication challenges and contex
 - **GPU**: Graphics Processing Unit
 - **JSON**: JavaScript Object Notation
 - **LLM**: Large Language Model
-- **STT**: Speech-to-Text
-- **TTS**: Text-to-Speech
+- **STT**: Speech-to-Text (the technology; the Settings tab is called **Listening**)
+- **TTS**: Text-to-Speech (the technology; the Settings tab is called **Voice**)
 - **UI**: User Interface
 - **UX**: User Experience
 

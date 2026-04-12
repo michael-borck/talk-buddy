@@ -31,14 +31,14 @@ TTS services convert AI text responses into spoken voice output:
 Talk Buddy comes pre-configured with working TTS services:
 
 #### Check Current Status
-1. **Look at status footer**: TTS indicator should be green (●)
+1. **Look at status footer**: Voice indicator should be green (●)
 2. **If green**: You're ready for voice-enabled practice
 3. **If red/gray**: Follow troubleshooting steps below
 
-#### Test TTS Service
+#### Test Voice Service
 1. **Go to Settings**: Click "Settings" in sidebar
-2. **Find TTS section**: Look for Text-to-Speech configuration
-3. **Click "Test TTS"**: Verify service is working
+2. **Open the Voice tab**: Look for voice synthesis configuration
+3. **Click "Test Voice"**: Verify service is working
 4. **Listen for voice**: Should hear test speech output
 5. **Check audio quality**: Verify voice is clear and understandable
 
@@ -107,24 +107,25 @@ speaches serve --host 0.0.0.0 --port 8000 --enable-tts
 3. **Run**: Execute the binary to start server
 4. **Configure**: Set to run on port 8000 with TTS enabled
 
-### Configuring Talk Buddy for Local TTS
+### Configuring Talk Buddy for Local Voice Synthesis
 
 #### Update Service URL
 1. **Open Talk Buddy Settings**
-2. **Find TTS Service URL field**
-3. **Change to local address**: `http://localhost:8000`
-4. **Save settings**
+2. **Go to the Voice tab**
+3. **Find the Service URL field**
+4. **Change to local address**: `http://localhost:8000`
+5. **Save settings**
 
 #### Test Local Connection
-1. **Click "Test TTS"** in settings
+1. **Click "Test Voice"** in settings
 2. **Verify connection**: Should show successful connection
 3. **Test voice synthesis**: Should hear test speech
-4. **Check status footer**: TTS indicator should be green
+4. **Check status footer**: Voice indicator should be green
 
 ### Speaches Voice Configuration
 
 #### Voice Model Selection
-Speaches supports multiple TTS models:
+Speaches supports multiple voice models:
 
 **Fast Models (Lower quality, faster synthesis)**
 - Good for: Real-time conversation, older hardware
@@ -185,7 +186,7 @@ Configure different voices for different AI characters:
 4. **Casual conversation**: Relaxed, conversational voice
 
 #### Voice Switching
-In Talk Buddy settings:
+In Talk Buddy settings (Voice tab):
 - **Primary voice**: Default voice for most scenarios
 - **Alternative voices**: Different voices for specific contexts
 - **Test voices**: Verify each voice works well for intended use
@@ -244,20 +245,20 @@ In Talk Buddy settings:
 4. **Reduce system load**: Close other applications using audio
 
 #### Service Connection Errors
-**Symptoms**: Red TTS indicator, connection timeouts
+**Symptoms**: Red Voice indicator, connection timeouts
 **Solutions**:
 1. **Verify service running**: Check if Speaches or online service is available
 2. **Test network connectivity**: Ensure internet access for online services
-3. **Check firewall**: Confirm Talk Buddy can access TTS service
-4. **Restart services**: Stop and start TTS service, restart Talk Buddy
+3. **Check firewall**: Confirm Talk Buddy can access the voice synthesis service
+4. **Restart services**: Stop and start the voice service, restart Talk Buddy
 
 #### Slow Voice Generation
 **Symptoms**: Long delays between AI text and voice output
 **Solutions**:
-1. **Use faster models**: Switch to smaller, quicker TTS models
+1. **Use faster models**: Switch to smaller, quicker voice models (Voice tab in Settings)
 2. **Optimize hardware**: Close other applications, upgrade hardware
 3. **Check network**: Ensure stable, fast internet for online services
-4. **Local processing**: Switch to local TTS service for better performance
+4. **Local processing**: Switch to the Built-in (offline) option in the Voice tab for better performance
 
 ### Advanced Troubleshooting
 
@@ -328,17 +329,17 @@ curl -X POST http://localhost:8000/tts \
 
 ## Quick Setup Checklist
 
-### Online TTS (5 minutes)
+### Online Voice Synthesis (5 minutes)
 - [ ] Open Talk Buddy
-- [ ] Check TTS status indicator (should be green)
-- [ ] Go to Settings and test TTS service
+- [ ] Check Voice status indicator (should be green)
+- [ ] Go to Settings → Voice tab and test the service
 - [ ] Verify audio output device is working
 - [ ] Test with sample text
 
-### Local TTS (45 minutes)
+### Local Voice Synthesis / Built-in (offline) (45 minutes)
 - [ ] Install Speaches (Docker, Python, or binary)
-- [ ] Start Speaches service on port 8000 with TTS enabled
-- [ ] Configure Talk Buddy to use localhost:8000
+- [ ] Start Speaches service on port 8000 with voice synthesis enabled
+- [ ] Configure Talk Buddy to use localhost:8000 (Voice tab in Settings)
 - [ ] Test connection in Settings
 - [ ] Verify voice synthesis works
 - [ ] Configure for automatic startup (optional)
@@ -352,9 +353,9 @@ curl -X POST http://localhost:8000/tts \
 
 ---
 
-**With proper TTS setup, your Talk Buddy conversations become immersive and natural. Choose the option that best fits your privacy needs and desired voice quality! 🔊**
+**With proper voice setup, your Talk Buddy conversations become immersive and natural. Choose the option that best fits your privacy needs and desired voice quality!**
 
 **Related Guides**: 
-- **[STT Setup](stt-setup.md)** - Configure speech recognition input
+- **[Listening Setup](stt-setup.md)** - Configure speech recognition input
 - **[AI Model Integration](ai-model-integration.md)** - Set up conversation AI
 - **[Connection Issues](../troubleshooting/connection-issues.md)** - Fix connectivity problems

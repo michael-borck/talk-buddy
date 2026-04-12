@@ -31,14 +31,14 @@ STT services convert your spoken words into text that Talk Buddy can process:
 Talk Buddy comes pre-configured with working STT services:
 
 #### Check Current Status
-1. **Look at status footer**: STT indicator should be green (●)
+1. **Look at status footer**: Listening indicator should be green (●)
 2. **If green**: You're ready to practice with voice input
 3. **If red/gray**: Follow troubleshooting steps below
 
-#### Test STT Service
+#### Test Speech Recognition Service
 1. **Go to Settings**: Click "Settings" in sidebar
-2. **Find STT section**: Look for Speech-to-Text configuration
-3. **Click "Test STT"**: Verify service is working
+2. **Open the Listening tab**: Look for speech recognition configuration
+3. **Click "Test Listening"**: Verify service is working
 4. **Speak into microphone**: Say a test phrase
 5. **Check results**: Verify your speech was recognized correctly
 
@@ -107,24 +107,25 @@ speaches serve --host 0.0.0.0 --port 8000
 3. **Run**: Execute the binary to start server
 4. **Configure**: Set to run on port 8000
 
-### Configuring Talk Buddy for Local STT
+### Configuring Talk Buddy for Local Speech Recognition
 
 #### Update Service URL
 1. **Open Talk Buddy Settings**
-2. **Find STT Service URL field**
-3. **Change to local address**: `http://localhost:8000`
-4. **Save settings**
+2. **Go to the Listening tab**
+3. **Find the Service URL field**
+4. **Change to local address**: `http://localhost:8000`
+5. **Save settings**
 
 #### Test Local Connection
-1. **Click "Test STT"** in settings
+1. **Click "Test Listening"** in settings
 2. **Verify connection**: Should show successful connection
 3. **Test speech recognition**: Speak a test phrase
-4. **Check status footer**: STT indicator should be green
+4. **Check status footer**: Listening indicator should be green
 
 ### Speaches Configuration Options
 
 #### Model Selection
-Speaches supports multiple STT models:
+Speaches supports multiple recognition models:
 
 **Fast Models (Lower accuracy, faster processing)**
 - Good for: Real-time conversation, older hardware
@@ -172,7 +173,7 @@ Configure multiple STT services for redundancy:
 3. **Testing**: Verify both services work independently
 
 #### Service Switching
-In Talk Buddy settings:
+In Talk Buddy settings (Listening tab):
 - **Change service URL**: Switch between local and online
 - **Test new service**: Verify functionality before practice
 - **Save configurations**: Keep both URLs documented for easy switching
@@ -226,24 +227,24 @@ In Talk Buddy settings:
 **Solutions**:
 1. **Improve audio quality**: Use better microphone, reduce background noise
 2. **Speak clearly**: Slower, more deliberate speech
-3. **Check language settings**: Ensure STT service configured for your language
-4. **Try different model**: Some models work better for specific accents/voices
+3. **Check language settings**: Ensure the speech recognition service is configured for your language (Listening tab in Settings)
+4. **Try different model**: Some recognition models work better for specific accents/voices
 
 #### Service Connection Errors
-**Symptoms**: Red STT indicator, connection timeouts
+**Symptoms**: Red Listening indicator, connection timeouts
 **Solutions**:
 1. **Verify service running**: Check if Speaches or online service is available
 2. **Test network connectivity**: Ensure internet access for online services
-3. **Check firewall**: Confirm Talk Buddy can access STT service
-4. **Restart services**: Stop and start STT service, restart Talk Buddy
+3. **Check firewall**: Confirm Talk Buddy can access the speech recognition service
+4. **Restart services**: Stop and start the speech service, restart Talk Buddy
 
 #### Slow Response Times
 **Symptoms**: Long delays between speech and recognition
 **Solutions**:
-1. **Use faster models**: Switch to smaller, quicker STT models
+1. **Use faster models**: Switch to smaller, quicker recognition models (Listening tab in Settings)
 2. **Optimize hardware**: Close other applications, upgrade hardware
 3. **Check network**: Ensure stable, fast internet for online services
-4. **Local processing**: Switch to local STT service for better performance
+4. **Local processing**: Switch to the Built-in (offline) option in the Listening tab for better performance
 
 ### Advanced Troubleshooting
 
@@ -314,33 +315,33 @@ curl -X POST http://localhost:8000/stt \
 
 ## Quick Setup Checklist
 
-### Online STT (5 minutes)
+### Online Speech Recognition (5 minutes)
 - [ ] Open Talk Buddy
-- [ ] Check STT status indicator (should be green)
-- [ ] Go to Settings and test STT service
+- [ ] Check Listening status indicator (should be green)
+- [ ] Go to Settings → Listening tab and test the service
 - [ ] Grant microphone permissions if prompted
 - [ ] Test with sample speech
 
-### Local STT (30 minutes)
+### Local Speech Recognition / Built-in (offline) (30 minutes)
 - [ ] Install Speaches (Docker, Python, or binary)
 - [ ] Start Speaches service on port 8000
-- [ ] Configure Talk Buddy to use localhost:8000
+- [ ] Configure Talk Buddy to use localhost:8000 (Listening tab in Settings)
 - [ ] Test connection in Settings
 - [ ] Verify speech recognition works
 - [ ] Configure for automatic startup (optional)
 
 ### Troubleshooting (15 minutes)
 - [ ] Check microphone permissions and hardware
-- [ ] Verify service connectivity (green status indicator)
+- [ ] Verify service connectivity (green Listening status indicator)
 - [ ] Test with simple, clear speech
 - [ ] Check network/firewall settings if needed
 - [ ] Review logs for error messages
 
 ---
 
-**With proper STT setup, you'll have accurate voice recognition for natural conversation practice. Choose the option that best fits your privacy needs and technical comfort level! 🎤**
+**With proper speech recognition setup, you'll have accurate voice input for natural conversation practice. Choose the option that best fits your privacy needs and technical comfort level!**
 
 **Related Guides**: 
-- **[TTS Setup](tts-setup.md)** - Configure text-to-speech output
+- **[Voice Setup](tts-setup.md)** - Configure voice (text-to-speech) output
 - **[AI Model Integration](ai-model-integration.md)** - Set up conversation AI
 - **[Connection Issues](../troubleshooting/connection-issues.md)** - Fix connectivity problems

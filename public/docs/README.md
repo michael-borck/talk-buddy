@@ -1,105 +1,56 @@
 # Talk Buddy Documentation
 
-Welcome to the comprehensive Talk Buddy documentation! This guide will help you master AI-powered conversation practice.
+Welcome to the Talk Buddy docs. Whether you're a student practising conversations, a teacher creating scenarios, or setting up the app for the first time — start here.
 
-## 🚀 Quick Start
+## Getting started
 
-New to Talk Buddy? Start here:
+- **[Installation](getting-started/installation.md)** — download and install Talk Buddy
+- **[First setup](getting-started/first-setup.md)** — configure speech, voice, and AI settings
+- **[Your first scenario](workflows/your-first-scenario.md)** — walk through a complete practice session
 
-- **[Installation Guide](getting-started/installation.md)** - Download and install Talk Buddy
-- **[First Setup](getting-started/first-setup.md)** - Configure services and preferences  
-- **[Your First Scenario](workflows/your-first-scenario.md)** - Complete your first practice session
+## For students
 
-## 👥 User Guides
+- **[Student guide](user-guides/for-students.md)** — import scenarios, track progress, self-paced learning
 
-Choose your path based on how you'll use Talk Buddy:
+## For teachers
 
-- **[For Students](user-guides/for-students.md)** - Import packages, track progress, self-paced learning
-- **[For Teachers](user-guides/for-teachers.md)** - Create curriculum, share packages, guide students
-- **[For Self-Learners](user-guides/for-self-learners.md)** - Build personal learning paths, self-assessment
+- **[Teacher guide](user-guides/for-teachers.md)** — create curriculum, share practice packs, guide students
+- **[Scenario writing guide](content-creation/scenario-writing-guide.md)** — write effective scenarios that feel real
 
-## 🖥️ Interface Guide
+## Workflows
 
-Master every part of the Talk Buddy interface:
+- **[Creating scenarios](workflows/creating-scenarios.md)** — design practice scenarios step by step
+- **[Building skill packages](workflows/building-skill-packages.md)** — group scenarios into structured learning paths
+- **[Importing packages](workflows/importing-packages.md)** — load scenarios from teachers or colleagues
+- **[Exporting and sharing](workflows/exporting-sharing.md)** — share your scenarios with others
 
-- **[Home Dashboard](interface-guide/home-dashboard.md)** - Your central hub and quick actions
-- **[Conversation Interface](interface-guide/conversation-interface.md)** - Voice wave animation and conversation controls
-- **[Scenarios Page](interface-guide/scenarios-page.md)** - Browse, create, and manage scenarios
-- **[Practice Packs Page](interface-guide/practice-packs-page.md)** - Organize scenarios into learning sequences
-- **[Session History](interface-guide/session-history.md)** - Review and analyze your practice sessions
-- **[Settings Page](interface-guide/settings-page.md)** - Configure services, voice, and preferences
-- **[Archive Management](interface-guide/archive-management.md)** - Organize and clean up content
-- **[About & License](interface-guide/about-license.md)** - App information and credits
+## Interface guide
 
-## ⚡ Essential Workflows
+- **[Home page](interface-guide/home-dashboard.md)** — the main screen and quick actions
+- **[Conversation view](interface-guide/conversation-interface.md)** — the voice visualiser, controls, and conversation states
 
-Master the core Talk Buddy workflows:
+## Setting up services
 
-- **[Creating Scenarios](workflows/creating-scenarios.md)** - Design effective practice scenarios
-- **[Building Skill Packages](workflows/building-skill-packages.md)** - Organize scenarios into structured learning paths
-- **[Running Sessions](workflows/running-sessions.md)** - Get the most from your practice conversations
-- **[Importing Packages](workflows/importing-packages.md)** - Add content from teachers or the community
-- **[Exporting & Sharing](workflows/exporting-sharing.md)** - Share your content with others
-- **[Reviewing Sessions](workflows/reviewing-sessions.md)** - Analyze transcripts and track progress
+- **[Listening setup](services/stt-setup.md)** — configure speech recognition (built-in offline or cloud)
+- **[Voice setup](services/tts-setup.md)** — configure voice synthesis (built-in offline or cloud)
+- **[AI model setup](services/ai-model-integration.md)** — connect to Anthropic, OpenAI, Gemini, Groq, or Ollama
 
-## ✍️ Content Creation
+## Troubleshooting
 
-Create high-quality learning content:
+- **[Connection issues](troubleshooting/connection-issues.md)** — fix problems reaching speech or AI servers
+- **[Common errors](troubleshooting/common-errors.md)** — solutions to frequent problems
+- **[Performance tips](troubleshooting/performance-tips.md)** — speed things up on slower machines
 
-- **[Scenario Writing Guide](content-creation/scenario-writing-guide.md)** - Write effective scenarios that engage learners
-- **[Conversation Design](content-creation/conversation-design.md)** - Design natural, flowing dialogues
-- **[Learning Pathways](content-creation/learning-pathways.md)** - Structure progressive skill development
-- **[Best Practices](content-creation/best-practices.md)** - Tips from experienced content creators
+## Reference
 
-## 🔧 Service Setup
+- **[FAQ](reference/faq.md)** — frequently asked questions
+- **[Glossary](reference/glossary.md)** — key terms explained
 
-Configure external services for full functionality:
+## Design
 
-- **[Speech-to-Text Setup](services/stt-setup.md)** - Configure speech recognition services
-- **[Text-to-Speech Setup](services/tts-setup.md)** - Set up voice synthesis
-- **[AI Model Integration](services/ai-model-integration.md)** - Connect to conversation AI models
-
-## 🎯 Advanced Features
-
-Unlock Talk Buddy's full potential:
-
-- **[Session Analytics](advanced/session-analytics.md)** - Deep dive into conversation analysis
-- **[Voice Customization](advanced/voice-customization.md)** - Fine-tune speech settings
-- **[Bulk Operations](advanced/bulk-operations.md)** - Efficiently manage large amounts of content
-- **[Keyboard Shortcuts](advanced/keyboard-shortcuts.md)** - Speed up your workflow
-
-## 🛠️ Troubleshooting
-
-Solve common issues quickly:
-
-- **[Connection Issues](troubleshooting/connection-issues.md)** - Fix service connectivity problems
-- **[Common Errors](troubleshooting/common-errors.md)** - Solutions to frequent problems
-- **[Performance Tips](troubleshooting/performance-tips.md)** - Optimize Talk Buddy performance
-
-## 📚 Reference
-
-Quick reference materials:
-
-- **[FAQ](reference/faq.md)** - Frequently asked questions
-- **[Glossary](reference/glossary.md)** - Key terms and definitions
-- **[Changelog](reference/changelog.md)** - What's new in each version
-
-## 🔧 Technical
-
-For developers and advanced users:
-
-- **[Architecture Overview](technical/architecture.md)** - How Talk Buddy is built
-- **[Database Schema](technical/database-schema.md)** - Data structure reference
-- **[Contributing](technical/contributing.md)** - Help improve Talk Buddy
+- **[Studio Calm spec](design/studio-calm.md)** — the design system behind Talk Buddy's interface
+- **[Design preview](design/mockups/studio-calm.html)** — interactive HTML mockup (open in browser)
 
 ---
 
-## 💡 Can't Find What You Need?
-
-- Check the **[FAQ](reference/faq.md)** for common questions
-- Search this documentation using your browser's find function (Ctrl/Cmd + F)
-- Visit the [Talk Buddy GitHub repository](https://github.com/michael-borck/talk-buddy) for technical support
-
----
-
-**Happy practicing! 🎯**
+Can't find what you need? Check the [FAQ](reference/faq.md) or visit the [Talk Buddy GitHub repo](https://github.com/michael-borck/talk-buddy).
