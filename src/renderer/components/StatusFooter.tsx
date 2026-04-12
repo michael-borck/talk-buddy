@@ -261,21 +261,21 @@ export function StatusFooter() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-7">
           <StatusCell
-            label="STT"
+            label="Listening"
             status={statuses.stt}
             dotColor={dotColor}
             labelText={labelText}
             onClick={handleRefresh}
           />
           <StatusCell
-            label="TTS"
+            label="Voice"
             status={statuses.tts}
             dotColor={dotColor}
             labelText={labelText}
             onClick={handleRefresh}
           />
           <StatusCell
-            label="Chat"
+            label="AI"
             status={statuses.chat}
             dotColor={dotColor}
             labelText={labelText}

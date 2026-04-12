@@ -44,7 +44,7 @@ function ApiKeyInput({
             onChange={() => onChange('')}
             className="mr-2"
           />
-          <span className="text-sm">Manual Entry</span>
+          <span className="text-sm">Paste a key</span>
         </label>
         <label className="flex items-center">
           <input
@@ -55,7 +55,7 @@ function ApiKeyInput({
             onChange={() => onChange(resolvedEnvPlaceholder)}
             className="mr-2"
           />
-          <span className="text-sm">Environment Variable</span>
+          <span className="text-sm">Read from system (advanced)</span>
         </label>
       </div>
 
@@ -896,11 +896,11 @@ export function SettingsPage() {
   };
 
   const tabs = [
-    { id: 'stt', name: 'Speech-to-Text', Icon: Mic },
-    { id: 'tts', name: 'Text-to-Speech', Icon: Volume2 },
-    { id: 'chat', name: 'Chat Model', Icon: MessageSquare },
-    { id: 'prompts', name: 'Prompts', Icon: PenLine },
-    { id: 'data', name: 'Data & Docs', Icon: Database }
+    { id: 'stt', name: 'Listening', Icon: Mic },
+    { id: 'tts', name: 'Voice', Icon: Volume2 },
+    { id: 'chat', name: 'AI Brain', Icon: MessageSquare },
+    { id: 'prompts', name: 'Conversation Style', Icon: PenLine },
+    { id: 'data', name: 'Your Data', Icon: Database }
   ];
 
   return (
@@ -953,12 +953,12 @@ export function SettingsPage() {
         {/* Speech-to-Text Tab */}
         {activeTab === 'stt' && (
           <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Speech-to-Text (STT) Service</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">How Talk Buddy listens to you</h2>
             <div className="space-y-4">
               {/* Provider Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  STT Provider
+                  Where should speech be processed?
                 </label>
                 <div className="flex gap-4 mb-4 items-center">
                   <label className="flex items-center">
@@ -970,7 +970,7 @@ export function SettingsPage() {
                       className="mr-2"
                     />
                     <Server size={16} className="mr-1" />
-                    <span>Embedded Server (Offline)</span>
+                    <span>Built-in (works offline)</span>
                     {embeddedInstalled === false ? (
                       <button
                         type="button"
@@ -998,13 +998,13 @@ export function SettingsPage() {
                       className="mr-2"
                     />
                     <ExternalLink size={16} className="mr-1" />
-                    <span>External Server (Speaches)</span>
+                    <span>Cloud server</span>
                   </label>
                 </div>
                 <p className="text-sm text-gray-600">
                   {preferences.sttProvider === 'embedded'
-                    ? 'Uses local Whisper model for offline speech-to-text processing'
-                    : 'Uses external Speaches server for speech-to-text processing'
+                    ? 'Understands your speech right on this computer — no internet needed'
+                    : 'Sends your speech to a cloud server for processing — needs internet'
                   }
                 </p>
               </div>
@@ -1013,7 +1013,7 @@ export function SettingsPage() {
               {preferences.sttProvider === 'speaches' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  STT Server URL
+                  Server address
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -1032,7 +1032,7 @@ export function SettingsPage() {
                   </button>
                 </div>
                 <p className="mt-1 text-sm text-gray-600">
-                  URL for the Speech-to-Text service
+                  The address of the speech recognition server
                 </p>
                 {testResults.stt && (
                   <p className={`mt-2 text-sm ${testResults.stt.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
@@ -1045,19 +1045,19 @@ export function SettingsPage() {
               {preferences.sttProvider === 'speaches' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  STT API Key (Optional)
+                  Secret key (if needed)
                 </label>
                 <ApiKeyInput
                   value={preferences.sttApiKey}
                   onChange={(value) => setPreferences({ ...preferences, sttApiKey: value })}
                   placeholder="Leave empty if not required"
-                  envPlaceholder="env:WHISPER_API_KEY"
+                  envVarName="STT_API_KEY"
                   fieldName="sttApiKey"
                 />
                 <p className="mt-1 text-sm text-gray-600">
-                  {preferences.sttApiKey?.startsWith('env:') 
-                    ? 'Using environment variable for authentication'
-                    : 'API key for authentication (leave empty for local/free services)'}
+                  {preferences.sttApiKey?.startsWith('env:')
+                    ? `Reading key from your computer's settings (${preferences.sttApiKey.substring(4)})`
+                    : 'Your server password — leave empty if your server doesn\'t need one'}
                 </p>
               </div>
               )}
@@ -1066,7 +1066,7 @@ export function SettingsPage() {
               {preferences.sttProvider === 'embedded' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Embedded STT Server
+                    Built-in speech recognition
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -1086,7 +1086,7 @@ export function SettingsPage() {
                     </button>
                   </div>
                   <p className="mt-1 text-sm text-gray-600">
-                    Local embedded server using Whisper tiny model
+                    Running on this computer — no internet needed
                   </p>
                   {testResults.stt && (
                     <p className={`mt-2 text-sm ${testResults.stt.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
@@ -1100,13 +1100,13 @@ export function SettingsPage() {
               <ModelSelector
                 value={preferences.sttModel}
                 onChange={(value) => setPreferences({ ...preferences, sttModel: value })}
-                placeholder="Select or enter STT model"
+                placeholder="Choose a listening model"
                 models={models.stt}
                 loading={loadingModels.stt}
                 error={modelErrors.stt}
                 onRefresh={() => fetchModels('stt')}
-                label="STT Model"
-                description="Speech-to-text model for transcription (whisper models only)"
+                label="Recognition model"
+                description="Which speech recognition engine to use"
               />
               )}
             </div>
@@ -1116,12 +1116,12 @@ export function SettingsPage() {
         {/* Text-to-Speech Tab */}
         {activeTab === 'tts' && (
           <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Text-to-Speech (TTS) & Voice Settings</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">How Talk Buddy speaks to you</h2>
             <div className="space-y-4">
               {/* Provider Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  TTS Provider
+                  Where should the voice come from?
                 </label>
                 <div className="flex gap-4 mb-4 items-center">
                   <label className="flex items-center">
@@ -1133,7 +1133,7 @@ export function SettingsPage() {
                       className="mr-2"
                     />
                     <Server size={16} className="mr-1" />
-                    <span>Embedded Server (Offline)</span>
+                    <span>Built-in (works offline)</span>
                     {embeddedInstalled === false ? (
                       <button
                         type="button"
@@ -1148,7 +1148,7 @@ export function SettingsPage() {
                       </button>
                     ) : (
                       <span className={`ml-2 px-2 py-1 text-xs rounded ${embeddedServerStatus.running ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {embeddedServerStatus.running ? 'Running' : 'Stopped'}
+                        {embeddedServerStatus.running ? 'Ready' : 'Not running'}
                       </span>
                     )}
                   </label>
@@ -1161,13 +1161,13 @@ export function SettingsPage() {
                       className="mr-2"
                     />
                     <ExternalLink size={16} className="mr-1" />
-                    <span>External Server (Speaches)</span>
+                    <span>Cloud server</span>
                   </label>
                 </div>
                 <p className="text-sm text-gray-600">
-                  {preferences.ttsProvider === 'embedded' 
-                    ? 'Uses high-quality Piper voices (Alan & Amy) for offline text-to-speech processing'
-                    : 'Uses external Speaches server for text-to-speech processing'
+                  {preferences.ttsProvider === 'embedded'
+                    ? 'Speaks using voices built into this computer (Alan & Amy) — no internet needed'
+                    : 'Sends text to a cloud server which speaks it back — needs internet'
                   }
                 </p>
               </div>
@@ -1176,7 +1176,7 @@ export function SettingsPage() {
               {preferences.ttsProvider === 'embedded' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Embedded TTS Server URL
+                  Built-in voice engine
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -1195,7 +1195,7 @@ export function SettingsPage() {
                   </button>
                 </div>
                 <p className="mt-1 text-sm text-gray-600">
-                  Local embedded server using Piper TTS with Alan (male) and Amy (female) voices
+                  Running on this computer with Alan (male) and Amy (female) voices
                 </p>
                 {testResults.tts && (
                   <p className={`mt-2 text-sm ${testResults.tts.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
@@ -1209,7 +1209,7 @@ export function SettingsPage() {
               {preferences.ttsProvider === 'embedded' && (
               <div className="border-t pt-4 mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Voice Selection for Embedded TTS
+                  Choose a voice
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1253,10 +1253,10 @@ export function SettingsPage() {
                 {/* Speech Speed Control */}
                 <div className="mt-4 border-t pt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Speech Speed: {preferences.embeddedSpeechSpeed}x
+                    Voice speed
                   </label>
                   <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-500 min-w-[2rem]">1.0x</span>
+                    <span className="text-sm text-gray-500 min-w-[2rem]">Slower</span>
                     <input
                       type="range"
                       min="1.0"
@@ -1266,10 +1266,10 @@ export function SettingsPage() {
                       onChange={(e) => setPreferences({ ...preferences, embeddedSpeechSpeed: e.target.value })}
                       className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                     />
-                    <span className="text-sm text-gray-500 min-w-[2rem]">1.5x</span>
+                    <span className="text-sm text-gray-500 min-w-[2rem]">Faster</span>
                   </div>
                   <p className="mt-2 text-sm text-gray-600">
-                    Adjust how fast Alan and Amy speak. Higher values = faster speech.
+                    Drag left for slower speech, right for faster.
                   </p>
                 </div>
               </div>
@@ -1279,7 +1279,7 @@ export function SettingsPage() {
               {preferences.ttsProvider === 'speaches' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  TTS Server URL
+                  Server address
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -1298,7 +1298,7 @@ export function SettingsPage() {
                   </button>
                 </div>
                 <p className="mt-1 text-sm text-gray-600">
-                  URL for the Text-to-Speech service
+                  The address of the voice server
                 </p>
                 {testResults.tts && (
                   <p className={`mt-2 text-sm ${testResults.tts.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
@@ -1311,19 +1311,19 @@ export function SettingsPage() {
               {preferences.ttsProvider === 'speaches' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  TTS API Key (Optional)
+                  Secret key (if needed)
                 </label>
                 <ApiKeyInput
                   value={preferences.ttsApiKey}
                   onChange={(value) => setPreferences({ ...preferences, ttsApiKey: value })}
                   placeholder="Leave empty if not required"
-                  envPlaceholder="env:TTS_API_KEY"
+                  envVarName="TTS_API_KEY"
                   fieldName="ttsApiKey"
                 />
                 <p className="mt-1 text-sm text-gray-600">
-                  {preferences.ttsApiKey?.startsWith('env:') 
-                    ? 'Using environment variable for authentication'
-                    : 'API key for authentication (leave empty for local/free services)'}
+                  {preferences.ttsApiKey?.startsWith('env:')
+                    ? `Reading key from your computer's settings (${preferences.ttsApiKey.substring(4)})`
+                    : 'Your server password — leave empty if your server doesn\'t need one'}
                 </p>
               </div>
               )}
@@ -1361,7 +1361,7 @@ export function SettingsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    TTS Speed
+                    Voice speed
                   </label>
                   <input
                     type="number"
@@ -1374,7 +1374,7 @@ export function SettingsPage() {
                     placeholder="1.25"
                   />
                   <p className="mt-1 text-sm text-gray-600">
-                    Speech synthesis speed (0.5 = slower, 1.0 = normal, 2.0 = faster)
+                    How fast the AI speaks (0.5 = slow, 1.0 = normal, 2.0 = fast)
                   </p>
                 </div>
 
@@ -1401,18 +1401,18 @@ export function SettingsPage() {
                   <ModelSelector
                     value={preferences.maleTTSModel}
                     onChange={(value) => setPreferences({ ...preferences, maleTTSModel: value })}
-                    placeholder="Select or enter male TTS model"
+                    placeholder="Choose a male voice model"
                     models={models.tts}
                     loading={loadingModels.tts}
                     error={modelErrors.tts}
                     onRefresh={() => fetchModels('tts')}
-                    label="Male TTS Model"
-                    description="Model for male voice synthesis (non-whisper models)"
+                    label="Male voice model"
+                    description="Which voice engine to use for male speakers"
                   />
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Male Voice ID
+                      Male voice name
                     </label>
                     <input
                       type="text"
@@ -1422,7 +1422,7 @@ export function SettingsPage() {
                       placeholder="am_adam"
                     />
                     <p className="mt-1 text-sm text-gray-600">
-                      Voice ID for the male model
+                      The specific voice for male speakers
                     </p>
                   </div>
                 </div>
@@ -1431,18 +1431,18 @@ export function SettingsPage() {
                   <ModelSelector
                     value={preferences.femaleTTSModel}
                     onChange={(value) => setPreferences({ ...preferences, femaleTTSModel: value })}
-                    placeholder="Select or enter female TTS model"
+                    placeholder="Choose a female voice model"
                     models={models.tts}
                     loading={loadingModels.tts}
                     error={modelErrors.tts}
                     onRefresh={() => fetchModels('tts')}
-                    label="Female TTS Model"
-                    description="Model for female voice synthesis (non-whisper models)"
+                    label="Female voice model"
+                    description="Which voice engine to use for female speakers"
                   />
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Female Voice ID
+                      Female voice name
                     </label>
                     <input
                       type="text"
@@ -1452,7 +1452,7 @@ export function SettingsPage() {
                       placeholder="af_bella"
                     />
                     <p className="mt-1 text-sm text-gray-600">
-                      Voice ID for the female model
+                      The specific voice for female speakers
                     </p>
                   </div>
                 </div>
@@ -1465,12 +1465,12 @@ export function SettingsPage() {
         {/* Chat Model Tab */}
         {activeTab === 'chat' && (
           <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Chat Model Service</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">The AI that drives conversations</h2>
             <div className="space-y-4">
               {/* Provider Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Chat Provider
+                  Which AI service should power your conversations?
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {[
@@ -1503,7 +1503,7 @@ export function SettingsPage() {
                 preferences.chatProvider === 'gemini') ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chat API URL
+                    Connection
                   </label>
                   <div className="flex gap-2 items-center">
                     <div className="flex-1 px-4 py-2 border border-ink/10 bg-paper-warm text-ink-muted font-mono text-sm">
@@ -1518,12 +1518,7 @@ export function SettingsPage() {
                     </button>
                   </div>
                   <p className="mt-1 text-sm text-gray-600">
-                    Standard endpoint for {
-                      preferences.chatProvider === 'anthropic' ? 'Anthropic' :
-                      preferences.chatProvider === 'openai' ? 'OpenAI' :
-                      preferences.chatProvider === 'gemini' ? 'Google Gemini' :
-                      'Groq'
-                    } — no URL to configure.
+                    Connected automatically — nothing to configure.
                   </p>
                   {testResults.chat && (
                     <p className={`mt-2 text-sm ${testResults.chat.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
@@ -1534,7 +1529,7 @@ export function SettingsPage() {
               ) : (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Chat API URL
+                    Server address
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -1557,8 +1552,8 @@ export function SettingsPage() {
                   </div>
                   <p className="mt-1 text-sm text-gray-600">
                     {preferences.chatProvider === 'ollama'
-                      ? 'Where your Ollama server lives (local or remote)'
-                      : 'API endpoint for your custom chat service'}
+                      ? 'Where your Ollama server is running'
+                      : 'The address of your custom AI service'}
                   </p>
                   {testResults.chat && (
                     <p className={`mt-2 text-sm ${testResults.chat.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
@@ -1570,7 +1565,7 @@ export function SettingsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Chat API Key{preferences.chatProvider === 'ollama' ? ' (Optional)' : ''}
+                  Secret key{preferences.chatProvider === 'ollama' ? ' (usually not needed)' : ''}
                 </label>
                 <ApiKeyInput
                   value={preferences.ollamaApiKey}
@@ -1587,28 +1582,30 @@ export function SettingsPage() {
                 />
                 <p className="mt-1 text-sm text-gray-600">
                   {preferences.ollamaApiKey?.startsWith('env:')
-                    ? `Reading from shell environment variable ${preferences.ollamaApiKey.substring(4)}`
+                    ? `Reading key from your computer's settings (${preferences.ollamaApiKey.substring(4)})`
                     : preferences.chatProvider === 'ollama'
-                      ? 'API key for authentication (leave empty for local services)'
-                      : 'API key required for this provider'}
+                      ? 'Your Ollama password — leave empty if you don\'t have one'
+                      : 'The secret key from your AI provider — you get this when you sign up'}
                 </p>
               </div>
 
               <ModelSelector
                 value={preferences.ollamaModel}
                 onChange={(value) => setPreferences({ ...preferences, ollamaModel: value })}
-                placeholder="Select or enter chat model"
+                placeholder="Choose an AI model"
                 models={models.chat}
                 loading={loadingModels.chat}
                 error={modelErrors.chat}
                 onRefresh={() => fetchModels('chat')}
-                label="Chat Model"
-                description="Model name for chat completions (e.g., gpt-4, claude-3-opus, llama2)"
+                label="AI model"
+                description="Which AI model should power your conversations"
               />
               <div className="mt-2 text-xs text-gray-500">
-                <p>• OpenAI: gpt-4, gpt-3.5-turbo</p>
-                <p>• Anthropic: claude-3-opus-20240229, claude-3-sonnet-20240229</p>
-                <p>• Ollama: llama2, mistral, phi</p>
+                <p>Some popular choices:</p>
+                <p>• Claude (Anthropic): claude-sonnet-4-5, claude-haiku-4-5</p>
+                <p>• GPT (OpenAI): gpt-4o, gpt-4o-mini</p>
+                <p>• Gemini (Google): gemini-1.5-flash, gemini-1.5-pro</p>
+                <p>• Ollama (local): llama3, mistral, phi3</p>
               </div>
             </div>
           </section>
@@ -1617,12 +1614,12 @@ export function SettingsPage() {
         {/* Prompts Tab */}
         {activeTab === 'prompts' && (
           <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Conversation Prompts</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">How the AI behaves in conversations</h2>
             <div className="space-y-6">
               {/* Template Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prompt Template
+                  Conversation style
                 </label>
                 <select
                   value={preferences.promptTemplate}
@@ -1657,7 +1654,7 @@ export function SettingsPage() {
               {/* Prompt Text Area */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prompt Text
+                  Instructions for the AI
                 </label>
                 <textarea
                   value={preferences.promptTemplate === 'custom' 
@@ -1673,24 +1670,24 @@ export function SettingsPage() {
                   className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                     preferences.promptTemplate !== 'custom' ? 'bg-gray-50 text-gray-600' : ''
                   }`}
-                  placeholder={preferences.promptTemplate === 'custom' ? 'Enter your custom prompt...' : 'Template prompt (read-only)'}
+                  placeholder={preferences.promptTemplate === 'custom' ? 'Write your own instructions for the AI...' : 'These instructions are read-only. Pick "Custom" above to write your own.'}
                 />
                 <p className="mt-1 text-sm text-gray-600">
-                  {preferences.promptTemplate === 'custom' 
-                    ? 'Define your custom conversation prompt instructions'
-                    : 'This prompt is read-only. Select "Custom" to create your own prompt.'
+                  {preferences.promptTemplate === 'custom'
+                    ? 'Write your own rules for how the AI should behave in conversations'
+                    : 'These instructions are built in. Pick "Custom" above to write your own.'
                   }
                 </p>
               </div>
 
               {/* Advanced Options */}
               <div className="border-t pt-4">
-                <h3 className="text-lg font-medium text-gray-700 mb-3">Advanced Options</h3>
+                <h3 className="text-lg font-medium text-gray-700 mb-3">Advanced</h3>
                 <div className="space-y-3">
                   {/* Prompt Behavior */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Prompt Behavior
+                      How should these instructions combine with each scenario?
                     </label>
                     <div className="space-y-2">
                       <label className="flex items-center">
@@ -1703,9 +1700,9 @@ export function SettingsPage() {
                           className="mr-2"
                         />
                         <div>
-                          <span className="text-sm font-medium">Enhance scenario prompts</span>
+                          <span className="text-sm font-medium">Add to each scenario's instructions</span>
                           <span className="text-sm text-gray-600 ml-1">(recommended)</span>
-                          <p className="text-sm text-gray-600">Add your prompt instructions to existing scenario prompts</p>
+                          <p className="text-sm text-gray-600">Your style instructions are combined with each scenario's own instructions</p>
                         </div>
                       </label>
                       
@@ -1719,8 +1716,8 @@ export function SettingsPage() {
                           className="mr-2"
                         />
                         <div>
-                          <span className="text-sm font-medium">Override scenario prompts</span>
-                          <p className="text-sm text-gray-600">Replace scenario prompts entirely with your template</p>
+                          <span className="text-sm font-medium">Replace scenario instructions</span>
+                          <p className="text-sm text-gray-600">Use only your style instructions, ignore what each scenario says</p>
                         </div>
                       </label>
                       
@@ -1734,8 +1731,8 @@ export function SettingsPage() {
                           className="mr-2"
                         />
                         <div>
-                          <span className="text-sm font-medium">Use scenario prompts only</span>
-                          <p className="text-sm text-gray-600">Disable prompt enhancement (use original scenario prompts)</p>
+                          <span className="text-sm font-medium">Use each scenario's own instructions only</span>
+                          <p className="text-sm text-gray-600">Don't add your style instructions — let each scenario control the AI entirely</p>
                         </div>
                       </label>
                     </div>
@@ -1749,8 +1746,8 @@ export function SettingsPage() {
                       className="mt-1 mr-3"
                     />
                     <div>
-                      <span className="text-sm font-medium text-gray-700">Include response format instructions</span>
-                      <p className="text-sm text-gray-600">Add instructions for consistent response formatting</p>
+                      <span className="text-sm font-medium text-gray-700">Keep responses conversational</span>
+                      <p className="text-sm text-gray-600">Tell the AI to respond like a real person, not a textbook</p>
                     </div>
                   </label>
                   
@@ -1762,8 +1759,8 @@ export function SettingsPage() {
                       className="mt-1 mr-3"
                     />
                     <div>
-                      <span className="text-sm font-medium text-gray-700">Add model-specific optimizations</span>
-                      <p className="text-sm text-gray-600">Include performance hints for better model responses</p>
+                      <span className="text-sm font-medium text-gray-700">Sound more natural</span>
+                      <p className="text-sm text-gray-600">Encourage the AI to use contractions and informal language</p>
                     </div>
                   </label>
                 </div>
@@ -1771,9 +1768,9 @@ export function SettingsPage() {
 
               {/* Preview Section */}
               <div className="border-t pt-4">
-                <h3 className="text-lg font-medium text-gray-700 mb-3">Prompt Preview</h3>
+                <h3 className="text-lg font-medium text-gray-700 mb-3">Preview</h3>
                 <div className="bg-gray-50 rounded-lg p-4 border">
-                  <p className="text-sm text-gray-600 mb-2">This is how your prompt will appear to the AI model:</p>
+                  <p className="text-sm text-gray-600 mb-2">This is what the AI reads before each conversation:</p>
                   <div className="bg-white rounded border p-3 text-sm font-mono text-gray-800 max-h-64 overflow-y-auto">
                     {(() => {
                       let fullPrompt = '';
@@ -1799,11 +1796,11 @@ export function SettingsPage() {
                     })()}
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
-                    {preferences.promptBehavior === 'override' 
-                      ? 'This prompt will be used for ALL scenarios, overriding their specific prompts.'
+                    {preferences.promptBehavior === 'override'
+                      ? 'These instructions will be used for every conversation, replacing each scenario\'s own instructions.'
                       : preferences.promptBehavior === 'enhance'
-                      ? 'This prompt will be combined with scenario-specific prompts when available.'
-                      : 'Prompt enhancement is disabled. Scenarios will use their original prompts only.'
+                      ? 'These instructions will be added to each scenario\'s own instructions.'
+                      : 'Each scenario uses its own instructions only — nothing is added.'
                     }
                   </p>
                 </div>
@@ -1817,7 +1814,7 @@ export function SettingsPage() {
           <div className="space-y-8">
             {/* Data Management */}
             <section className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Data Management</h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Your data</h2>
               <div className="flex gap-4 flex-wrap">
                 <button
                   onClick={exportData}
@@ -1839,23 +1836,23 @@ export function SettingsPage() {
               </p>
               
               <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-medium text-gray-800 mb-3">Danger Zone</h3>
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Start fresh</h3>
                 <button
                   onClick={handleResetDatabase}
                   className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
                 >
                   <AlertTriangle size={20} />
-                  Reset Database
+                  Clear all my data
                 </button>
                 <p className="mt-2 text-sm text-red-600">
-                  Warning: This will delete all scenarios, sessions, and packs. Settings will be preserved.
+                  This permanently deletes all your scenarios, conversations, and practice packs. Your settings are kept.
                 </p>
               </div>
             </section>
 
             {/* Documentation Links */}
             <section className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Documentation</h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Help &amp; documentation</h2>
               <div className="space-y-2">
                 <a
                   href="#"
@@ -1866,7 +1863,7 @@ export function SettingsPage() {
                   className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
                 >
                   <ExternalLink size={16} />
-                  Speaches API Documentation
+                  Speech server documentation
                 </a>
                 <a
                   href="#"
@@ -1877,7 +1874,7 @@ export function SettingsPage() {
                   className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
                 >
                   <ExternalLink size={16} />
-                  Ollama Documentation
+                  Ollama (local AI) documentation
                 </a>
               </div>
             </section>
