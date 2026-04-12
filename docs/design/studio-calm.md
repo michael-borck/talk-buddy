@@ -978,6 +978,8 @@ Recording the answers here so future-you doesn't relitigate:
 5. **Suite identity**: **Single low-key footer line** (`Talk Buddy · part of the Buddy suite`). No launcher, no switcher, no marketing prompt. If a portal app materializes later, the footer line becomes its link. See Suite Identity section above.
 6. **Session-complete screen**: **Deferred.** The current pattern (end session → optionally view analysis) is fine. If it feels cold after Studio Calm lands, revisit then.
 7. **Static HTML mocks before implementation**: **Yes.** Separate mock file at `docs/design/mockups/studio-calm.html` showing light/dark + all three accents, so the user can eyeball before we write React/CSS.
+8. **Headline weight**: **600** (confirmed after A/B testing 500 vs 600 in the mock). 600 gives headlines enough weight to be distinctive without shouting — matches the "confident but calm" Studio Calm mood. Both hero display and section headings use 600. Body stays 400, labels/nav 500.
+9. **Accent triad**: **Confirmed** after seeing all three apps side-by-side in both light and dark. Eucalyptus (Talk), bluebell (Study), ochre (Career) read as siblings with the same warmth but distinct identity. No changes needed.
 
 ---
 

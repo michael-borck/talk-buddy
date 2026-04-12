@@ -955,8 +955,8 @@
 
       <span class="controls-label" style="margin-left: var(--space-4);">Headline weight</span>
       <div class="control-group" role="radiogroup" aria-label="Headline weight">
-        <button class="control-btn" data-weight-set="500" aria-pressed="true">500</button>
-        <button class="control-btn" data-weight-set="600" aria-pressed="false">600</button>
+        <button class="control-btn" data-weight-set="500" aria-pressed="false">500</button>
+        <button class="control-btn" data-weight-set="600" aria-pressed="true">600</button>
       </div>
     </div>
     <div style="font-size: 0.72rem; color: var(--ink-quiet); letter-spacing: var(--tracking-wide); text-transform: uppercase;">
@@ -1430,8 +1430,8 @@
       btn.addEventListener('click', () => setHeadlineWeight(btn.dataset.weightSet));
     });
 
-    // Initialize headline weight to 500 (the new default)
-    setHeadlineWeight('500');
+    // Initialize headline weight to 600 (confirmed)
+    setHeadlineWeight('600');
   </script>
 </body>
 </html>
