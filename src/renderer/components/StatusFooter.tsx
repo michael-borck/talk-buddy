@@ -225,14 +225,14 @@ export function StatusFooter() {
   const dotColor = (status: ServiceStatus['status']) => {
     switch (status) {
       case 'connected':
-        return 'text-emerald-400';
+        return 'text-accent';
       case 'error':
-        return 'text-vermilion';
+        return 'text-error';
       case 'checking':
-        return 'text-ivory/60';
+        return 'text-paper/60';
       case 'unknown':
       default:
-        return 'text-ivory/30';
+        return 'text-paper/30';
     }
   };
 
@@ -257,7 +257,7 @@ export function StatusFooter() {
   };
 
   return (
-    <footer className="bg-ink text-ivory px-8 py-2.5 text-[0.72rem] font-sans border-t border-ink/40">
+    <footer className="bg-ink text-paper px-8 py-2.5 text-[0.72rem] font-sans border-t border-ink/40">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-7">
           <StatusCell
@@ -282,7 +282,7 @@ export function StatusFooter() {
             onClick={handleRefresh}
           />
         </div>
-        <div className="text-ivory/40 text-[0.68rem] tracking-wide uppercase">
+        <div className="text-paper/40 text-[0.68rem] tracking-wide uppercase">
           Talk Buddy {appVersion ? `v${appVersion}` : ''}
         </div>
       </div>
@@ -302,14 +302,14 @@ function StatusCell({ label, status, dotColor, labelText, onClick }: StatusCellP
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 hover:text-ivory transition-colors"
+      className="flex items-center gap-2 hover:text-paper transition-colors"
       title="Click to refresh status"
     >
       <span className={`${dotColor(status.status)} leading-none text-[0.7rem]`} aria-hidden="true">
         ●
       </span>
-      <span className="text-ivory/50 uppercase tracking-[0.14em]">{label}</span>
-      <span className="text-ivory/90">{labelText(status.status, status.message)}</span>
+      <span className="text-paper/50 uppercase tracking-[0.14em]">{label}</span>
+      <span className="text-paper/90">{labelText(status.status, status.message)}</span>
     </button>
   );
 }

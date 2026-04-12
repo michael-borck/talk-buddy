@@ -125,8 +125,8 @@ function Sidebar() {
               className="flex items-baseline gap-2 hover:opacity-80 transition-opacity"
               title="About Talk Buddy"
             >
-              <span className="font-display text-[1.65rem] leading-none text-ivory font-medium tracking-tight-display">
-                Talk<span className="text-vermilion">.</span>Buddy
+              <span className="font-sans text-[1.65rem] leading-none text-ivory font-medium tracking-display">
+                Talk<span className="text-accent">.</span>Buddy
               </span>
             </button>
           )}
@@ -137,8 +137,8 @@ function Sidebar() {
               title="Talk Buddy"
               aria-label="About Talk Buddy"
             >
-              <span className="font-display text-2xl leading-none text-ivory font-medium">
-                T<span className="text-vermilion">.</span>B
+              <span className="font-sans text-2xl leading-none text-ivory font-medium">
+                T<span className="text-accent">.</span>B
               </span>
             </button>
           )}
@@ -179,7 +179,7 @@ function Sidebar() {
                 title={isCollapsed ? item.label : ''}
               >
                 {isActive && !isCollapsed && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-vermilion" aria-hidden="true" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-accent" aria-hidden="true" />
                 )}
                 <Icon size={isCollapsed ? 20 : 16} strokeWidth={1.5} />
                 {!isCollapsed && (
@@ -283,7 +283,7 @@ function HomePage() {
             </span>
           </div>
 
-          <h1 className="font-display text-ink font-medium leading-[0.95] tracking-tight-display text-[clamp(3rem,7vw,6rem)] mb-8">
+          <h1 className="font-sans text-ink font-medium leading-[0.95] tracking-display text-[clamp(3rem,7vw,6rem)] mb-8">
             Rehearse the<br />
             conversation<br />
             <em className="italic font-light text-ink-soft">before it happens.</em>
@@ -313,9 +313,9 @@ function HomePage() {
             </button>
             <button
               onClick={() => navigate('/scenarios')}
-              className="group text-[0.95rem] text-ink hover:text-vermilion transition-colors font-sans"
+              className="group text-[0.95rem] text-ink hover:text-accent transition-colors font-sans"
             >
-              <span className="border-b border-ink group-hover:border-vermilion pb-0.5 transition-colors">
+              <span className="border-b border-ink group-hover:border-accent pb-0.5 transition-colors">
                 Browse all scenarios
               </span>
               <span className="ml-2 inline-block transition-transform group-hover:translate-x-0.5">→</span>
@@ -328,7 +328,7 @@ function HomePage() {
           <div className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet mb-3">
             Edition
           </div>
-          <div className="font-display text-ink text-5xl leading-none mb-6">
+          <div className="font-sans text-ink text-5xl leading-none mb-6">
             №&nbsp;{new Date().getFullYear()}
           </div>
           <div className="text-[0.78rem] text-ink-muted leading-relaxed font-sans max-w-[22ch]">
@@ -342,13 +342,13 @@ function HomePage() {
         {/* Recent Scenarios — wider left column */}
         <section className="col-span-12 lg:col-span-7 animate-reveal-delayed">
           <header className="flex items-baseline justify-between mb-6">
-            <h2 className="font-display text-2xl text-ink font-medium flex items-baseline gap-3">
-              <BookOpen size={16} strokeWidth={1.5} className="text-vermilion self-center" />
+            <h2 className="font-sans text-2xl text-ink font-medium flex items-baseline gap-3">
+              <BookOpen size={16} strokeWidth={1.5} className="text-accent self-center" />
               Recent scenarios
             </h2>
             <button
               onClick={() => navigate('/scenarios')}
-              className="text-[0.8rem] text-ink-muted hover:text-vermilion transition-colors tracking-wide font-sans"
+              className="text-[0.8rem] text-ink-muted hover:text-accent transition-colors tracking-wide font-sans"
             >
               Index →
             </button>
@@ -363,11 +363,11 @@ function HomePage() {
                   className="group py-5 cursor-pointer transition-colors hover:bg-ivory-50 -mx-3 px-3"
                 >
                   <div className="flex items-baseline gap-5">
-                    <span className="font-display text-sm text-ink-quiet tabular-nums w-6 pt-0.5">
+                    <span className="font-sans text-sm text-ink-quiet tabular-nums w-6 pt-0.5">
                       {String(idx + 1).padStart(2, '0')}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-display text-[1.15rem] text-ink font-medium group-hover:text-vermilion transition-colors leading-snug">
+                      <h3 className="font-sans text-[1.15rem] text-ink font-medium group-hover:text-accent transition-colors leading-snug">
                         {scenario.name}
                       </h3>
                       {scenario.description && (
@@ -390,7 +390,7 @@ function HomePage() {
               <p className="mb-3">No scenarios yet.</p>
               <button
                 onClick={() => navigate('/scenarios/new')}
-                className="text-vermilion hover:text-vermilion-deep transition-colors border-b border-vermilion pb-0.5"
+                className="text-accent hover:text-accent-deep transition-colors border-b border-accent pb-0.5"
               >
                 Write your first scenario →
               </button>
@@ -401,13 +401,13 @@ function HomePage() {
         {/* Practice Packs — narrower right column */}
         <aside className="col-span-12 lg:col-span-5 lg:pl-8 lg:border-l lg:border-ink/10 animate-reveal-delayed">
           <header className="flex items-baseline justify-between mb-6">
-            <h2 className="font-display text-2xl text-ink font-medium flex items-baseline gap-3">
-              <Package size={16} strokeWidth={1.5} className="text-vermilion self-center" />
+            <h2 className="font-sans text-2xl text-ink font-medium flex items-baseline gap-3">
+              <Package size={16} strokeWidth={1.5} className="text-accent self-center" />
               Practice packs
             </h2>
             <button
               onClick={() => navigate('/packs')}
-              className="text-[0.8rem] text-ink-muted hover:text-vermilion transition-colors tracking-wide font-sans"
+              className="text-[0.8rem] text-ink-muted hover:text-accent transition-colors tracking-wide font-sans"
             >
               All →
             </button>
@@ -427,7 +427,7 @@ function HomePage() {
                       style={{ backgroundColor: pack.color }}
                       aria-hidden="true"
                     />
-                    <h3 className="font-display text-[1.05rem] text-ink font-medium group-hover:text-vermilion transition-colors">
+                    <h3 className="font-sans text-[1.05rem] text-ink font-medium group-hover:text-accent transition-colors">
                       {pack.name}
                     </h3>
                   </div>
@@ -444,7 +444,7 @@ function HomePage() {
               <p className="mb-3">No practice packs yet.</p>
               <button
                 onClick={() => navigate('/packs')}
-                className="text-vermilion hover:text-vermilion-deep transition-colors border-b border-vermilion pb-0.5"
+                className="text-accent hover:text-accent-deep transition-colors border-b border-accent pb-0.5"
               >
                 Assemble a pack →
               </button>

@@ -16,8 +16,10 @@ interface EditorialVoiceVisualizerProps {
   size?: number;
 }
 
-const INK = '#0F0F0E';
-const VERMILION = '#D94B2B';
+// Studio Calm palette — sage accent reads "listening is cooperative"
+// rather than vermilion's "you are ON AIR, hurry."
+const INK = '#252420';
+const ACCENT = '#4A7C6E';
 
 /**
  * Editorial voice visualizer.
@@ -105,7 +107,7 @@ export function EditorialVoiceVisualizer({
 
       // ----- Layer 1: static dial (always visible, part of the paper) -----
       ctx.save();
-      ctx.strokeStyle = VERMILION;
+      ctx.strokeStyle = ACCENT;
       ctx.lineWidth = 1;
       ctx.globalAlpha = 0.85;
       ctx.beginPath();
@@ -140,7 +142,7 @@ export function EditorialVoiceVisualizer({
         const innerBase = size * 0.17;
         const innerMax = size * 0.33;
         const innerR = innerBase + (innerMax - innerBase) * Math.min(1, amp * 1.4);
-        ctx.strokeStyle = VERMILION;
+        ctx.strokeStyle = ACCENT;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(center, center, innerR, 0, Math.PI * 2);
@@ -155,7 +157,7 @@ export function EditorialVoiceVisualizer({
 
         // Tracing arc on the outer dial — 45° segment rotating slowly.
         ctx.globalAlpha = alphas.listening;
-        ctx.strokeStyle = VERMILION;
+        ctx.strokeStyle = ACCENT;
         ctx.lineWidth = 2.5;
         ctx.lineCap = 'round';
         const rotate = (now * 0.0009) % (Math.PI * 2);
@@ -174,7 +176,7 @@ export function EditorialVoiceVisualizer({
         const x = center + Math.cos(angle) * outerRadius;
         const y = center + Math.sin(angle) * outerRadius;
         // Trailing fade — draw a 30° arc behind the dot.
-        ctx.strokeStyle = VERMILION;
+        ctx.strokeStyle = ACCENT;
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         ctx.globalAlpha = alphas.thinking * 0.35;
@@ -183,7 +185,7 @@ export function EditorialVoiceVisualizer({
         ctx.stroke();
         // The dot itself.
         ctx.globalAlpha = alphas.thinking;
-        ctx.fillStyle = VERMILION;
+        ctx.fillStyle = ACCENT;
         ctx.beginPath();
         ctx.arc(x, y, 3.5, 0, Math.PI * 2);
         ctx.fill();
@@ -209,7 +211,7 @@ export function EditorialVoiceVisualizer({
           const rippleAlpha = (1 - t) * alphas.speaking;
           ctx.save();
           ctx.globalAlpha = rippleAlpha;
-          ctx.strokeStyle = VERMILION;
+          ctx.strokeStyle = ACCENT;
           ctx.lineWidth = 1.5 * (1 - t * 0.5);
           ctx.beginPath();
           ctx.arc(center, center, r, 0, Math.PI * 2);
@@ -221,7 +223,7 @@ export function EditorialVoiceVisualizer({
         // Solid center dot — the source.
         ctx.save();
         ctx.globalAlpha = alphas.speaking;
-        ctx.fillStyle = VERMILION;
+        ctx.fillStyle = ACCENT;
         ctx.beginPath();
         ctx.arc(center, center, 3 + amp * 2, 0, Math.PI * 2);
         ctx.fill();

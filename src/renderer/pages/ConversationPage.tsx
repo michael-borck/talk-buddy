@@ -621,15 +621,15 @@ export function ConversationPage() {
   // Error state
   if (error || !scenario) {
     return (
-      <div className="flex items-center justify-center h-full bg-ivory">
+      <div className="flex items-center justify-center h-full bg-paper">
         <div className="text-center max-w-md px-8">
-          <AlertCircle size={32} strokeWidth={1.5} className="text-vermilion mx-auto mb-6" />
-          <p className="font-display text-2xl text-ink mb-6 leading-tight">
+          <AlertCircle size={32} strokeWidth={1.5} className="text-accent mx-auto mb-6" />
+          <p className="font-sans text-2xl text-ink mb-6 leading-tight">
             {error || 'Scenario not found'}
           </p>
           <button
             onClick={() => navigate('/scenarios')}
-            className="text-[0.95rem] text-ink hover:text-vermilion transition-colors border-b border-ink hover:border-vermilion pb-0.5"
+            className="text-[0.95rem] text-ink hover:text-accent transition-colors border-b border-ink hover:border-accent pb-0.5"
           >
             Back to scenarios
           </button>
@@ -644,7 +644,7 @@ export function ConversationPage() {
       .filter((m) => m.role === 'user')
       .reduce((acc, m) => acc + m.content.split(' ').length, 0);
     return (
-      <div className="min-h-full bg-ivory px-12 lg:px-20 py-16 animate-fadeIn">
+      <div className="min-h-full bg-paper px-12 lg:px-20 py-16 animate-fadeIn">
         <div className="max-w-3xl">
           <div className="flex items-center mb-6">
             <span className="editorial-rule" aria-hidden="true" />
@@ -653,13 +653,13 @@ export function ConversationPage() {
             </span>
           </div>
 
-          <h1 className="font-display text-ink font-medium leading-[0.95] tracking-tight-display text-[clamp(2.5rem,5vw,4.25rem)] mb-10">
+          <h1 className="font-sans text-ink font-medium leading-[0.95] tracking-display text-[clamp(2.5rem,5vw,4.25rem)] mb-10">
             A good<br />
             conversation.
           </h1>
 
           <p className="font-sans text-ink-muted text-[1.05rem] mb-12 max-w-[50ch] leading-relaxed">
-            You just practiced <em className="font-display italic text-ink">{scenario.name}</em>.
+            You just practiced <em className="font-sans italic text-ink">{scenario.name}</em>.
             Take the transcript with you, or begin another session.
           </p>
 
@@ -668,7 +668,7 @@ export function ConversationPage() {
               <dt className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet font-sans mb-2">
                 Duration
               </dt>
-              <dd className="font-display text-3xl text-ink tabular-nums">
+              <dd className="font-sans text-3xl text-ink tabular-nums">
                 {formatTime(elapsedTime)}
               </dd>
             </div>
@@ -676,13 +676,13 @@ export function ConversationPage() {
               <dt className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet font-sans mb-2">
                 Messages
               </dt>
-              <dd className="font-display text-3xl text-ink tabular-nums">{messages.length}</dd>
+              <dd className="font-sans text-3xl text-ink tabular-nums">{messages.length}</dd>
             </div>
             <div>
               <dt className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet font-sans mb-2">
                 Words spoken
               </dt>
-              <dd className="font-display text-3xl text-ink tabular-nums">{wordsSpoken}</dd>
+              <dd className="font-sans text-3xl text-ink tabular-nums">{wordsSpoken}</dd>
             </div>
           </dl>
 
@@ -697,13 +697,13 @@ export function ConversationPage() {
             )}
             <button
               onClick={() => window.location.reload()}
-              className="text-[0.95rem] text-ink hover:text-vermilion transition-colors border-b border-ink hover:border-vermilion pb-0.5"
+              className="text-[0.95rem] text-ink hover:text-accent transition-colors border-b border-ink hover:border-accent pb-0.5"
             >
               Begin another session →
             </button>
             <button
               onClick={() => navigate('/sessions')}
-              className="text-[0.95rem] text-ink-muted hover:text-vermilion transition-colors"
+              className="text-[0.95rem] text-ink-muted hover:text-accent transition-colors"
             >
               Session history
             </button>
@@ -735,20 +735,20 @@ export function ConversationPage() {
       : '';
 
   return (
-    <div className="flex flex-col h-full bg-ivory">
+    <div className="flex flex-col h-full bg-paper">
       {/* Header — hairline, editorial */}
       <header className="border-b border-ink/10 px-8 py-5">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <div className="flex items-center gap-5">
             <button
               onClick={() => navigate('/scenarios')}
-              className="p-1 text-ink-muted hover:text-vermilion transition-colors"
+              className="p-1 text-ink-muted hover:text-accent transition-colors"
               aria-label="Back to scenarios"
             >
               <ArrowLeft size={18} strokeWidth={1.5} />
             </button>
             <div>
-              <h1 className="font-display text-[1.35rem] text-ink font-medium leading-tight tracking-tight-display">
+              <h1 className="font-sans text-[1.35rem] text-ink font-medium leading-tight tracking-display">
                 {scenario.name}
               </h1>
               <p className="text-[0.72rem] uppercase tracking-[0.18em] text-ink-quiet font-sans mt-1">
@@ -758,19 +758,19 @@ export function ConversationPage() {
           </div>
 
           <div className="flex items-center gap-6">
-            <span className="font-display text-xl text-ink tabular-nums">
+            <span className="font-sans text-xl text-ink tabular-nums">
               {formatTime(elapsedTime)}
             </span>
             <button
               onClick={() => setShowInfo(true)}
-              className="p-1 text-ink-muted hover:text-vermilion transition-colors"
+              className="p-1 text-ink-muted hover:text-accent transition-colors"
               aria-label="Scenario info"
             >
               <Info size={18} strokeWidth={1.5} />
             </button>
             <button
               onClick={() => setAudioEnabled(!audioEnabled)}
-              className="p-1 text-ink-muted hover:text-vermilion transition-colors"
+              className="p-1 text-ink-muted hover:text-accent transition-colors"
               aria-label={audioEnabled ? 'Mute' : 'Unmute'}
             >
               {audioEnabled ? (
@@ -794,9 +794,9 @@ export function ConversationPage() {
             />
           </div>
 
-          {/* Status — Fraunces italic label, Inter Tight hint */}
+          {/* Status label + hint */}
           <div className="text-center mb-10 min-h-[4.5rem]">
-            <p className="font-display italic text-[2rem] text-ink leading-none mb-3 tracking-tight-display">
+            <p className="font-sans italic text-[2rem] text-ink leading-none mb-3 tracking-display">
               {statusLabel}
             </p>
             {statusHint && (
@@ -806,7 +806,7 @@ export function ConversationPage() {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 px-5 py-3 border-l-2 border-vermilion bg-ivory-warm max-w-md">
+            <div className="mb-6 px-5 py-3 border-l-2 border-accent bg-paper-warm max-w-md">
               <p className="text-ink text-sm font-sans leading-relaxed">{error}</p>
             </div>
           )}
@@ -830,9 +830,9 @@ export function ConversationPage() {
                 disabled={conversationState !== 'idle' && conversationState !== 'listening'}
                 className={`px-10 py-4 text-[1rem] font-sans font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-30 ${
                   conversationState === 'listening'
-                    ? 'bg-vermilion text-ivory'
+                    ? 'bg-accent text-paper'
                     : conversationState === 'idle'
-                    ? 'bg-ink text-ivory hover:bg-vermilion'
+                    ? 'bg-ink text-paper hover:bg-accent'
                     : 'bg-ink/20 text-ink-muted'
                 }`}
                 style={{ borderRadius: '2px' }}
@@ -850,7 +850,7 @@ export function ConversationPage() {
                 <span className="text-ink/20" aria-hidden="true">·</span>
                 <button
                   onClick={handleEndSession}
-                  className="text-ink-muted hover:text-vermilion transition-colors"
+                  className="text-ink-muted hover:text-accent transition-colors"
                 >
                   End session
                 </button>
@@ -867,7 +867,7 @@ export function ConversationPage() {
           onClick={() => setShowInfo(false)}
         >
           <div
-            className="bg-ivory max-w-md w-full p-8 border border-ink/15"
+            className="bg-paper max-w-md w-full p-8 border border-ink/15"
             style={{ borderRadius: '2px' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -877,7 +877,7 @@ export function ConversationPage() {
                 Scenario
               </span>
             </div>
-            <h2 className="font-display text-2xl text-ink font-medium mb-4 leading-tight tracking-tight-display">
+            <h2 className="font-sans text-2xl text-ink font-medium mb-4 leading-tight tracking-display">
               {scenario.name}
             </h2>
             <p className="text-ink-muted text-[0.92rem] leading-relaxed mb-6 font-sans">
@@ -901,7 +901,7 @@ export function ConversationPage() {
             </dl>
             <button
               onClick={() => setShowInfo(false)}
-              className="mt-8 text-[0.9rem] text-ink hover:text-vermilion transition-colors border-b border-ink hover:border-vermilion pb-0.5"
+              className="mt-8 text-[0.9rem] text-ink hover:text-accent transition-colors border-b border-ink hover:border-accent pb-0.5"
             >
               Close
             </button>
@@ -915,11 +915,11 @@ export function ConversationPage() {
           onClick={() => setShowEndModal(false)}
         >
           <div
-            className="bg-ivory max-w-md w-full p-8 border border-ink/15"
+            className="bg-paper max-w-md w-full p-8 border border-ink/15"
             style={{ borderRadius: '2px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="font-display text-2xl text-ink font-medium mb-4 leading-tight tracking-tight-display">
+            <h2 className="font-sans text-2xl text-ink font-medium mb-4 leading-tight tracking-display">
               End this session?
             </h2>
             <p className="text-ink-muted text-[0.92rem] leading-relaxed mb-8 font-sans">

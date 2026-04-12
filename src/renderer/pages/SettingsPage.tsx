@@ -911,13 +911,13 @@ export function SettingsPage() {
           Preferences
         </span>
       </div>
-      <h1 className="font-display text-ink font-medium leading-[0.95] tracking-tight-display text-[clamp(2.5rem,5vw,4rem)] mb-10">
+      <h1 className="font-sans text-ink font-medium leading-[0.95] tracking-display text-[clamp(2.5rem,5vw,4rem)] mb-10">
         Settings
       </h1>
 
       {message && (
         <div className={`mb-8 px-4 py-3 border-l-2 ${
-          message.includes('Failed') ? 'border-vermilion bg-ivory-warm' : 'border-ink bg-ivory-warm'
+          message.includes('Failed') ? 'border-accent bg-paper-warm' : 'border-ink bg-paper-warm'
         }`}>
           <p className="text-[0.9rem] text-ink font-sans">{message}</p>
         </div>
@@ -936,11 +936,11 @@ export function SettingsPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`py-3 px-1 border-b-2 text-[0.9rem] font-sans flex items-center gap-2 transition-colors ${
                     isActive
-                      ? 'border-vermilion text-ink font-medium'
+                      ? 'border-accent text-ink font-medium'
                       : 'border-transparent text-ink-muted hover:text-ink'
                   }`}
                 >
-                  <Icon size={14} strokeWidth={1.5} className={isActive ? 'text-vermilion' : ''} />
+                  <Icon size={14} strokeWidth={1.5} className={isActive ? 'text-accent' : ''} />
                   {tab.name}
                 </button>
               );
@@ -979,7 +979,7 @@ export function SettingsPage() {
                           setPendingProviderSwitch('stt');
                           setShowInstallModal(true);
                         }}
-                        className="ml-2 text-xs text-vermilion hover:text-vermilion-deep border-b border-vermilion pb-px"
+                        className="ml-2 text-xs text-accent hover:text-accent-deep border-b border-accent pb-px"
                       >
                         Not installed — Set up
                       </button>
@@ -1142,7 +1142,7 @@ export function SettingsPage() {
                           setPendingProviderSwitch('tts');
                           setShowInstallModal(true);
                         }}
-                        className="ml-2 text-xs text-vermilion hover:text-vermilion-deep border-b border-vermilion pb-px"
+                        className="ml-2 text-xs text-accent hover:text-accent-deep border-b border-accent pb-px"
                       >
                         Not installed — Set up
                       </button>
@@ -1506,7 +1506,7 @@ export function SettingsPage() {
                     Chat API URL
                   </label>
                   <div className="flex gap-2 items-center">
-                    <div className="flex-1 px-4 py-2 border border-ink/10 bg-ivory-warm text-ink-muted font-mono text-sm">
+                    <div className="flex-1 px-4 py-2 border border-ink/10 bg-paper-warm text-ink-muted font-mono text-sm">
                       {CHAT_PROVIDER_URLS[preferences.chatProvider as keyof typeof CHAT_PROVIDER_URLS]}
                     </div>
                     <button

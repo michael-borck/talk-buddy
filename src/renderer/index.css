@@ -3,359 +3,227 @@
 @tailwind utilities;
 
 /* ==========================================================================
-   Talk Buddy — Editorial theme (Option A: Quiet Confidence)
-   Ivory paper, ink type, vermilion accent. No gradients.
+   Studio Calm — Design System for the Buddy Suite
+   Figtree sans, warm paper, soft ink, per-app sage/bluebell/ochre accent.
+   See docs/design/studio-calm.md for the full spec and rationale.
    ========================================================================== */
 
 :root {
-  --ivory: #F6F1E7;
-  --ivory-warm: #FBF8F1;
-  --ivory-deep: #EDE4D0;
-  --ink: #0F0F0E;
-  --ink-soft: #2E2D2A;
-  --ink-muted: #5A5853;
-  --ink-quiet: #87857D;
-  --vermilion: #D94B2B;
-  --vermilion-deep: #B83B1E;
-  --hairline: rgba(15, 15, 14, 0.12);
-  --hairline-strong: rgba(15, 15, 14, 0.22);
-  --on-ink-hairline: rgba(246, 241, 231, 0.1);
+  /* Paper surfaces */
+  --paper:              #F4F1EA;
+  --paper-warm:         #FBF8F1;
+
+  /* Text */
+  --ink:                #252420;
+  --ink-soft:           #3B3830;
+  --ink-muted:          #5C564C;
+  --ink-quiet:          #8A8377;
+
+  /* Strokes */
+  --hairline:           rgba(37, 36, 32, 0.10);
+  --hairline-strong:    rgba(37, 36, 32, 0.20);
+  --hairline-contrast:  rgba(37, 36, 32, 0.40);
+
+  /* Status */
+  --error:              #A8442F;
+
+  /* Accent — Talk Buddy default (sage / eucalyptus).
+     Override via html[data-app='study'] or html[data-app='career']. */
+  --accent:             #4A7C6E;
+  --accent-deep:        #36604F;
+  --accent-soft:        rgba(74, 124, 110, 0.10);
+
+  /* Grain overlay */
+  --grain-opacity:      0.2;
+
+  /* Motion */
+  --ease-out:           cubic-bezier(0.2, 0, 0, 1);
+  --ease-out-soft:      cubic-bezier(0.25, 0.1, 0.25, 1);
+  --duration-fast:      150ms;
+  --duration-normal:    250ms;
+  --duration-slow:      400ms;
+  --duration-slower:    600ms;
 }
 
-html,
-body {
-  background: var(--ivory);
+/* ---- Per-app accent overrides (specificity > :root) ---- */
+html[data-app='study'] {
+  --accent:      #6E7FA8;
+  --accent-deep: #546285;
+  --accent-soft: rgba(110, 127, 168, 0.10);
+}
+html[data-app='career'] {
+  --accent:      #A86B47;
+  --accent-deep: #855030;
+  --accent-soft: rgba(168, 107, 71, 0.10);
+}
+
+/* ---- Dark mode ---- */
+html[data-theme='dark'] {
+  --paper:            #1B1A17;
+  --paper-warm:       #24231F;
+  --ink:              #F1EEE6;
+  --ink-soft:         #DAD6CC;
+  --ink-muted:        #9E9A90;
+  --ink-quiet:        #6F6C63;
+  --hairline:         rgba(241, 238, 230, 0.10);
+  --hairline-strong:  rgba(241, 238, 230, 0.20);
+  --hairline-contrast: rgba(241, 238, 230, 0.40);
+  --error:            #D66A54;
+  --accent:           #6FA593;
+  --accent-deep:      #8BBFAD;
+  --accent-soft:      rgba(111, 165, 147, 0.12);
+}
+html[data-theme='dark'][data-app='study'] {
+  --accent:      #96A8D0;
+  --accent-deep: #B3C0DF;
+  --accent-soft: rgba(150, 168, 208, 0.12);
+}
+html[data-theme='dark'][data-app='career'] {
+  --accent:      #D08963;
+  --accent-deep: #E0A782;
+  --accent-soft: rgba(208, 137, 99, 0.12);
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+
+html, body {
+  background: var(--paper);
   color: var(--ink);
-  font-family: 'Inter Tight', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: 'Figtree', ui-sans-serif, system-ui, -apple-system, sans-serif;
   font-feature-settings: 'ss01', 'cv11', 'kern';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4, h5, .font-display {
-  font-family: 'Fraunces', ui-serif, Georgia, Cambria, Times, serif;
-  font-optical-sizing: auto;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
-
-/* Subtle paper grain — fixed overlay, multiply blend, very light */
+/* Paper grain overlay — light mode only, configurable */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.5;
+  opacity: var(--grain-opacity, 0.2);
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
+html[data-theme='dark'] body::after { display: none; }
+html[data-grain='off'] body::after { display: none; }
 
 /* Hairline scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(15, 15, 14, 0.18);
-  border-radius: 0;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(15, 15, 14, 0.38);
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--hairline-contrast); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-quiet); }
+
+/* Focus ring — accent, accessible, calm */
+*:focus { outline: none; }
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
-/* Focus: vermilion outline, no blue ring */
-*:focus {
-  outline: none;
-}
-*:focus-visible {
-  outline: 2px solid var(--vermilion);
-  outline-offset: 2px;
-  border-radius: 1px;
+/* Electron-specific */
+body { -webkit-user-select: none; user-select: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* --------------------------------------------------------------------------
-   Shared component classes — used across all pages. Rewriting these
-   re-themes the entire app without touching individual page files.
+   Shared component classes
    -------------------------------------------------------------------------- */
 
-/* Paper card — formerly "glass" */
+/* Paper card — flat, hairline-bordered, same bg as page */
 .glass-card {
-  background: var(--ivory-warm);
+  background: var(--paper);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border: 1px solid var(--hairline);
-  border-radius: 2px;
+  border-radius: 6px;
   box-shadow: none;
 }
 
-/* --------------------------------------------------------------------------
-   Global flat-card override — re-themes every legacy `bg-white + rounded-*`
-   card across the app (Settings, Archive, SessionHistory, PracticePacks,
-   PackDetail, ScenarioForm, About, License, Documentation, LocalScenarios)
-   without touching any page file. Matches the scenario-card treatment the
-   user liked: ivory-warm paper background, hairline ink border, zero shadow.
-   Any NEW page that follows the same `<section className="bg-white rounded-*
-   shadow-*">` pattern automatically inherits.
-   -------------------------------------------------------------------------- */
-.bg-white.rounded,
-.bg-white.rounded-md,
-.bg-white.rounded-lg,
-.bg-white.rounded-xl,
-.bg-white.rounded-2xl,
-.bg-white.rounded-3xl {
-  background-color: var(--ivory-warm) !important;
-  border: 1px solid var(--hairline);
-  box-shadow: none !important;
-}
-
-/* Kill any Tailwind shadow utility that appears alongside a rounded
-   surface — in this aesthetic, shadows are the #1 "AI template" tell. */
-.rounded.shadow, .rounded.shadow-sm, .rounded.shadow-md, .rounded.shadow-lg, .rounded.shadow-xl, .rounded.shadow-2xl,
-.rounded-md.shadow, .rounded-md.shadow-sm, .rounded-md.shadow-md, .rounded-md.shadow-lg, .rounded-md.shadow-xl, .rounded-md.shadow-2xl,
-.rounded-lg.shadow, .rounded-lg.shadow-sm, .rounded-lg.shadow-md, .rounded-lg.shadow-lg, .rounded-lg.shadow-xl, .rounded-lg.shadow-2xl,
-.rounded-xl.shadow, .rounded-xl.shadow-sm, .rounded-xl.shadow-md, .rounded-xl.shadow-lg, .rounded-xl.shadow-xl, .rounded-xl.shadow-2xl,
-.rounded-2xl.shadow, .rounded-2xl.shadow-sm, .rounded-2xl.shadow-md, .rounded-2xl.shadow-lg, .rounded-2xl.shadow-xl, .rounded-2xl.shadow-2xl {
-  box-shadow: none !important;
-}
-
-/* Ink sidebar — formerly "glass-card-dark" */
+/* Ink sidebar */
 .glass-card-dark {
   background: var(--ink);
-  color: var(--ivory);
+  color: var(--paper);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border: none;
-  border-right: 1px solid var(--on-ink-hairline);
+  border-right: 1px solid rgba(244, 241, 234, 0.08);
   box-shadow: none;
 }
+html[data-theme='dark'] .glass-card-dark {
+  background: #0F0E0B;
+}
 
-/* Primary button — solid ink, vermilion on hover, no shine */
+/* Primary button — ink fill, accent on hover */
 .btn-gradient {
   background: var(--ink);
-  color: var(--ivory);
+  color: var(--paper);
   position: relative;
   overflow: hidden;
-  transition: background-color 220ms ease, color 220ms ease;
-  border-radius: 2px;
-  font-family: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  transition: background-color var(--duration-normal) var(--ease-out);
+  border-radius: 6px;
+  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
   font-weight: 500;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.005em;
 }
 .btn-gradient:hover {
-  background: var(--vermilion);
-  color: var(--ivory);
+  background: var(--accent);
   transform: none;
   box-shadow: none;
 }
-.btn-gradient::before {
-  display: none;
-}
+.btn-gradient::before { display: none; }
 
-/* Display text — serif, ink, not gradient */
+/* Display text — sans, ink, not gradient */
 .gradient-text {
   background: none;
   -webkit-background-clip: initial;
   background-clip: initial;
   -webkit-text-fill-color: var(--ink);
   color: var(--ink);
-  font-family: 'Fraunces', ui-serif, Georgia, serif;
-  font-weight: 500;
-  letter-spacing: -0.025em;
+  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 /* Card hover — hairline darken only, no lift */
 .card-hover {
-  transition: border-color 220ms ease, background-color 220ms ease;
+  transition: border-color var(--duration-normal) var(--ease-out);
 }
 .card-hover:hover {
   transform: none;
-  border-color: var(--ink);
-  background-color: var(--ivory-warm);
+  border-color: var(--hairline-strong);
   box-shadow: none;
 }
 
-/* Kill glow effects from the previous theme */
-.glow-purple,
-.glow-blue {
-  box-shadow: none;
+/* Kill glow/float from the previous theme */
+.glow-purple, .glow-blue { box-shadow: none; }
+.animate-float { animation: none; }
+
+/* Editorial rule marker — accent-colored hairline */
+.editorial-rule {
+  display: inline-block;
+  width: 2.25rem;
+  height: 1px;
+  background: var(--accent);
+  vertical-align: middle;
+  margin-right: 0.75rem;
 }
 
-/* Float — disabled; a still hero reads more confident */
-.animate-float {
-  animation: none;
-}
-
-/* --------------------------------------------------------------------------
-   Prose — documentation markdown
-   -------------------------------------------------------------------------- */
-
-.prose {
-  color: var(--ink-soft);
-  max-width: 68ch;
-  font-family: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
-}
-
-.prose h1,
-.prose h2,
-.prose h3,
-.prose h4 {
-  color: var(--ink);
-  font-family: 'Fraunces', ui-serif, Georgia, serif;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
-
-.prose h1 {
-  font-size: 2.5rem;
-  margin-top: 0;
-  margin-bottom: 2rem;
-  line-height: 1.08;
-}
-.prose h2 {
-  font-size: 1.75rem;
-  margin-top: 2.5rem;
-  margin-bottom: 1.25rem;
-  line-height: 1.2;
-}
-.prose h3 {
-  font-size: 1.375rem;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  line-height: 1.3;
-}
-.prose h4 {
-  font-size: 1.125rem;
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
-  line-height: 1.4;
-}
-
-.prose p {
-  margin-top: 1.1rem;
-  margin-bottom: 1.1rem;
-  line-height: 1.72;
-}
-
-.prose ul, .prose ol {
-  margin-top: 1.1rem;
-  margin-bottom: 1.1rem;
-  padding-left: 1.4rem;
-}
-.prose li {
-  margin-top: 0.4rem;
-  margin-bottom: 0.4rem;
-}
-
-.prose blockquote {
-  font-family: 'Fraunces', ui-serif, Georgia, serif;
-  font-weight: 400;
-  font-style: italic;
-  color: var(--ink);
-  border-left: 2px solid var(--vermilion);
-  margin: 1.75rem 0;
-  padding-left: 1.25rem;
-}
-
-.prose code {
-  color: var(--ink);
-  font-weight: 500;
-  font-size: 0.875em;
-  background-color: var(--ivory-deep);
-  padding: 0.1em 0.35em;
-  border-radius: 1px;
-}
-
-.prose pre {
-  color: var(--ivory);
-  background-color: var(--ink);
-  overflow-x: auto;
-  font-size: 0.875rem;
-  line-height: 1.7;
-  margin: 1.75rem 0;
-  border-radius: 2px;
-  padding: 1rem 1.25rem;
-}
-.prose pre code {
-  background-color: transparent;
-  border: 0;
-  padding: 0;
-  font-weight: 400;
-  color: inherit;
-  font-size: inherit;
-}
-
-.prose table {
-  width: 100%;
-  text-align: left;
-  margin: 2em 0;
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-.prose thead {
-  color: var(--ink);
-  font-weight: 500;
-  border-bottom: 1px solid var(--hairline-strong);
-}
-.prose thead th { padding: 0.6em 0.6em; vertical-align: bottom; }
-.prose tbody tr { border-bottom: 1px solid var(--hairline); }
-.prose tbody tr:last-child { border-bottom: 0; }
-.prose tbody td { padding: 0.6em 0.6em; vertical-align: top; }
-
-.prose strong { color: var(--ink); font-weight: 600; }
-.prose em { color: var(--ink); font-style: italic; }
-.prose hr { border: 0; border-top: 1px solid var(--hairline); margin: 2.5rem 0; }
-.prose a { color: var(--vermilion); text-decoration: underline; text-underline-offset: 3px; }
-
-/* --------------------------------------------------------------------------
-   Electron-specific
-   -------------------------------------------------------------------------- */
-
-body {
-  -webkit-user-select: none;
-  user-select: none;
-}
-input, textarea {
-  -webkit-user-select: text;
-  user-select: text;
-}
-
-/* --------------------------------------------------------------------------
-   Keyframe animations — motion is kept subtle
-   -------------------------------------------------------------------------- */
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
-}
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes shimmer {
-  0% { background-position: -468px 0; }
-  100% { background-position: 468px 0; }
-}
-.shimmer {
-  animation: shimmer 1.4s linear infinite forwards;
-  background: linear-gradient(to right, var(--ivory-warm) 0%, var(--ivory-deep) 12%, var(--ivory-warm) 24%, var(--ivory-warm) 100%);
-  background-size: 800px 100px;
-  position: relative;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fadeIn {
-  animation: fadeIn 0.45s ease-out;
-}
-
-/* Hero caret — a soft blinking marker beside the headline */
+/* Blinking caret (kept from editorial, still useful on the hero) */
 @keyframes caret-blink {
   0%, 60% { opacity: 1; }
   61%, 100% { opacity: 0; }
@@ -365,18 +233,113 @@ input, textarea {
   width: 0.12em;
   height: 0.9em;
   margin-left: 0.15em;
-  background: var(--vermilion);
+  background: var(--accent);
   vertical-align: -0.08em;
   animation: caret-blink 1.1s steps(1, end) infinite;
 }
 
-/* Decorative rule — short vermilion hairline used as a section mark */
-.editorial-rule {
-  display: inline-block;
-  width: 2.25rem;
-  height: 1px;
-  background: var(--vermilion);
-  vertical-align: middle;
-  margin-right: 0.75rem;
+/* --------------------------------------------------------------------------
+   Global flat-card override — re-themes every legacy bg-white + rounded-*
+   card across the app (Settings, Archive, SessionHistory, etc.) without
+   touching any page file.
+   -------------------------------------------------------------------------- */
+.bg-white.rounded,
+.bg-white.rounded-md,
+.bg-white.rounded-lg,
+.bg-white.rounded-xl,
+.bg-white.rounded-2xl,
+.bg-white.rounded-3xl {
+  background-color: var(--paper) !important;
+  border: 1px solid var(--hairline);
+  box-shadow: none !important;
 }
 
+.rounded.shadow, .rounded.shadow-sm, .rounded.shadow-md, .rounded.shadow-lg, .rounded.shadow-xl, .rounded.shadow-2xl,
+.rounded-md.shadow, .rounded-md.shadow-sm, .rounded-md.shadow-md, .rounded-md.shadow-lg, .rounded-md.shadow-xl, .rounded-md.shadow-2xl,
+.rounded-lg.shadow, .rounded-lg.shadow-sm, .rounded-lg.shadow-md, .rounded-lg.shadow-lg, .rounded-lg.shadow-xl, .rounded-lg.shadow-2xl,
+.rounded-xl.shadow, .rounded-xl.shadow-sm, .rounded-xl.shadow-md, .rounded-xl.shadow-lg, .rounded-xl.shadow-xl, .rounded-xl.shadow-2xl,
+.rounded-2xl.shadow, .rounded-2xl.shadow-sm, .rounded-2xl.shadow-md, .rounded-2xl.shadow-lg, .rounded-2xl.shadow-xl, .rounded-2xl.shadow-2xl {
+  box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Prose — documentation markdown
+   -------------------------------------------------------------------------- */
+
+.prose { color: var(--ink-soft); max-width: 68ch; font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif; }
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: var(--ink);
+  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.prose h1 { font-size: 2.5rem; margin-top: 0; margin-bottom: 2rem; line-height: 1.08; }
+.prose h2 { font-size: 1.75rem; margin-top: 2.5rem; margin-bottom: 1.25rem; line-height: 1.2; }
+.prose h3 { font-size: 1.375rem; margin-top: 2rem; margin-bottom: 1rem; line-height: 1.3; }
+.prose h4 { font-size: 1.125rem; margin-top: 1.5rem; margin-bottom: 0.75rem; line-height: 1.4; }
+.prose p { margin-top: 1.1rem; margin-bottom: 1.1rem; line-height: 1.72; }
+.prose ul, .prose ol { margin-top: 1.1rem; margin-bottom: 1.1rem; padding-left: 1.4rem; }
+.prose li { margin-top: 0.4rem; margin-bottom: 0.4rem; }
+.prose blockquote {
+  font-weight: 400;
+  color: var(--ink);
+  border-left: 2px solid var(--accent);
+  margin: 1.75rem 0;
+  padding-left: 1.25rem;
+}
+.prose code {
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 0.875em;
+  background-color: var(--hairline);
+  padding: 0.1em 0.35em;
+  border-radius: 2px;
+}
+.prose pre {
+  color: var(--paper);
+  background-color: var(--ink);
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  margin: 1.75rem 0;
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+}
+.prose pre code { background-color: transparent; border: 0; padding: 0; font-weight: 400; color: inherit; font-size: inherit; }
+.prose table { width: 100%; text-align: left; margin: 2em 0; font-size: 0.9rem; line-height: 1.6; }
+.prose thead { color: var(--ink); font-weight: 500; border-bottom: 1px solid var(--hairline-strong); }
+.prose thead th { padding: 0.6em; vertical-align: bottom; }
+.prose tbody tr { border-bottom: 1px solid var(--hairline); }
+.prose tbody tr:last-child { border-bottom: 0; }
+.prose tbody td { padding: 0.6em; vertical-align: top; }
+.prose strong { color: var(--ink); font-weight: 600; }
+.prose em { color: var(--ink); font-style: italic; }
+.prose hr { border: 0; border-top: 1px solid var(--hairline); margin: 2.5rem 0; }
+.prose a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+/* --------------------------------------------------------------------------
+   Keyframe animations
+   -------------------------------------------------------------------------- */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+@keyframes shimmer {
+  0% { background-position: -468px 0; }
+  100% { background-position: 468px 0; }
+}
+.shimmer {
+  animation: shimmer 1.4s linear infinite forwards;
+  background: linear-gradient(to right, var(--paper) 0%, var(--hairline) 12%, var(--paper) 24%, var(--paper) 100%);
+  background-size: 800px 100px;
+  position: relative;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn { animation: fadeIn 0.45s ease-out; }

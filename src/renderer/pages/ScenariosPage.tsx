@@ -545,13 +545,13 @@ function ScenarioCard({
   const marker = getVoiceMarker(scenario.voice);
   const disabled = deletingId === scenario.id;
 
-  // Shared action icon cluster — ink-muted glyphs, vermilion on hover,
+  // Shared action icon cluster — ink-muted glyphs, accent on hover,
   // no colored backgrounds. Used in both grid and list view.
   const actionIcons = (
     <div className="flex items-center gap-1">
       <button
         onClick={() => onEdit(scenario.id)}
-        className="p-1.5 text-ink-muted hover:text-vermilion transition-colors"
+        className="p-1.5 text-ink-muted hover:text-accent transition-colors"
         title="Edit"
         aria-label="Edit scenario"
       >
@@ -559,7 +559,7 @@ function ScenarioCard({
       </button>
       <button
         onClick={() => onExport(scenario.id)}
-        className="p-1.5 text-ink-muted hover:text-vermilion transition-colors"
+        className="p-1.5 text-ink-muted hover:text-accent transition-colors"
         title="Export"
         aria-label="Export scenario"
       >
@@ -568,7 +568,7 @@ function ScenarioCard({
       <button
         onClick={(e) => onArchive(scenario.id, e)}
         disabled={disabled}
-        className="p-1.5 text-ink-muted hover:text-vermilion transition-colors disabled:opacity-30"
+        className="p-1.5 text-ink-muted hover:text-accent transition-colors disabled:opacity-30"
         title="Archive"
         aria-label="Archive scenario"
       >
@@ -577,7 +577,7 @@ function ScenarioCard({
       <button
         onClick={(e) => onDelete(scenario.id, e)}
         disabled={disabled}
-        className="p-1.5 text-ink-muted hover:text-vermilion transition-colors disabled:opacity-30"
+        className="p-1.5 text-ink-muted hover:text-accent transition-colors disabled:opacity-30"
         title="Delete permanently"
         aria-label="Delete scenario"
       >
@@ -588,7 +588,7 @@ function ScenarioCard({
 
   if (viewMode === 'list') {
     return (
-      <article className="group border border-ink/10 hover:border-ink/30 bg-ivory-warm transition-colors">
+      <article className="group border border-ink/10 hover:border-ink/30 bg-paper-warm transition-colors">
         <div className="p-6 flex items-start gap-5">
           <button
             onClick={() => onToggleSelect(scenario.id)}
@@ -596,7 +596,7 @@ function ScenarioCard({
             aria-label={isSelected ? 'Deselect scenario' : 'Select scenario'}
           >
             {isSelected ? (
-              <CheckSquare size={16} strokeWidth={1.5} className="text-vermilion" />
+              <CheckSquare size={16} strokeWidth={1.5} className="text-accent" />
             ) : (
               <Square size={16} strokeWidth={1.5} />
             )}
@@ -604,11 +604,11 @@ function ScenarioCard({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-3 mb-1.5">
-              <h3 className="font-display text-[1.2rem] text-ink font-medium leading-snug tracking-tight-display">
+              <h3 className="font-sans text-[1.2rem] text-ink font-medium leading-snug tracking-display">
                 {scenario.name}
               </h3>
               <span
-                className="text-vermilion text-base leading-none font-sans"
+                className="text-accent text-base leading-none font-sans"
                 title={marker.label}
                 aria-label={marker.label}
               >
@@ -666,7 +666,7 @@ function ScenarioCard({
           <div className="flex flex-col items-end gap-4 flex-shrink-0">
             <button
               onClick={() => onStart(scenario.id)}
-              className="text-[0.85rem] text-ink hover:text-vermilion border-b border-ink hover:border-vermilion pb-0.5 transition-colors font-sans"
+              className="text-[0.85rem] text-ink hover:text-accent border-b border-ink hover:border-accent pb-0.5 transition-colors font-sans"
             >
               Start →
             </button>
@@ -680,7 +680,7 @@ function ScenarioCard({
   // Grid view — stacked vertical layout, title gets its own row,
   // action icons live in the bottom border row next to the Start link.
   return (
-    <article className="group border border-ink/10 hover:border-ink/30 bg-ivory-warm transition-colors flex flex-col">
+    <article className="group border border-ink/10 hover:border-ink/30 bg-paper-warm transition-colors flex flex-col">
       <div className="p-6 flex-1 flex flex-col">
         {/* Row 1: checkbox + voice marker — a small meta strip */}
         <div className="flex items-center justify-between mb-4">
@@ -690,13 +690,13 @@ function ScenarioCard({
             aria-label={isSelected ? 'Deselect scenario' : 'Select scenario'}
           >
             {isSelected ? (
-              <CheckSquare size={16} strokeWidth={1.5} className="text-vermilion" />
+              <CheckSquare size={16} strokeWidth={1.5} className="text-accent" />
             ) : (
               <Square size={16} strokeWidth={1.5} />
             )}
           </button>
           <span
-            className="text-vermilion text-xl leading-none font-sans"
+            className="text-accent text-xl leading-none font-sans"
             title={marker.label}
             aria-label={marker.label}
           >
@@ -705,7 +705,7 @@ function ScenarioCard({
         </div>
 
         {/* Title — gets its own row, can wrap freely */}
-        <h3 className="font-display text-[1.2rem] text-ink font-medium leading-snug tracking-tight-display mb-3">
+        <h3 className="font-sans text-[1.2rem] text-ink font-medium leading-snug tracking-display mb-3">
           {scenario.name}
         </h3>
 
@@ -755,7 +755,7 @@ function ScenarioCard({
         <div className="flex items-center justify-between pt-4 border-t border-ink/10">
           <button
             onClick={() => onStart(scenario.id)}
-            className="text-[0.85rem] text-ink hover:text-vermilion border-b border-ink hover:border-vermilion pb-0.5 transition-colors font-sans"
+            className="text-[0.85rem] text-ink hover:text-accent border-b border-ink hover:border-accent pb-0.5 transition-colors font-sans"
           >
             Start conversation →
           </button>

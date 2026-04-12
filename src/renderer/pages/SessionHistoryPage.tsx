@@ -461,7 +461,7 @@ function SessionCard({
                 const marker = getVoiceMarker(session.scenarioData?.voice);
                 return (
                   <span
-                    className="text-vermilion text-base leading-none font-sans"
+                    className="text-accent text-base leading-none font-sans"
                     title={marker.label}
                     aria-label={marker.label}
                   >
@@ -626,7 +626,7 @@ function SessionPackSessionCard({
             const marker = getVoiceMarker(scenarioData.voice);
             return (
               <span
-                className="text-vermilion text-base leading-none font-sans"
+                className="text-accent text-base leading-none font-sans"
                 title={marker.label}
                 aria-label={marker.label}
               >

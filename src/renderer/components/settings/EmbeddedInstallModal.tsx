@@ -18,7 +18,7 @@ type LogChunk = {
  * stdout/stderr from `embedded-server/setup.sh` as the main process runs
  * it, and lets the user cancel mid-run.
  *
- * Editorial theme — ivory backdrop, ink card, vermilion accents, hairline
+ * Editorial theme — paper backdrop, ink card, accent accents, hairline
  * borders. No gradients, no emoji.
  */
 export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInstallModalProps) {
@@ -105,7 +105,7 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
       onClick={handleClose}
     >
       <div
-        className="bg-ivory max-w-2xl w-full border border-ink/15 flex flex-col max-h-[80vh]"
+        className="bg-paper max-w-2xl w-full border border-ink/15 flex flex-col max-h-[80vh]"
         style={{ borderRadius: '2px' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -118,7 +118,7 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
                 Embedded speech engine
               </span>
             </div>
-            <h2 className="font-display text-2xl text-ink font-medium leading-tight tracking-tight-display">
+            <h2 className="font-sans text-2xl text-ink font-medium leading-tight tracking-display">
               Set up offline mode
             </h2>
           </div>
@@ -165,7 +165,7 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
               )}
 
               {prodMode && (
-                <div className="px-4 py-3 border-l-2 border-vermilion bg-ivory-warm mb-5">
+                <div className="px-4 py-3 border-l-2 border-accent bg-paper-warm mb-5">
                   <p className="text-[0.85rem] text-ink font-sans">
                     In a packaged release the embedded server is bundled
                     as a standalone executable, so this setup flow isn't
@@ -176,7 +176,7 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
               )}
 
               {pythonMissing && (
-                <div className="px-4 py-3 border-l-2 border-vermilion bg-ivory-warm mb-5">
+                <div className="px-4 py-3 border-l-2 border-accent bg-paper-warm mb-5">
                   <p className="text-[0.85rem] text-ink font-sans mb-2">
                     <strong>Python 3 not found</strong> on this machine. Install it first:
                   </p>
@@ -187,7 +187,7 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
                       Windows:{' '}
                       <button
                         onClick={() => window.electronAPI.shell.openExternal('https://www.python.org/downloads/')}
-                        className="text-vermilion hover:text-vermilion-deep border-b border-vermilion"
+                        className="text-accent hover:text-accent-deep border-b border-accent"
                       >
                         python.org/downloads
                       </button>
@@ -197,7 +197,7 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
               )}
 
               {preflight && !preflight.hasSetupScript && (
-                <div className="px-4 py-3 border-l-2 border-vermilion bg-ivory-warm mb-5">
+                <div className="px-4 py-3 border-l-2 border-accent bg-paper-warm mb-5">
                   <p className="text-[0.85rem] text-ink font-sans">
                     <code>embedded-server/setup.sh</code> is missing — the repo may be incomplete.
                   </p>
@@ -214,7 +214,7 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
               </div>
               <pre
                 ref={logRef}
-                className="bg-ink text-ivory text-[0.78rem] leading-relaxed font-mono p-5 max-h-[340px] overflow-y-auto whitespace-pre-wrap break-words"
+                className="bg-ink text-paper text-[0.78rem] leading-relaxed font-mono p-5 max-h-[340px] overflow-y-auto whitespace-pre-wrap break-words"
                 style={{ borderRadius: '2px' }}
               >
                 {chunks.map((chunk, idx) => (
@@ -222,16 +222,16 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
                     key={idx}
                     className={
                       chunk.stream === 'stderr' || chunk.stream === 'error'
-                        ? 'text-vermilion'
+                        ? 'text-accent'
                         : chunk.stream === 'info'
-                        ? 'text-ivory-100'
-                        : 'text-ivory/90'
+                        ? 'text-paper'
+                        : 'text-paper/90'
                     }
                   >
                     {chunk.text}
                   </span>
                 ))}
-                {running && <span className="text-vermilion animate-pulse">▍</span>}
+                {running && <span className="text-accent animate-pulse">▍</span>}
               </pre>
             </div>
           )}
@@ -239,17 +239,17 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
           {finished && (
             <div className="mt-5">
               {finished.ok ? (
-                <div className="px-4 py-3 border-l-2 border-vermilion bg-ivory-warm">
+                <div className="px-4 py-3 border-l-2 border-accent bg-paper-warm">
                   <p className="text-[0.9rem] text-ink font-sans">
                     <strong>Install complete.</strong> You can now enable the Embedded provider in Settings.
                   </p>
                 </div>
               ) : finished.cancelled ? (
-                <div className="px-4 py-3 border-l-2 border-ink-quiet bg-ivory-warm">
+                <div className="px-4 py-3 border-l-2 border-ink-quiet bg-paper-warm">
                   <p className="text-[0.9rem] text-ink-muted font-sans">Install cancelled.</p>
                 </div>
               ) : (
-                <div className="px-4 py-3 border-l-2 border-vermilion bg-ivory-warm">
+                <div className="px-4 py-3 border-l-2 border-accent bg-paper-warm">
                   <p className="text-[0.9rem] text-ink font-sans">
                     <strong>Install failed.</strong>
                     {finished.error && <span className="text-ink-muted"> {finished.error}</span>}
@@ -282,7 +282,7 @@ export function EmbeddedInstallModal({ open, onClose, onSuccess }: EmbeddedInsta
           {running && (
             <button
               onClick={handleCancel}
-              className="text-[0.9rem] text-vermilion hover:text-vermilion-deep transition-colors font-sans border-b border-vermilion pb-0.5"
+              className="text-[0.9rem] text-accent hover:text-accent-deep transition-colors font-sans border-b border-accent pb-0.5"
             >
               Cancel install
             </button>
