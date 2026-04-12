@@ -611,7 +611,7 @@ Used for labels above form fields or data items. Small, uppercase, tracked.
 
 ## Paper grain overlay (atmosphere)
 
-A very subtle SVG noise texture layered over the entire page via `body::after`. The current theme has this already and it works — keep it, tune the opacity slightly lower:
+A very subtle SVG noise texture layered over the entire page via `body::after`. The current theme has this already and it works — keep it, lower the opacity, and **make it user-configurable**:
 
 ```css
 body::after {
@@ -620,13 +620,144 @@ body::after {
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.35;                /* was 0.5 in current theme — slightly gentler */
+  opacity: var(--grain-opacity, 0.2);   /* default subtle, tunable */
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg ...%3E");
 }
+
+/* Grain off — user preference */
+html[data-grain='off'] body::after {
+  display: none;
+}
 ```
 
-Keeps the paper feeling warm and tactile without being visible enough to distract. Respect `prefers-reduced-motion` by keeping it static (no animation).
+### User preference
+
+New DB preferences:
+- `paperGrain` — `'on'` | `'off'`. **Default: `'on'`.**
+- `paperGrainOpacity` — string of a number between 0 and 0.4. **Default: `'0.2'`.**
+
+Exposed in Settings → Data & Docs (or a new "Appearance" tab if we consolidate with dark mode). The `html` element gets `data-grain` attribute based on the pref; the `--grain-opacity` CSS variable takes the numeric value.
+
+Why configurable: some users on lower-DPI monitors or glare-prone displays see the grain as noise rather than atmosphere. The default leans subtle (0.2 is much lighter than the current theme's 0.5) so most users never need to touch it, but the escape hatch exists.
+
+---
+
+## Dark mode
+
+Studio Calm ships with a first-class dark mode. A university student practicing at 11pm in a dorm room should not be blasted by a warm-white background. Equally important: dark mode should feel like the *same* design system, not a separate aesthetic. The warm-paper-and-soft-ink character is preserved — just inverted.
+
+### Dark palette
+
+```css
+/* Dark mode — inverted neutrals, same accents */
+html[data-theme='dark'] {
+  /* Paper surfaces → warm near-black */
+  --paper:              #1B1A17;   /* warm near-black, NOT #000000 */
+  --paper-warm:         #24231F;   /* very slightly lifted — for accent backgrounds if needed */
+
+  /* Text → warm off-white */
+  --ink:                #F1EEE6;   /* the light-mode paper, repurposed as text */
+  --ink-soft:           #DAD6CC;
+  --ink-muted:          #9E9A90;
+  --ink-quiet:          #6F6C63;
+
+  /* Strokes */
+  --hairline:           rgba(241, 238, 230, 0.10);
+  --hairline-strong:    rgba(241, 238, 230, 0.20);
+  --hairline-contrast:  rgba(241, 238, 230, 0.40);
+
+  /* Status */
+  --error:              #D66A54;   /* brighter rust, maintains contrast on dark */
+
+  /* Accent — Talk Buddy dark variant */
+  --accent:             #6FA593;   /* brighter sage — WCAG AA against #1B1A17 */
+  --accent-deep:        #8BBFAD;   /* hover: even brighter */
+  --accent-soft:        rgba(111, 165, 147, 0.12);
+}
+```
+
+Why brighter accents in dark mode: the light-mode sage `#4A7C6E` fails WCAG AA contrast against dark-mode paper. A brighter sibling (`#6FA593`) passes 4.5:1 easily while still reading as "the same green." Same logic for bluebell and ochre.
+
+### Dark mode accent triples (all three apps)
+
+```css
+/* Talk Buddy — dark */
+html[data-theme='dark'] {
+  --accent:      #6FA593;
+  --accent-deep: #8BBFAD;
+  --accent-soft: rgba(111, 165, 147, 0.12);
+}
+
+/* Study Buddy — dark */
+html[data-theme='dark'][data-app='study'] {
+  --accent:      #96A8D0;
+  --accent-deep: #B3C0DF;
+  --accent-soft: rgba(150, 168, 208, 0.12);
+}
+
+/* Career Compass — dark */
+html[data-theme='dark'][data-app='career'] {
+  --accent:      #D08963;
+  --accent-deep: #E0A782;
+  --accent-soft: rgba(208, 137, 99, 0.12);
+}
+```
+
+### Theme preference & switching
+
+New DB preference:
+- `theme` — `'light'` | `'dark'` | `'system'`. **Default: `'system'`** (respects OS setting).
+
+Implementation:
+- On app boot, read the preference and set `html[data-theme='light'|'dark']`.
+- For `'system'`, listen to `window.matchMedia('(prefers-color-scheme: dark)')` and flip `data-theme` in response.
+- Settings → Appearance (new tab) gets three radio buttons: Light / Dark / Match System.
+- No transition animation on theme flip. A 500ms fade would be "designed"; a snap is "honest" and avoids the awkward half-state.
+
+### Dark mode decisions that matter
+
+1. **Paper is `#1B1A17`, not `#000000`.** Pure black is jarring and feels like a missing asset. The soft warm near-black maintains the Studio Calm mood.
+2. **The accent keeps its identity.** Sage in light mode and sage in dark mode. Not a different color — a brighter sibling of the same color. Users should feel "this is the same app after dark," not "this is a different app."
+3. **Paper grain overlay behavior in dark mode**: the SVG noise is black by default (multiply blend), which is invisible on a dark background. For dark mode, either swap to a light noise or just disable grain entirely in dark. Simpler: disable in dark.
+
+```css
+html[data-theme='dark'] body::after {
+  display: none;
+}
+```
+
+4. **The voice visualizer in dark mode** uses the brighter accent. Sage ripples against warm near-black look beautiful and retain the "listening is cooperative" feeling that was the whole point of dropping vermilion.
+
+---
+
+## Suite identity beyond color
+
+A single low-key footer line is the only explicit "suite" signal. Anything more is overkill for the three-app stage.
+
+### The suite footer
+
+On every page, at the very bottom of the status footer, append a small text line:
+
+```
+Talk Buddy · part of the Buddy suite
+```
+
+- Font: Figtree 400 at `--text-xs` (0.72rem).
+- Color: `--ink-quiet` (light mode) / `--ink-quiet` (dark mode).
+- No link by default. If the "portal app" idea from the user ever materializes, this line becomes a link to it. For now, it's a quiet acknowledgment that the app has siblings.
+- Never dominant. The only person who notices it is someone actively looking. That's the correct level of signal.
+
+Study Buddy's line reads "Study Buddy · part of the Buddy suite". Career Compass reads "Career Compass · part of the Buddy suite". All three share the suffix, each carries its own name.
+
+### What this is NOT
+
+- Not a launcher, not a switcher, not a sidebar "other apps" tray.
+- Not a marketing "also try our other apps" prompt.
+- Not a status indicator showing whether the other apps are installed.
+- Not a keyboard shortcut to cycle between apps.
+
+A portal app is a sensible future direction — one tiny launcher that lives in the menu bar / system tray and opens whichever Buddy you need. If that happens, the footer line becomes its link. Until then, the footer line stands alone as a subtle family crest.
 
 ---
 
@@ -830,23 +961,17 @@ Studio Calm is a pure CSS/typography change. If anything feels wrong after shipp
 
 ---
 
-## Open questions
+## Decisions (closed questions)
 
-Things I want your read on before any implementation:
+Recording the answers here so future-you doesn't relitigate:
 
-1. **The accent triad** — you've confirmed directionally, but do you want to see them side-by-side in a real UI before committing? I can mock up three static HTML pages showing a simulated conversation header in each accent so you can eyeball them. Useful if you want Career Compass to feel more distinct from Talk Buddy than the proposed ochre currently allows.
-
-2. **Figtree vs alternatives** — Figtree is my firm recommendation, but if you've used another humanist sans you prefer (Public Sans, DM Sans, Albert Sans, Geist), we can swap. What I do NOT want is Inter (overused) or Fraunces (ESL-hostile).
-
-3. **The paper grain overlay** — keep at 0.35 opacity, drop to 0.2, or remove entirely? It adds warmth but some users with older monitors see it as distracting. Easy to toggle.
-
-4. **Dark mode** — Studio Calm is explicitly designed as a light theme. A student practicing at 11pm in a dorm room might appreciate a dark counterpart. Worth committing to now or defer?
-
-5. **When to build `buddy-design-system` as a separate repo** — I suggest "after Studio Calm has lived in Talk Buddy for 2–3 iterations" (i.e., a week or two of real use). Too early and we'd be extracting bugs; too late and the token drift between apps becomes painful. What's your instinct?
-
-6. **The "Buddy" suite identity beyond color** — currently the only shared signal across apps is the accent. If you want more, we could define a shared "suite footer" (small text at the bottom of each app: *Talk Buddy · part of the Buddy suite*) or a keyboard shortcut that cycles between the three apps. Overkill for now?
-
-7. **Session-complete screen** — one of the most emotionally important moments in Talk Buddy is when a conversation ends and the user sees their transcript. Currently it's a definition-list of stats (Duration / Messages / Words spoken). For an anxious student, this moment deserves a specific mood — "you did it, here's what you practiced, want to try again?" Worth a dedicated design pass separate from the token migration.
+1. **Typeface**: **Figtree** (confirmed). Single family across all three apps.
+2. **Paper grain overlay**: **Configurable**, default ON at **0.2 opacity** (subtler than current 0.5). New preferences `paperGrain` and `paperGrainOpacity` ship with Studio Calm. See Settings → Appearance.
+3. **Dark mode**: **Yes**, first-class. New preference `theme` with light / dark / system options (default: system). See the Dark Mode section above for the full palette.
+4. **Extraction timing**: **Prove in Talk Buddy first.** Ship Studio Calm as Talk Buddy 2.8.0, live with it for a week or two, extract to `buddy-design-system` repo after it stabilizes. Study Buddy and Career Compass get it by reference from the extracted repo.
+5. **Suite identity**: **Single low-key footer line** (`Talk Buddy · part of the Buddy suite`). No launcher, no switcher, no marketing prompt. If a portal app materializes later, the footer line becomes its link. See Suite Identity section above.
+6. **Session-complete screen**: **Deferred.** The current pattern (end session → optionally view analysis) is fine. If it feels cold after Studio Calm lands, revisit then.
+7. **Static HTML mocks before implementation**: **Yes.** Separate mock file at `docs/design/mockups/studio-calm.html` showing light/dark + all three accents, so the user can eyeball before we write React/CSS.
 
 ---
 
