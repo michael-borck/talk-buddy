@@ -1,152 +1,188 @@
-# Talk Buddy Desktop
+# Talk Buddy
 
 <!-- BADGES:START -->
-[![ai](https://img.shields.io/badge/-ai-ff6f00?style=flat-square)](https://github.com/topics/ai) [![conversation-practice](https://img.shields.io/badge/-conversation--practice-blue?style=flat-square)](https://github.com/topics/conversation-practice) [![cross-platform](https://img.shields.io/badge/-cross--platform-blue?style=flat-square)](https://github.com/topics/cross-platform) [![electron](https://img.shields.io/badge/-electron-47848f?style=flat-square)](https://github.com/topics/electron) [![english-learning](https://img.shields.io/badge/-english--learning-blue?style=flat-square)](https://github.com/topics/english-learning) [![interview-prep](https://img.shields.io/badge/-interview--prep-blue?style=flat-square)](https://github.com/topics/interview-prep) [![natural-language-processing](https://img.shields.io/badge/-natural--language--processing-blue?style=flat-square)](https://github.com/topics/natural-language-processing) [![speech-recognition](https://img.shields.io/badge/-speech--recognition-blue?style=flat-square)](https://github.com/topics/speech-recognition) [![text-to-speech](https://img.shields.io/badge/-text--to--speech-blue?style=flat-square)](https://github.com/topics/text-to-speech) [![typescript](https://img.shields.io/badge/-typescript-3178c6?style=flat-square)](https://github.com/topics/typescript)
+[![ai](https://img.shields.io/badge/-ai-ff6f00?style=flat-square)](https://github.com/topics/ai) [![conversation-practice](https://img.shields.io/badge/-conversation--practice-blue?style=flat-square)](https://github.com/topics/conversation-practice) [![cross-platform](https://img.shields.io/badge/-cross--platform-blue?style=flat-square)](https://github.com/topics/cross-platform) [![electron](https://img.shields.io/badge/-electron-47848f?style=flat-square)](https://github.com/topics/electron) [![english-learning](https://img.shields.io/badge/-english--learning-blue?style=flat-square)](https://github.com/topics/english-learning) [![interview-prep](https://img.shields.io/badge/-interview--prep-blue?style=flat-square)](https://github.com/topics/interview-prep) [![speech-recognition](https://img.shields.io/badge/-speech--recognition-blue?style=flat-square)](https://github.com/topics/speech-recognition) [![text-to-speech](https://img.shields.io/badge/-text--to--speech-blue?style=flat-square)](https://github.com/topics/text-to-speech) [![typescript](https://img.shields.io/badge/-typescript-3178c6?style=flat-square)](https://github.com/topics/typescript)
 <!-- BADGES:END -->
 
-AI-powered conversation practice desktop application with real-time speech recognition and synthesis. Practice real-world conversations with an AI partner in a safe, supportive environment - all running locally on your computer.
+Practice real-world conversations with an AI partner — job interviews, client presentations, difficult meetings, delivering bad news — in a safe, private space where it's OK to stumble. Talk Buddy listens to you, responds out loud, and keeps a transcript you can review afterward.
 
-## 🌟 Features
+Built for university students, especially those practising English as a second language.
 
-- **Real-time Speech Recognition** - Powered by Speaches API
-- **Natural Text-to-Speech** - High-quality voice synthesis
-- **AI Conversation Partners** - Contextual responses via Ollama
-- **Practice Scenarios** - Coffee shop, hotel check-in, restaurant, and more
-- **Local Data Storage** - All your data stays on your computer
-- **Cross-Platform** - Works on Windows, macOS, and Linux
-- **No Authentication Required** - Simple, privacy-focused design
+## What it does
 
-## 🏗️ Architecture
+You pick a scenario (or write your own), press the mic, and have a spoken conversation with the AI. When you're done you get a transcript and optional analysis of how it went.
+
+Under the hood:
 
 ```
-┌─────────────────┐     ┌──────────────┐     ┌──────────────┐
-│  React + Electron│────▶│   SQLite     │     │  Speaches    │
-│    Desktop App   │     │  Local DB    │     │  STT + TTS   │
-│                  │◀────│              │     │   Server     │
-└─────────────────┘     └──────────────┘     └──────────────┘
-                               │                      │
-                               └──────────┬───────────┘
-                                          │
-                                   ┌──────────────┐
-                                   │    Ollama    │
-                                   │  AI Service  │
-                                   └──────────────┘
+You speak → Speech recognition → AI thinks → Voice speaks back
+           (Listening)            (AI Brain)   (Voice)
 ```
 
-## 🚀 Quick Start
+Everything runs on your computer. Your recordings and transcripts never leave your machine. You bring your own AI key (Anthropic, OpenAI, Gemini, Groq, or a local Ollama model) and choose how speech is handled — either a built-in offline engine or a cloud server.
 
-### Prerequisites
+## Features
 
-Before running Talk Buddy Desktop, you need:
+- **Hold-to-speak conversations** with spacebar or button — the AI responds out loud in real time
+- **Scenario library** — pre-built scenarios for interviews, presentations, HR meetings, and more; create your own
+- **Practice packs** — group scenarios into focused practice sessions
+- **Session history** with transcripts and optional AI analysis
+- **Multiple AI providers** — Anthropic (Claude), OpenAI (GPT), Google (Gemini), Groq, Ollama, or any custom endpoint
+- **Built-in offline speech** — works without internet using the embedded Piper + Whisper engine
+- **Cloud speech** — connect to a [Speaches](https://github.com/speaches-ai/speaches) server for higher-quality voices (Kokoro TTS, Faster Whisper STT)
+- **Audio turn cue** — a subtle sound when it's your turn to speak (configurable: rise, click, or silent)
+- **Privacy-first** — all data stored locally in SQLite; bring your own keys; nothing phoned home
+- **Cross-platform** — macOS, Windows, Linux
 
-1. **Speaches API** - Speech-to-text and text-to-speech
-   - Cloud service available at: https://speaches.locopuente.org
-   - No installation needed! (unless you want to self-host)
-   - [API Documentation](https://speaches.locopuente.org/docs)
+## Quick start
 
-2. **[Ollama](https://ollama.ai)** - Local AI models
-   ```bash
-   # Install Ollama and pull a model
-   ollama pull llama2
-   ```
+### Download a release
 
-### Installation
+1. Go to [Releases](https://github.com/michael-borck/talk-buddy/releases)
+2. Download the installer for your platform (.dmg for Mac, .exe for Windows, .AppImage for Linux)
+3. Open Talk Buddy, go to Settings → AI Brain, pick your AI provider, paste your key, and save
+4. Pick a scenario and start talking
 
-#### Option 1: Download Release (Recommended)
-1. Go to [Releases](https://github.com/yourusername/talk-buddy/releases)
-2. Download the installer for your platform
-3. Install and run Talk Buddy
+### Or build from source
 
-#### Option 2: Build from Source
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/talk-buddy.git
+git clone https://github.com/michael-borck/talk-buddy.git
 cd talk-buddy
-
-# Install dependencies
 npm install
-
-# Run in development mode
 npm run dev
-
-# Build for your platform
-npm run dist
 ```
 
-## 📁 Project Structure
+The first `npm install` rebuilds `better-sqlite3` against Electron's ABI automatically (via the `postinstall` hook). If you see a `NODE_MODULE_VERSION` mismatch, run `npm run rebuild`.
+
+## How it works
 
 ```
-talk-buddy-desktop/
-├── public/                 # Electron main process
-│   ├── electron.js         # Main process entry
-│   └── preload.js          # Preload script for IPC
-├── src/                    # React application
-│   ├── components/         # UI components
-│   ├── pages/              # Page components
-│   ├── services/           # API services
-│   │   ├── sqlite.ts       # Local database
-│   │   ├── speaches.ts     # STT/TTS service
-│   │   └── ollama.ts       # AI service
-│   └── storage/            # Database setup
-├── assets/                 # Application icons
-└── dist/                  # Built applications
+talk-buddy/
+├── src/
+│   ├── main/                  # Electron main process
+│   │   ├── index.js           # App lifecycle, IPC handlers, embedded server management
+│   │   └── preload.js         # Context bridge exposing electronAPI to renderer
+│   └── renderer/              # React application (Vite-bundled)
+│       ├── App.tsx            # Router, sidebar, home page
+│       ├── pages/             # Scenarios, Conversation, Settings, SessionHistory, etc.
+│       ├── components/        # EditorialVoiceVisualizer, StatusFooter, cards, modals
+│       ├── services/          # speaches.ts, chat.ts, embedded.ts, audioCues.ts, sqlite.ts
+│       └── index.css          # Studio Calm design tokens + component classes
+├── embedded-server/           # Optional offline speech engine (Python + Piper + Whisper)
+│   ├── server.py              # Flask server with OpenAI-compatible endpoints
+│   ├── setup.sh               # Creates venv + installs deps + downloads voice models
+│   └── requirements.txt       # Python dependencies (synced with CI workflow)
+├── .github/workflows/
+│   └── build.yml              # Release pipeline: builds embedded server + Electron app
+│                              #   on macOS / Windows / Linux, publishes to GitHub Releases
+├── docs/                      # In-app help documentation (markdown)
+│   └── design/
+│       └── studio-calm.md     # Design system spec for the Buddy suite
+└── public/docs/               # Mirror of docs/ served by the app's help viewer
 ```
 
-## 🔧 Configuration
+### The conversation pipeline
 
-Configure external services in Settings:
-- **Speaches URL**: Default `https://speaches.locopuente.org` (cloud-hosted)
-- **Ollama URL**: Default `http://localhost:11434` (local) or cloud-hosted
-- **AI Model**: Any model from Anthropic, OpenAI, Gemini, Groq, or Ollama
-- **Voice**: Male or Female (mapped to OpenAI-compatible voices)
+1. **You speak** → browser captures audio via `getUserMedia`
+2. **Speech recognition** → audio is sent to the speech server (built-in Whisper or cloud Speaches) via main-process IPC to bypass CORS
+3. **AI responds** → the transcript is sent to your configured AI provider (Claude, GPT, Gemini, etc.) with the scenario's system prompt + conversation history
+4. **Voice speaks** → the AI's text reply is sent to the TTS server, returned as audio, and played through an `<audio>` element. The voice visualizer animates with real audio amplitude from a Web Audio analyser.
+5. **Your turn** → a configurable audio cue plays, the status flips to "your turn", and you can hold spacebar or the button to speak again
 
-## 💾 Data Storage
+All speech traffic routes through the Electron main process (not the browser renderer) to avoid CORS issues with external servers.
 
-All data is stored locally:
-- **Windows**: `%APPDATA%/Talk Buddy/talkbuddy.db`
-- **macOS**: `~/Library/Application Support/Talk Buddy/talkbuddy.db`
-- **Linux**: `~/.config/Talk Buddy/talkbuddy.db`
+## Configuration
 
-## 🚀 Development
+All settings are in the app's Settings page (the wrench icon in the sidebar). The five tabs:
+
+| Tab | What it controls |
+|---|---|
+| **Listening** | How Talk Buddy understands your speech — built-in (offline) or cloud server |
+| **Voice** | How Talk Buddy speaks back — built-in voices (Alan & Amy) or cloud voices (Kokoro) |
+| **AI Brain** | Which AI powers the conversation — Anthropic, OpenAI, Gemini, Groq, Ollama, or custom |
+| **Conversation Style** | How the AI behaves — natural, educational, concise, business, supportive, or custom instructions |
+| **Your Data** | Export/import data, clear everything, links to documentation |
+
+### Speech options
+
+| Option | Internet needed? | Quality | Setup |
+|---|---|---|---|
+| **Built-in (offline)** | No | Good (Piper TTS, Whisper STT) | Click "Set up" in Settings — installs Python venv + voice models (~500MB, one-time) |
+| **Cloud server** | Yes | Better (Kokoro TTS, Faster Whisper STT) | Point to a [Speaches](https://github.com/speaches-ai/speaches) server and paste the access key |
+
+### AI options
+
+| Provider | Key needed? | Where to get one |
+|---|---|---|
+| **Anthropic (Claude)** | Yes | [console.anthropic.com](https://console.anthropic.com/) |
+| **OpenAI (GPT)** | Yes | [platform.openai.com](https://platform.openai.com/) |
+| **Google (Gemini)** | Yes | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| **Groq** | Yes | [console.groq.com](https://console.groq.com/) |
+| **Ollama (local)** | No | [ollama.com](https://ollama.com/) — install and run `ollama pull llama3` |
+| **Custom** | Maybe | Any OpenAI-compatible endpoint |
+
+For hosted providers (Anthropic, OpenAI, Gemini, Groq), the server address is set automatically — you only need to paste your key and pick a model.
+
+## Data storage
+
+All data stays on your computer in a single SQLite file:
+
+| Platform | Location |
+|---|---|
+| macOS | `~/Library/Application Support/Talk Buddy/talkbuddy.db` |
+| Windows | `%APPDATA%/Talk Buddy/talkbuddy.db` |
+| Linux | `~/.config/Talk Buddy/talkbuddy.db` |
+
+Audio recordings are **not stored** — only the text transcripts survive. The mic blob is discarded after transcription.
+
+## Design
+
+Talk Buddy uses **Studio Calm**, a design system built for ESL students practising high-stakes conversations. Warm paper background, clean sans-serif typography (Figtree), sage accent, generous whitespace, unhurried motion. Everything is designed to reduce anxiety and keep the focus on the conversation.
+
+Studio Calm is shared across the Buddy suite (Talk Buddy, Study Buddy, Career Compass) with a per-app accent colour: sage for Talk Buddy, bluebell for Study Buddy, warm ochre for Career Compass. See [docs/design/studio-calm.md](docs/design/studio-calm.md) for the full spec.
+
+## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Run development mode
-npm run dev
-
-# Build React app
-npm run build
-
-# Package for current platform
-npm run dist
-
-# Package for all platforms
-npm run dist-all
+npm install          # Install deps + rebuild native modules for Electron
+npm run dev          # Start Vite + Electron together (hot reload)
+npm run build        # Vite production build (type-checks + bundles)
+npm run rebuild      # Rebuild better-sqlite3 against Electron ABI
+npm run electron:dist  # Package for current platform via electron-builder
 ```
 
-## 📚 Documentation
+### Embedded speech server (optional)
 
-- [Migration Notes](MIGRATION_NOTES.md) - Changes from web version
-- [Original Web Version](v1-archive/) - Previous architecture
+```bash
+cd embedded-server
+./setup.sh           # Creates Python venv, installs deps, downloads Piper voice models
+```
 
-## 🤝 Contributing
+Or use the in-app setup: Settings → Listening/Voice → Built-in → "Not installed — Set up".
 
-Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.
+## Part of the Buddy suite
 
-## 📄 License
+Talk Buddy is one of three apps sharing the Studio Calm design system:
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+- **Talk Buddy** — practise conversations (you're here)
+- **Study Buddy** — privacy-first personal tutor (planned)
+- **Career Compass** — explore career paths (planned)
 
-## 🙏 Acknowledgments
+## Documentation
 
-- [Electron](https://www.electronjs.org/) - Desktop framework
-- [React](https://react.dev/) - UI framework
-- [Speaches](https://github.com/speaches-ai/speaches) - Speech services
-- [Ollama](https://ollama.ai/) - Local AI models
+- [Design system spec](docs/design/studio-calm.md) — Studio Calm tokens, patterns, and migration plan
+- [Design mockup](docs/design/mockups/studio-calm.html) — interactive HTML preview (open in browser)
+- [In-app help](docs/) — getting started, service setup, troubleshooting
 
-## Version History
+## License
 
-- v2.0 - Electron + React desktop app (current)
-- v1.0 - Web version with PocketBase (see v1-archive/)
+MIT — see [LICENSE](LICENSE).
+
+## Acknowledgments
+
+- [Electron](https://www.electronjs.org/) — desktop framework
+- [React](https://react.dev/) — UI framework
+- [Speaches](https://github.com/speaches-ai/speaches) — speech-to-text and text-to-speech server
+- [Ollama](https://ollama.com/) — local AI models
+- [Piper](https://github.com/rhasspy/piper) — offline voice synthesis (embedded server)
+- [Figtree](https://fonts.google.com/specimen/Figtree) — the typeface
