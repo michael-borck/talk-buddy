@@ -158,7 +158,7 @@ stt:
   
 tts:
   enabled: true
-  model: "speaches-ai/piper-en_US-amy-low"
+  model: "speaches-ai/Kokoro-82M-v1.0-ONNX"
 ```
 
 ## Advanced STT Configuration

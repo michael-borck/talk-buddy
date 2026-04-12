@@ -40,9 +40,9 @@ AI-powered conversation practice desktop application with real-time speech recog
 Before running Talk Buddy Desktop, you need:
 
 1. **Speaches API** - Speech-to-text and text-to-speech
-   - Cloud service available at: https://speaches.serveur.au
+   - Cloud service available at: https://speaches.locopuente.org
    - No installation needed! (unless you want to self-host)
-   - [API Documentation](https://speaches.serveur.au/docs)
+   - [API Documentation](https://speaches.locopuente.org/docs)
 
 2. **[Ollama](https://ollama.ai)** - Local AI models
    ```bash
@@ -95,17 +95,17 @@ talk-buddy-desktop/
 ## 🔧 Configuration
 
 Configure external services in Settings:
-- **Speaches URL**: Default `https://speaches.serveur.au` (cloud-hosted)
-- **Ollama URL**: Default `https://ollama.serveur.au` (cloud-hosted)
-- **Ollama Model**: Default `llama2`
+- **Speaches URL**: Default `https://speaches.locopuente.org` (cloud-hosted)
+- **Ollama URL**: Default `http://localhost:11434` (local) or cloud-hosted
+- **AI Model**: Any model from Anthropic, OpenAI, Gemini, Groq, or Ollama
 - **Voice**: Male or Female (mapped to OpenAI-compatible voices)
 
 ## 💾 Data Storage
 
 All data is stored locally:
-- **Windows**: `%APPDATA%/talk-buddy-desktop/talkbuddy.db`
-- **macOS**: `~/Library/Application Support/talk-buddy-desktop/talkbuddy.db`
-- **Linux**: `~/.config/talk-buddy-desktop/talkbuddy.db`
+- **Windows**: `%APPDATA%/Talk Buddy/talkbuddy.db`
+- **macOS**: `~/Library/Application Support/Talk Buddy/talkbuddy.db`
+- **Linux**: `~/.config/Talk Buddy/talkbuddy.db`
 
 ## 🚀 Development
 
@@ -143,7 +143,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - [Electron](https://www.electronjs.org/) - Desktop framework
 - [React](https://react.dev/) - UI framework
-- [Speaches](https://github.com/anthropics/speaches) - Speech services
+- [Speaches](https://github.com/speaches-ai/speaches) - Speech services
 - [Ollama](https://ollama.ai/) - Local AI models
 
 ## Version History

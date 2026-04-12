@@ -128,11 +128,11 @@ Speaches supports multiple TTS models:
 
 **Fast Models (Lower quality, faster synthesis)**
 - Good for: Real-time conversation, older hardware
-- Model examples: `speaches-ai/piper-en_US-amy-low`, `microsoft/speecht5_tts`
+- Model examples: `speaches-ai/Kokoro-82M-v1.0-ONNX`, `microsoft/speecht5_tts`
 
 **High-Quality Models (Better voices, slower synthesis)**
 - Good for: High-quality practice, powerful hardware
-- Model examples: `speaches-ai/piper-en_US-lessac-high`, `suno/bark`
+- Model examples: `speaches-ai/Kokoro-82M-v1.0-ONNX`, `suno/bark`
 
 #### Voice Characteristics
 Configure different voices for scenarios:

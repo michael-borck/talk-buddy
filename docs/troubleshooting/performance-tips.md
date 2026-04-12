@@ -180,7 +180,7 @@ stt:
   compute_type: "int8"  # Faster inference
   
 tts:
-  model: "speaches-ai/piper-en_US-amy-low"  # Fast voice model
+  model: "speaches-ai/Kokoro-82M-v1.0-ONNX"  # Fast voice model
   enable_streaming: true  # Stream audio as generated
 ```
 
@@ -188,8 +188,8 @@ tts:
 **Voice Model Selection**:
 ```bash
 # Fast TTS models for real-time
-speaches serve --tts-model "speaches-ai/piper-en_US-amy-low"     # Fast
-speaches serve --tts-model "speaches-ai/piper-en_US-lessac-low"  # Good quality
+speaches serve --tts-model "speaches-ai/Kokoro-82M-v1.0-ONNX"     # Fast
+speaches serve --tts-model "speaches-ai/Kokoro-82M-v1.0-ONNX"    # Good quality
 
 # Avoid for real-time: High-quality models that are slower
 ```

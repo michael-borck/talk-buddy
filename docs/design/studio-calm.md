@@ -1,7 +1,7 @@
 # Studio Calm — Design System
 
-**Version:** 0.1 (draft)
-**Status:** Spec — not yet implemented
+**Version:** 1.0
+**Status:** Implemented in Talk Buddy v2.8.0
 **Applies to:** Talk Buddy, Study Buddy (planned), Career Compass (planned)
 **Author:** Michael Borck + Claude
 **Last updated:** April 2026
@@ -10,9 +10,9 @@
 
 ## Why this document exists
 
-Talk Buddy currently runs **Option A — Editorial / Quiet Confidence**: Fraunces serif, ivory/ink/vermilion palette, sharp 2px corners, 2025-era literary aesthetic. It's beautiful but it's optimized for the wrong user.
+Talk Buddy v2.8.0 implements **Studio Calm** — the editorial theme (Fraunces + vermilion) was replaced in this version.
 
-This document describes the replacement: **Studio Calm** — the design language for the entire "Buddy suite" (Talk Buddy + Study Buddy + Career Compass), built deliberately for university ESL students rehearsing high-stakes scenarios (Dragons Den pitches, HR performance reviews, delivering bad news as a doctor, interview prep).
+This document is the canonical reference for **Studio Calm** — the design language for the entire "Buddy suite" (Talk Buddy + Study Buddy + Career Compass), built deliberately for university ESL students rehearsing high-stakes scenarios (Dragons Den pitches, HR performance reviews, delivering bad news as a doctor, interview prep).
 
 Studio Calm is **not a theme**. It's a shared vocabulary — tokens, patterns, interaction rules — that each of the three apps will inherit. The only thing that varies between apps is a single accent color. Everything else is identical, so a student who uses one of the apps recognizes the other two instantly.
 
