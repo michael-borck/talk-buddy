@@ -766,11 +766,11 @@ A portal app is a sensible future direction — one tiny launcher that lives in 
 Studio Calm is identical across all three apps except for one variable. To port Studio Calm to Study Buddy or Career Compass:
 
 1. **Copy the shared CSS tokens file** (see Migration Plan below for the exact file path once implemented) from Talk Buddy, or import it from the `buddy-design-system` reference repo once extracted.
-2. **Override the accent**:
+2. **Override the accent via an `html[data-app='...']` selector** (not `:root`):
 
 ```css
-:root {
-  /* Study Buddy */
+/* Study Buddy */
+html[data-app='study'] {
   --accent:      #6E7FA8;
   --accent-deep: #546285;
   --accent-soft: rgba(110, 127, 168, 0.10);
@@ -780,13 +780,17 @@ Studio Calm is identical across all three apps except for one variable. To port 
 or
 
 ```css
-:root {
-  /* Career Compass */
+/* Career Compass */
+html[data-app='career'] {
   --accent:      #A86B47;
   --accent-deep: #855030;
   --accent-soft: rgba(168, 107, 71, 0.10);
 }
 ```
+
+Then set `<html data-app="study">` (or `"career"`) on the root element.
+
+**⚠️ Specificity note**: The `html[data-app='...']` prefix is load-bearing. Using a bare `[data-app='...']` selector ties specificity (0,1,0) with `:root`, and custom properties on root elements behave inconsistently across browsers under ties — Chrome respects source order, others don't. Prefixing with `html` gives (0,1,1) and wins unambiguously. This caught me once in the mockup; don't repeat it.
 
 3. **Nothing else changes.** Same fonts, same spacing, same components, same motion. Every other token is shared.
 
@@ -858,7 +862,9 @@ Create `src/renderer/styles/studio-calm.css` as the canonical token file:
   /* Status */
   --error:              #A8442F;
 
-  /* Accent — TALK BUDDY. Override this triple in other apps. */
+  /* Accent — TALK BUDDY default. Other apps override via
+     html[data-app='study'] / html[data-app='career'] — see the
+     Per-app override pattern section for the specificity rationale. */
   --accent:             #4A7C6E;
   --accent-deep:        #36604F;
   --accent-soft:        rgba(74, 124, 110, 0.10);
