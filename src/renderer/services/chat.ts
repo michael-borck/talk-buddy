@@ -978,3 +978,226 @@ export async function listChatModels(): Promise<string[]> {
 
 // Backward compatibility alias
 export const listOllamaModels = listChatModels;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Streaming chat completion — unified async-iterable interface across all
+// providers. Used by the streaming TTS pipeline so audio can start playing
+// before the LLM finishes generating. See docs/plans/2026-05-05-streaming-tts-pipeline.md
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface StreamOptions {
+  signal?: AbortSignal;
+}
+
+export async function* streamChatCompletion(
+  messages: ConversationMessage[],
+  systemPrompt: string,
+  opts: StreamOptions = {},
+): AsyncIterable<string> {
+  const provider = await getChatProvider();
+  switch (provider) {
+    case 'ollama':
+      yield* streamOllama(messages, systemPrompt, opts);
+      return;
+    case 'openai':
+    case 'groq':
+    case 'custom':
+      yield* streamOpenAICompatible(messages, systemPrompt, opts, provider);
+      return;
+    case 'anthropic':
+      yield* streamAnthropic(messages, systemPrompt, opts);
+      return;
+    case 'gemini':
+      yield* streamGemini(messages, systemPrompt, opts);
+      return;
+    default:
+      throw new Error(`Streaming not implemented for provider: ${provider}`);
+  }
+}
+
+async function* streamOllama(
+  messages: ConversationMessage[],
+  systemPrompt: string,
+  opts: StreamOptions,
+): AsyncIterable<string> {
+  const queue: string[] = [];
+  let done = false;
+  let error: unknown = null;
+  let resolveNext: (() => void) | null = null;
+
+  const promise = streamResponse(messages, systemPrompt, (chunk) => {
+    if (opts.signal?.aborted) return;
+    queue.push(chunk);
+    resolveNext?.();
+    resolveNext = null;
+  })
+    .then(() => { done = true; resolveNext?.(); })
+    .catch((e) => { error = e; done = true; resolveNext?.(); });
+
+  while (!done || queue.length) {
+    if (opts.signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    if (queue.length) {
+      yield queue.shift()!;
+    } else {
+      await new Promise<void>((r) => { resolveNext = r; });
+    }
+  }
+  if (error) throw error;
+  await promise;
+}
+
+async function* streamOpenAICompatible(
+  messages: ConversationMessage[],
+  systemPrompt: string,
+  opts: StreamOptions,
+  provider: 'openai' | 'groq' | 'custom',
+): AsyncIterable<string> {
+  const baseUrl = await getChatApiUrl();
+  const model = await getChatModel();
+  const apiKey = await getChatApiKey();
+
+  const body = {
+    model,
+    messages: [
+      ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ],
+    stream: true,
+    max_tokens: 400,
+    temperature: 0.7,
+  };
+
+  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    },
+    body: JSON.stringify(body),
+    signal: opts.signal,
+  });
+
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`${provider} streaming failed: ${response.status} ${response.statusText} ${text}`);
+  }
+
+  yield* readSSEDeltas(response.body, (data) => {
+    const parsed = JSON.parse(data);
+    return parsed.choices?.[0]?.delta?.content ?? null;
+  });
+}
+
+async function* streamAnthropic(
+  messages: ConversationMessage[],
+  systemPrompt: string,
+  opts: StreamOptions,
+): AsyncIterable<string> {
+  const baseUrl = await getChatApiUrl();
+  const model = await getChatModel();
+  const apiKey = await getChatApiKey();
+
+  const response = await fetch(`${baseUrl}/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey || '',
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model,
+      system: systemPrompt || undefined,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      max_tokens: 400,
+      stream: true,
+    }),
+    signal: opts.signal,
+  });
+
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`Anthropic streaming failed: ${response.status} ${response.statusText} ${text}`);
+  }
+
+  yield* readSSEDeltas(response.body, (data) => {
+    const parsed = JSON.parse(data);
+    if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+      return parsed.delta.text ?? null;
+    }
+    return null;
+  });
+}
+
+async function* streamGemini(
+  messages: ConversationMessage[],
+  systemPrompt: string,
+  opts: StreamOptions,
+): AsyncIterable<string> {
+  const baseUrl = await getChatApiUrl();
+  const model = await getChatModel();
+  const apiKey = await getChatApiKey();
+
+  const url = `${baseUrl}/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
+      contents: messages.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+      generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
+    }),
+    signal: opts.signal,
+  });
+
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`Gemini streaming failed: ${response.status} ${response.statusText} ${text}`);
+  }
+
+  yield* readSSEDeltas(response.body, (data) => {
+    const parsed = JSON.parse(data);
+    return parsed.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+  });
+}
+
+// Shared SSE reader. The extractor returns the text delta from a parsed
+// `data:` line, or null to skip (non-content events, malformed lines).
+async function* readSSEDeltas(
+  body: ReadableStream<Uint8Array>,
+  extract: (data: string) => string | null,
+): AsyncIterable<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+
+      let idx;
+      while ((idx = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 1);
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') return;
+        try {
+          const text = extract(data);
+          if (text) yield text;
+        } catch {
+          // skip malformed JSON
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
