@@ -142,6 +142,17 @@ export function ConversationPage() {
       if (ev.code !== 'Space' || ev.repeat) return;
       if (showInfo || showEndModal || sessionComplete) return;
       if (isTypingTarget(ev.target)) return;
+
+      // Barge-in: pressing space while the AI is mid-response cancels
+      // the turn (stopSpeaking aborts the pipeline) and starts a new
+      // recording in the same gesture.
+      if (conversationState === 'speaking') {
+        stopSpeaking();
+        ev.preventDefault();
+        void startRecording();
+        return;
+      }
+
       if (conversationState !== 'idle') return;
       ev.preventDefault();
       void startRecording();
@@ -449,7 +460,6 @@ export function ConversationPage() {
       // begins playing on the first sentence rather than after the whole
       // response is buffered.
       stopSpeaking();
-      abortRef.current?.abort();
       setConversationState('speaking');
 
       const ctrl = new AbortController();
@@ -618,8 +628,12 @@ export function ConversationPage() {
   // Immediately silences any TTS audio currently playing, releases the
   // analyser, and clears event handlers so stale onended callbacks
   // from a half-played utterance can't flip state back to idle or fire
-  // the turn cue after the session is over.
+  // the turn cue after the session is over. Also aborts any live
+  // streaming pipeline so the LLM stops generating and the TTS queue
+  // stops synthesizing once the user has visibly stopped the AI.
   const stopSpeaking = () => {
+    abortRef.current?.abort();
+    pipelineRef.current?.stopAndDrain();
     if (audioRef.current) {
       try {
         audioRef.current.onplay = null;
