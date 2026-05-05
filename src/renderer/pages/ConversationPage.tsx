@@ -55,9 +55,7 @@ export function ConversationPage() {
   // spacebar handler (and end-session) can abort the live turn.
   const abortRef = useRef<AbortController | null>(null);
   const pipelineRef = useRef<TTSPipeline | null>(null);
-  // chunkProgress state is rendered by Task 7 (progress UI). Held now so
-  // the pipeline callback has somewhere to write while we incrementally land.
-  const [, setChunkProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+  const [chunkProgress, setChunkProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
 
   // Load scenario
   useEffect(() => {
@@ -886,6 +884,11 @@ export function ConversationPage() {
             </p>
             {statusHint && (
               <p className="text-[0.82rem] text-ink-muted font-sans">{statusHint}</p>
+            )}
+            {conversationState === 'speaking' && chunkProgress.total > 0 && (
+              <p className="text-[0.72rem] text-ink-muted/70 font-sans mt-1 tabular-nums">
+                {chunkProgress.current} of {chunkProgress.total}
+              </p>
             )}
           </div>
 
