@@ -186,3 +186,7 @@ MIT — see [LICENSE](LICENSE).
 - [Ollama](https://ollama.com/) — local AI models
 - [Piper](https://github.com/rhasspy/piper) — offline voice synthesis (embedded server)
 - [Figtree](https://fonts.google.com/specimen/Figtree) — the typeface
+
+### Inspiration
+
+- [Dexter](https://github.com/thecodacus/dexter) (Apache 2.0) — Talk Buddy's streaming voice pipeline (token-level LLM streaming → sentence-chunked TTS → ordered audio playback with barge-in cancellation) was inspired by Dexter's Tauri-based architecture. No code was copied; the patterns were re-implemented in TypeScript for the Electron stack.
