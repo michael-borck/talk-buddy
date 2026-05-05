@@ -416,12 +416,15 @@ async function startEmbeddedServer() {
           console.log('Embedded server is ready');
           // Update database with embedded server URL
           await updateEmbeddedServerConfig();
+          // Fire-and-forget warmup so Piper/Whisper load their models in
+          // the background instead of on the student's first utterance.
+          warmupEmbeddedServer(`http://127.0.0.1:${embeddedServerPort}`);
           return true;
         }
       } catch (error) {
         // Server not ready yet
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 1000));
       retries++;
     }
@@ -464,6 +467,67 @@ function stopEmbeddedServer() {
     }, 5000);
     
     embeddedServer = null;
+  }
+}
+
+// Pre-load Piper and Whisper models in the background by firing tiny
+// requests against the embedded server right after /health succeeds.
+// Both models are otherwise lazy-loaded on first real request, which
+// makes the student's first utterance feel laggy. Fire-and-forget;
+// failures here are non-fatal.
+async function warmupEmbeddedServer(baseUrl) {
+  // TTS warmup — Piper loads the voice model on first synth.
+  try {
+    await fetch(`${baseUrl}/v1/audio/speech`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'tts-embedded',
+        input: 'hi',
+        voice: 'amy',
+        speed: 1.0,
+        response_format: 'wav',
+      }),
+    });
+    console.log('[embedded-server] TTS warmup complete');
+  } catch (e) {
+    console.warn('[embedded-server] TTS warmup failed (non-fatal):', e.message);
+  }
+
+  // STT warmup — Whisper loads the model on first transcription.
+  // Build a minimal valid WAV file (header + 0.5s of silence) and POST
+  // it as multipart so the server takes the same code path as a real
+  // transcription request.
+  try {
+    const sampleRate = 16000;
+    const numSamples = sampleRate / 2; // 0.5s
+    const dataSize = numSamples * 2; // 16-bit mono
+    const wav = Buffer.alloc(44 + dataSize);
+    wav.write('RIFF', 0);
+    wav.writeUInt32LE(36 + dataSize, 4);
+    wav.write('WAVE', 8);
+    wav.write('fmt ', 12);
+    wav.writeUInt32LE(16, 16);
+    wav.writeUInt16LE(1, 20);
+    wav.writeUInt16LE(1, 22);
+    wav.writeUInt32LE(sampleRate, 24);
+    wav.writeUInt32LE(sampleRate * 2, 28);
+    wav.writeUInt16LE(2, 32);
+    wav.writeUInt16LE(16, 34);
+    wav.write('data', 36);
+    wav.writeUInt32LE(dataSize, 40);
+    // Audio bytes are already zeros from Buffer.alloc → silence.
+
+    const formData = new FormData();
+    formData.append('file', new Blob([wav], { type: 'audio/wav' }), 'warmup.wav');
+    formData.append('response_format', 'json');
+    await fetch(`${baseUrl}/v1/audio/transcriptions`, {
+      method: 'POST',
+      body: formData,
+    });
+    console.log('[embedded-server] STT warmup complete');
+  } catch (e) {
+    console.warn('[embedded-server] STT warmup failed (non-fatal):', e.message);
   }
 }
 
