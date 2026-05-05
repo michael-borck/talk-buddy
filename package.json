@@ -1,6 +1,6 @@
 {
   "name": "talk-buddy-desktop",
-  "version": "2.9.0",
+  "version": "2.9.1",
   "description": "Talk Buddy - AI-powered conversation practice desktop app",
   "author": {
     "name": "Michael Borck",
@@ -59,75 +59,6 @@
     "vite": "^5.0.11",
     "vitest": "^4.1.5",
     "wait-on": "^7.2.0"
-  },
-  "build": {
-    "appId": "com.talkbuddy.desktop",
-    "productName": "TalkBuddy",
-    "directories": {
-      "output": "dist"
-    },
-    "compression": "maximum",
-    "files": [
-      "dist/**/*",
-      "src/main/**/*",
-      "node_modules/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "dist-server",
-        "to": "embedded-server",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
-    "mac": {
-      "category": "public.app-category.education",
-      "icon": "assets/icon.icns",
-      "hardenedRuntime": true,
-      "notarize": true,
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "assets/icon.png",
-      "category": "Education",
-      "maintainer": "Michael Borck <michael@talkbuddy.app>",
-      "executableName": "TalkBuddy",
-      "synopsis": "AI-powered conversation practice desktop app",
-      "desktop": {
-        "Name": "TalkBuddy",
-        "Comment": "AI-powered conversation practice",
-        "Categories": "Education;Languages;",
-        "Keywords": "ai;conversation;practice;language;learning;"
-      },
-      "extraResources": []
-    }
   },
   "browserslist": {
     "production": [
