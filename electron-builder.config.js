@@ -1,8 +1,5 @@
 // electron-builder config in JS form so we can read environment variables
-// (specifically APPLE_TEAM_ID for macOS notarization). Mirrors what used
-// to live under "build" in package.json.
-
-const teamId = process.env.APPLE_TEAM_ID;
+// and use a custom afterSign hook for notarization.
 
 module.exports = {
   appId: 'com.talkbuddy.desktop',
@@ -23,14 +20,15 @@ module.exports = {
       filter: ['**/*'],
     },
   ],
+  // electron-builder's own notarize wrapper has been buggy across 24.x.
+  // We disable it here and run @electron/notarize directly from the
+  // afterSign hook, which gives us full control over the options object.
+  afterSign: 'scripts/notarize.js',
   mac: {
     category: 'public.app-category.education',
     icon: 'assets/icon.icns',
     hardenedRuntime: true,
-    // @electron/notarize requires teamId explicitly when using password
-    // credentials. If APPLE_TEAM_ID is unset (e.g. local dev), fall back
-    // to disabling notarization so the build still completes locally.
-    notarize: teamId ? { teamId } : false,
+    notarize: false,
     target: [
       {
         target: 'dmg',
