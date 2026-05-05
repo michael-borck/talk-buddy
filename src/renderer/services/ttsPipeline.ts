@@ -4,12 +4,14 @@ export interface TTSPipelineOptions {
   synthesize: (sentence: string) => Promise<Blob>;
   autoPlay?: boolean;
   onChunkChange?: (current: number, total: number) => void;
+  onAudioStart?: (audio: HTMLAudioElement) => void;
 }
 
 export class TTSPipeline {
   private readonly synthesize: (sentence: string) => Promise<Blob>;
   private readonly autoPlay: boolean;
   private readonly onChunkChange?: (current: number, total: number) => void;
+  private readonly onAudioStart?: (audio: HTMLAudioElement) => void;
 
   private audioQueue: Blob[] = [];
   private currentAudio: HTMLAudioElement | null = null;
@@ -24,6 +26,7 @@ export class TTSPipeline {
     this.synthesize = options.synthesize;
     this.autoPlay = options.autoPlay ?? true;
     this.onChunkChange = options.onChunkChange;
+    this.onAudioStart = options.onAudioStart;
   }
 
   pump(stream: AsyncIterable<string>, signal: AbortSignal): Promise<void> {
@@ -112,6 +115,11 @@ export class TTSPipeline {
       this.currentAudio = null;
       this.playNext(signal);
     };
+    try {
+      this.onAudioStart?.(this.currentAudio);
+    } catch (e) {
+      console.warn('onAudioStart callback failed:', e);
+    }
     this.currentAudio.play().catch(() => {
       this.playing = false;
     });

@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getScenario, createSession, updateSession, getSession, getPreference } from '../services/sqlite';
 import { transcribeAudio, generateSpeech } from '../services/speechProvider';
-import { generateResponse } from '../services/chat';
+import { generateResponse, streamChatCompletion } from '../services/chat';
+import { TTSPipeline } from '../services/ttsPipeline';
 import { Scenario, Session, ConversationMessage } from '../types';
 import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
 import { EditorialVoiceVisualizer } from '../components/EditorialVoiceVisualizer';
@@ -48,6 +49,15 @@ export function ConversationPage() {
   const amplitudeRef = useRef<number>(0);
   const amplitudeRafRef = useRef<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+
+  // Streaming TTS pipeline state — one AbortController per turn drives
+  // both the LLM stream and the TTS playback queue. Held in refs so the
+  // spacebar handler (and end-session) can abort the live turn.
+  const abortRef = useRef<AbortController | null>(null);
+  const pipelineRef = useRef<TTSPipeline | null>(null);
+  // chunkProgress state is rendered by Task 7 (progress UI). Held now so
+  // the pipeline callback has somewhere to write while we incrementally land.
+  const [, setChunkProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
 
   // Load scenario
   useEffect(() => {
@@ -406,46 +416,107 @@ export function ConversationPage() {
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, userMsg]);
-      
-      // Generate AI response
       const allMessages = [...messages, userMsg];
-      const { response, context } = await generateResponse(
-        allMessages,
-        scenario?.systemPrompt,
-        contextRef.current
-      );
-      
-      contextRef.current = context;
-      
-      // Add AI message
-      const aiMsg: ConversationMessage = {
-        id: `msg_${Date.now() + 1}`,
-        role: 'assistant',
-        content: response,
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      
-      // Update session with transcript
-      if (session) {
-        await updateSession(session.id, {
-          transcript: [...allMessages, aiMsg]
-        });
-      }
-      
-      // Check for natural ending
-      if (checkForNaturalEnding(response)) {
-        toast.success('Great conversation! Session ending naturally.');
-        await completeSession('natural');
-      } else {
-        // Speak response
-        if (audioEnabled) {
-          // We're already in 'thinking' state, now transition to speaking
-          setConversationState('speaking');
-          await speakText(response, false);
+
+      // Audio-disabled path: non-streaming, persist text only.
+      if (!audioEnabled) {
+        const { response, context } = await generateResponse(
+          allMessages,
+          scenario?.systemPrompt,
+          contextRef.current
+        );
+        contextRef.current = context;
+
+        const aiMsg: ConversationMessage = {
+          id: `msg_${Date.now() + 1}`,
+          role: 'assistant',
+          content: response,
+          timestamp: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        if (session) await updateSession(session.id, { transcript: [...allMessages, aiMsg] });
+
+        if (checkForNaturalEnding(response)) {
+          toast.success('Great conversation! Session ending naturally.');
+          await completeSession('natural');
         } else {
           setConversationState('idle');
         }
+        return;
+      }
+
+      // Audio-enabled path: stream LLM tokens into TTSPipeline so audio
+      // begins playing on the first sentence rather than after the whole
+      // response is buffered.
+      stopSpeaking();
+      abortRef.current?.abort();
+      setConversationState('speaking');
+
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
+      let fullResponse = '';
+      const tokenStream = (async function* () {
+        for await (const tok of streamChatCompletion(
+          allMessages,
+          scenario?.systemPrompt ?? '',
+          { signal: ctrl.signal },
+        )) {
+          fullResponse += tok;
+          yield tok;
+        }
+      })();
+
+      const pipeline = new TTSPipeline({
+        synthesize: (sentence) => generateSpeech({ text: sentence, voice: scenario?.voice }),
+        onChunkChange: (current, total) => setChunkProgress({ current, total }),
+        onAudioStart: (audio) => {
+          audioRef.current = audio;
+          setupTtsAnalyser(audio);
+        },
+      });
+      pipelineRef.current = pipeline;
+
+      try {
+        await pipeline.pump(tokenStream, ctrl.signal);
+
+        const aiMsg: ConversationMessage = {
+          id: `msg_${Date.now() + 1}`,
+          role: 'assistant',
+          content: fullResponse,
+          timestamp: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        if (session) await updateSession(session.id, { transcript: [...allMessages, aiMsg] });
+
+        teardownTtsAnalyser();
+
+        if (checkForNaturalEnding(fullResponse)) {
+          toast.success('Great conversation! Session ending naturally.');
+          await completeSession('natural');
+        } else {
+          setConversationState('idle');
+          try {
+            const style = ((await getPreference('conversationCue')) as CueStyle | null) || 'rise';
+            playYourTurnCue(style);
+          } catch (cueErr) {
+            console.warn('Failed to play turn cue:', cueErr);
+          }
+        }
+      } catch (pipelineErr) {
+        teardownTtsAnalyser();
+        if ((pipelineErr as Error).name === 'AbortError') {
+          // Barge-in or end-session — the new turn (or session teardown)
+          // owns state from here.
+          return;
+        }
+        console.error('Streaming pipeline error:', pipelineErr);
+        toast.error('Voice pipeline failed. Try again.');
+        setConversationState('idle');
+      } finally {
+        if (abortRef.current === ctrl) abortRef.current = null;
+        if (pipelineRef.current === pipeline) pipelineRef.current = null;
+        setChunkProgress({ current: 0, total: 0 });
       }
     } catch (err) {
       console.error('Failed to process audio:', err);
