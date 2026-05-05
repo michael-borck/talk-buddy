@@ -12,12 +12,14 @@ module.exports = async function notarizing(context) {
     return;
   }
 
-  const appleId = process.env.APPLE_ID;
-  const appleIdPassword = process.env.APPLE_APP_SPECIFIC_PASSWORD;
-  const teamId = process.env.APPLE_TEAM_ID;
+  // Read from NOTARIZE_*-prefixed env vars (not APPLE_*) so electron-builder's
+  // auto-detection doesn't fire its own buggy notarize wrapper alongside ours.
+  const appleId = process.env.NOTARIZE_APPLE_ID;
+  const appleIdPassword = process.env.NOTARIZE_APPLE_PASSWORD;
+  const teamId = process.env.NOTARIZE_APPLE_TEAM_ID;
 
   if (!appleId || !appleIdPassword || !teamId) {
-    console.log('[notarize] Skipping — APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID not all set');
+    console.log('[notarize] Skipping — NOTARIZE_APPLE_ID / NOTARIZE_APPLE_PASSWORD / NOTARIZE_APPLE_TEAM_ID not all set');
     return;
   }
 
