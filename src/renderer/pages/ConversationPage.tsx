@@ -341,7 +341,7 @@ export function ConversationPage() {
             
             // Speak initial message
             if (audioEnabled) {
-              await speakText(scenario.initialMessage, true);
+              await speakText(scenario.initialMessage, true, initialMsg.id);
             } else {
               setConversationState('idle');
             }
@@ -392,7 +392,7 @@ export function ConversationPage() {
         
         // Speak initial message
         if (audioEnabled) {
-          await speakText(scenario.initialMessage, true);
+          await speakText(scenario.initialMessage, true, initialMsg.id);
         } else {
           setConversationState('idle');
         }
@@ -578,7 +578,7 @@ export function ConversationPage() {
     }
   };
 
-  const speakText = async (text: string, isInitialGreeting: boolean = false) => {
+  const speakText = async (text: string, isInitialGreeting: boolean = false, messageId?: string) => {
     try {
       // Aggressive pre-flight teardown. A prior Audio may still exist
       // (race: onended hasn't fired yet, or the element is mid-decode),
@@ -598,6 +598,13 @@ export function ConversationPage() {
         text,
         voice: scenario?.voice
       });
+
+      // Cache for rehear if a message id was provided. The non-streaming
+      // path produces a single blob, so wrap it in an array to match the
+      // shape the rehear button expects.
+      if (messageId) {
+        audioByMessageRef.current.set(messageId, [audioBlob]);
+      }
 
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
