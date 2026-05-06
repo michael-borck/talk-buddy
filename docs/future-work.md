@@ -2,40 +2,7 @@
 
 Ideas worth doing but not yet scheduled. Each entry should explain *why* it's parked (cost, dependency, low priority, design uncertainty) so future-Michael knows whether to revive it. Newest entries at the top.
 
-Grouped roughly by size: **quick wins** (an hour or two), **UX improvements** (half a day to a day), **architecture decisions** (multi-day, design-heavy).
-
----
-
-## Quick wins
-
-### Orphan code cleanup
-
-**Idea:** Delete code identified as having zero callers anywhere in the repo.
-
-- `src/renderer/services/webspeech.ts` — whole file (138 lines), the never-wired Web Speech API fallback
-- `chat.ts`: `checkChatConnection`, `checkOllamaConnection` (alias), `listChatModels`, `listOllamaModels` (alias)
-- `speechProvider.ts`: `getProviderStatus`, `switchSTTProvider`, `switchTTSProvider` (last two are stub functions that just `console.log`)
-- `embedded.ts`: `checkEmbeddedConnection`, `getVoicesByGender`
-
-**Why parked:** ran the audit, didn't execute the deletes — wanted to leave a paper trail rather than disappear ~200 lines of code in the same session. Also potentially related to the Web Speech fallback decision below (if you want to revive that, don't delete `webspeech.ts`).
-
-**When to revive:** any quiet 30 minutes. Three small commits is the suggested shape: file delete, function deletes, internal-only `export` downgrades for `streamResponse` / `StreamOptions` / `TTSPipelineOptions`.
-
-### Stop replay when Pause is clicked
-
-**Idea:** Pause currently doesn't stop an active replay (Esc and spacebar do). Click-to-pause-while-replay-is-playing leaves the audio running.
-
-**Why parked:** noticed at the end of the replay UX commit, didn't ship the fix in the same change.
-
-**When to revive:** add `stopReplay()` to the `togglePause` function. ~3 lines. Trivial.
-
-### Token cap removal or raise
-
-**Idea:** All providers cap responses at `max_tokens: 400`. The cap was a band-aid for the buffered-then-spoken UX (long responses were unbearable). Streaming + barge-in handle long responses naturally now — the user can interrupt anytime.
-
-**Why parked:** safer to ship streaming with the cap in place, raise it after observing real usage.
-
-**When to revive:** if students or testers ever say "the AI got cut off mid-thought" — bump to 800 or remove entirely. Watch for cost on metered providers (Anthropic, OpenAI) before going unlimited.
+Grouped roughly by size: **UX improvements** (half a day to a day), **architecture decisions** (multi-day, design-heavy), **conversation features** (variable, design-heavy).
 
 ---
 
