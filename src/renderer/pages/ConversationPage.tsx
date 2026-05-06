@@ -754,6 +754,7 @@ export function ConversationPage() {
       } catch { /* ignore */ }
       replayAudioRef.current = null;
     }
+    teardownTtsAnalyser();
     setReplayingMessageId(null);
   };
 
@@ -777,6 +778,7 @@ export function ConversationPage() {
     let i = 0;
     const playNext = () => {
       if (i >= blobs.length) {
+        teardownTtsAnalyser();
         replayAudioRef.current = null;
         setReplayingMessageId(null);
         return;
@@ -784,6 +786,10 @@ export function ConversationPage() {
       const url = URL.createObjectURL(blobs[i]);
       const audio = new Audio(url);
       replayAudioRef.current = audio;
+      // Hook the analyser so the visualiser ripples in time with the
+      // replay audio. Must be set up before play() — Web Audio's
+      // createMediaElementSource needs the routing in place first.
+      setupTtsAnalyser(audio);
       audio.onended = () => {
         URL.revokeObjectURL(url);
         i++;
@@ -977,10 +983,15 @@ export function ConversationPage() {
     );
   }
 
-  const visualizerState =
-    conversationState === 'not-started' || conversationState === 'paused'
-      ? 'idle'
-      : conversationState;
+  // While replaying, drive the visualiser with the speaking-state
+  // ripples so it responds to the replay audio's amplitude. The
+  // message-level border + REPLAYING status word make it clear this
+  // isn't part of the live conversation.
+  const visualizerState = replayingMessageId
+    ? 'speaking'
+    : conversationState === 'not-started' || conversationState === 'paused'
+    ? 'idle'
+    : conversationState;
   const statusLabel = replayingMessageId
     ? 'replaying.'
     : conversationState === 'not-started'
