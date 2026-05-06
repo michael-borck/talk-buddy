@@ -70,6 +70,9 @@ export function ConversationPage() {
   // visually mark the message being replayed.
   const [replayingMessageId, setReplayingMessageId] = useState<string | null>(null);
   const replayAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Hold (walkie-talkie) vs toggle (tap-to-start, tap-to-stop). Read
+  // once on mount; pref changes mid-session apply on next mount.
+  const [pttMode, setPttMode] = useState<'hold' | 'toggle'>('hold');
 
   // Load scenario
   useEffect(() => {
@@ -115,6 +118,13 @@ export function ConversationPage() {
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages.length]);
+
+  // Load push-to-talk preference once on mount.
+  useEffect(() => {
+    getPreference('pttMode').then((v) => {
+      if (v === 'toggle' || v === 'hold') setPttMode(v);
+    });
+  }, []);
 
   // Save transcript on unmount if session exists
   useEffect(() => {
@@ -196,7 +206,7 @@ export function ConversationPage() {
 
       // Barge-in: pressing space while the AI is mid-response cancels
       // the turn (stopSpeaking aborts the pipeline) and starts a new
-      // recording in the same gesture.
+      // recording in the same gesture. Same in both PTT modes.
       if (conversationState === 'speaking') {
         stopSpeaking();
         ev.preventDefault();
@@ -204,6 +214,19 @@ export function ConversationPage() {
         return;
       }
 
+      // Toggle mode: tap to start, tap again to stop.
+      if (pttMode === 'toggle') {
+        if (conversationState === 'idle') {
+          ev.preventDefault();
+          void startRecording();
+        } else if (conversationState === 'listening') {
+          ev.preventDefault();
+          stopRecording();
+        }
+        return;
+      }
+
+      // Hold mode (default): keyDown starts, keyUp stops.
       if (conversationState !== 'idle') return;
       ev.preventDefault();
       void startRecording();
@@ -212,6 +235,8 @@ export function ConversationPage() {
     const handleKeyUp = (ev: KeyboardEvent) => {
       if (ev.code !== 'Space') return;
       if (isTypingTarget(ev.target)) return;
+      // In toggle mode, key-up is a no-op — only key-down toggles state.
+      if (pttMode === 'toggle') return;
       if (conversationState !== 'listening') return;
       ev.preventDefault();
       stopRecording();
@@ -224,7 +249,7 @@ export function ConversationPage() {
       window.removeEventListener('keyup', handleKeyUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationState, showInfo, showEndModal, sessionComplete, replayingMessageId]);
+  }, [conversationState, showInfo, showEndModal, sessionComplete, replayingMessageId, pttMode]);
 
   // --- Audio analyser helpers ----------------------------------------------
 
@@ -1013,9 +1038,9 @@ export function ConversationPage() {
     : conversationState === 'paused'
     ? 'Click Resume to continue.'
     : conversationState === 'listening'
-    ? 'Release to stop — or let go of the space bar.'
+    ? (pttMode === 'toggle' ? 'Tap space (or click below) to send.' : 'Release to stop — or let go of the space bar.')
     : conversationState === 'idle'
-    ? 'Hold space to speak · Esc to silence the AI'
+    ? (pttMode === 'toggle' ? 'Tap space to speak · Esc to silence the AI' : 'Hold space to speak · Esc to silence the AI')
     : conversationState === 'speaking'
     ? 'Esc to silence · space to interrupt and reply'
     : '';
@@ -1172,11 +1197,15 @@ export function ConversationPage() {
           ) : (
             <div className="flex flex-col items-center gap-8">
               <button
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onMouseLeave={stopRecording}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
+                onMouseDown={pttMode === 'toggle'
+                  ? (conversationState === 'listening' ? stopRecording : () => void startRecording())
+                  : () => void startRecording()}
+                onMouseUp={pttMode === 'hold' ? stopRecording : undefined}
+                onMouseLeave={pttMode === 'hold' ? stopRecording : undefined}
+                onTouchStart={pttMode === 'toggle'
+                  ? (conversationState === 'listening' ? stopRecording : () => void startRecording())
+                  : () => void startRecording()}
+                onTouchEnd={pttMode === 'hold' ? stopRecording : undefined}
                 disabled={conversationState !== 'idle' && conversationState !== 'listening'}
                 className={`px-10 py-4 text-[1rem] font-sans font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-30 ${
                   conversationState === 'listening'
@@ -1187,7 +1216,9 @@ export function ConversationPage() {
                 }`}
                 style={{ borderRadius: '2px' }}
               >
-                {conversationState === 'listening' ? 'Release to stop' : 'Hold to speak'}
+                {conversationState === 'listening'
+                  ? (pttMode === 'toggle' ? 'Tap to send' : 'Release to stop')
+                  : (pttMode === 'toggle' ? 'Tap to speak' : 'Hold to speak')}
               </button>
 
               <div className="flex items-center gap-6 text-[0.82rem] font-sans">

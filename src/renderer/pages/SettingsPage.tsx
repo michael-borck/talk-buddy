@@ -281,6 +281,7 @@ export function SettingsPage() {
     femaleVoice: 'af_bella',
     ttsSpeed: '1.25',
     conversationCue: 'rise' as 'rise' | 'click' | 'none',
+    pttMode: 'hold' as 'hold' | 'toggle',
     promptTemplate: 'natural',
     customPrompt: '',
     promptBehavior: 'enhance' as 'enhance' | 'override' | 'scenario-only',
@@ -446,6 +447,7 @@ export function SettingsPage() {
         femaleVoice: prefs.femaleVoice || 'af_bella',
         ttsSpeed: prefs.ttsSpeed || '1.25',
         conversationCue: ((prefs.conversationCue as 'rise' | 'click' | 'none') || 'rise'),
+        pttMode: ((prefs.pttMode as 'hold' | 'toggle') || 'hold'),
         promptTemplate: prefs.promptTemplate || 'natural',
         customPrompt: prefs.customPrompt || '',
         promptBehavior: (prefs.promptBehavior as 'enhance' | 'override' | 'scenario-only') || 'enhance',
@@ -486,6 +488,7 @@ export function SettingsPage() {
       await setPreference('femaleVoice', preferences.femaleVoice);
       await setPreference('ttsSpeed', preferences.ttsSpeed);
       await setPreference('conversationCue', preferences.conversationCue);
+      await setPreference('pttMode', preferences.pttMode);
       await setPreference('promptTemplate', preferences.promptTemplate);
       await setPreference('customPrompt', preferences.customPrompt);
       await setPreference('promptBehavior', preferences.promptBehavior);
@@ -1438,6 +1441,24 @@ export function SettingsPage() {
                   <p className="mt-1 text-sm text-gray-600">
                     Subtle audio cue played when the AI finishes speaking and it's your turn.
                     Respects the mute toggle in the conversation view.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Push-to-talk mode
+                  </label>
+                  <select
+                    value={preferences.pttMode}
+                    onChange={(e) => setPreferences({ ...preferences, pttMode: e.target.value as 'hold' | 'toggle' })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="hold">Hold — press and hold space to talk</option>
+                    <option value="toggle">Toggle — tap space to start, tap again to stop</option>
+                  </select>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Hold is the default and works like a walkie-talkie. Toggle is friendlier for
+                    longer turns or for users who find holding a key awkward.
                   </p>
                 </div>
 
