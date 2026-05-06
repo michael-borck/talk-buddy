@@ -284,9 +284,8 @@ function HomePage() {
           </div>
 
           <h1 className="font-sans text-ink font-medium leading-[0.95] tracking-display text-[clamp(3rem,7vw,6rem)] mb-8">
-            Rehearse the<br />
-            conversation<br />
-            <em className="italic font-light text-ink-soft">before it happens.</em>
+            Practice the conversation<br />
+            <em className="italic font-light text-ink-soft">before the conversation.</em>
             <span className="caret" aria-hidden="true" />
           </h1>
 
@@ -323,15 +322,24 @@ function HomePage() {
           </div>
         </div>
 
-        {/* Right: a single tall editorial marker */}
+        {/* Right: keystroke cheat sheet — useful every visit, reinforces
+            the conversation patterns the user will reach for. The
+            Local-first claim closes the column as a quieter footer. */}
         <div className="hidden lg:flex col-span-4 flex-col justify-end pl-8 border-l border-ink/10">
-          <div className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet mb-3">
-            Edition
+          <div className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet mb-5">
+            How it works
           </div>
-          <div className="font-sans text-ink text-5xl leading-none mb-6">
-            №&nbsp;{new Date().getFullYear()}
-          </div>
-          <div className="text-[0.78rem] text-ink-muted leading-relaxed font-sans max-w-[22ch]">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-3 mb-8">
+            <dt className="font-sans text-ink text-[0.85rem] font-medium whitespace-nowrap">Hold space</dt>
+            <dd className="text-[0.82rem] text-ink-muted font-sans">Speak your turn</dd>
+            <dt className="font-sans text-ink text-[0.85rem] font-medium whitespace-nowrap">Esc</dt>
+            <dd className="text-[0.82rem] text-ink-muted font-sans">Silence the AI</dd>
+            <dt className="font-sans text-ink text-[0.85rem] font-medium whitespace-nowrap">Pause</dt>
+            <dd className="text-[0.82rem] text-ink-muted font-sans">Pause in place, resume later</dd>
+            <dt className="font-sans text-ink text-[0.85rem] font-medium whitespace-nowrap">Replay</dt>
+            <dd className="text-[0.82rem] text-ink-muted font-sans">Re-listen to any AI message</dd>
+          </dl>
+          <div className="text-[0.78rem] text-ink-muted leading-relaxed font-sans max-w-[22ch] pt-5 border-t border-ink/10">
             Local-first. Your recordings and transcripts stay on this device.
           </div>
         </div>
