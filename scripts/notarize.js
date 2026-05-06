@@ -5,7 +5,12 @@
 
 const { notarize } = require('@electron/notarize');
 
-module.exports = async function notarizing(context) {
+// electron-builder loads this hook via `require(path).default`, NOT
+// `require(path)` directly — so the function MUST be exported on the
+// `default` property. Using `module.exports = fn` results in the hook
+// being silently ignored (no log, no error). See:
+// https://www.electron.build/hooks
+exports.default = async function notarizing(context) {
   const { electronPlatformName, appOutDir } = context;
 
   // Diagnostic — confirms electron-builder loaded this hook at all.

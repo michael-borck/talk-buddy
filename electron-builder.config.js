@@ -41,9 +41,13 @@ module.exports = {
     icon: 'assets/icon.ico',
   },
   linux: {
+    // .deb dropped temporarily — electron-builder hits a race condition
+    // downloading the AppImage runtime when both targets are built in
+    // the same job. AppImage is the more universally compatible target
+    // anyway. Re-add .deb once the upstream issue is resolved or we
+    // pre-cache the runtime.
     target: [
       { target: 'AppImage', arch: ['x64'] },
-      { target: 'deb', arch: ['x64'] },
     ],
     icon: 'assets/icon.png',
     category: 'Education',
