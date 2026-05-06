@@ -497,6 +497,21 @@ export function ConversationPage() {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
 
+      // Allocate the assistant message id up front so:
+      //  1. the pipeline's onTurnComplete can store synthesised blobs
+      //     against the same id used in the transcript
+      //  2. tokens can update the placeholder live as they stream in,
+      //     so a barge-in or Esc preserves the partial response in the
+      //     transcript instead of discarding it
+      const aiMsgId = `msg_${Date.now() + 1}`;
+      const placeholderMsg: ConversationMessage = {
+        id: aiMsgId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, placeholderMsg]);
+
       let fullResponse = '';
       const tokenStream = (async function* () {
         for await (const tok of streamChatCompletion(
@@ -505,14 +520,14 @@ export function ConversationPage() {
           { signal: ctrl.signal },
         )) {
           fullResponse += tok;
+          // Update the placeholder live. Slightly behind the audio
+          // (text streams faster than TTS plays), but that's the
+          // intent: on Esc, the user sees what the AI was about to
+          // say even if they didn't hear all of it.
+          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullResponse } : m));
           yield tok;
         }
       })();
-
-      // Allocate the assistant message id up front so the pipeline's
-      // onTurnComplete callback can store the synthesised blobs against
-      // the same id we'll use when adding the message to the transcript.
-      const aiMsgId = `msg_${Date.now() + 1}`;
 
       const pipeline = new TTSPipeline({
         synthesize: (sentence) => generateSpeech({ text: sentence, voice: scenario?.voice }),
@@ -530,14 +545,10 @@ export function ConversationPage() {
       try {
         await pipeline.pump(tokenStream, ctrl.signal);
 
-        const aiMsg: ConversationMessage = {
-          id: aiMsgId,
-          role: 'assistant',
-          content: fullResponse,
-          timestamp: new Date().toISOString()
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        if (session) await updateSession(session.id, { transcript: [...allMessages, aiMsg] });
+        // Placeholder already holds the full content from the live
+        // token updates; just persist the transcript.
+        const finalMsg: ConversationMessage = { ...placeholderMsg, content: fullResponse };
+        if (session) await updateSession(session.id, { transcript: [...allMessages, finalMsg] });
 
         teardownTtsAnalyser();
 
@@ -556,13 +567,27 @@ export function ConversationPage() {
       } catch (pipelineErr) {
         teardownTtsAnalyser();
         if ((pipelineErr as Error).name === 'AbortError') {
-          // Barge-in or end-session — the new turn (or session teardown)
-          // owns state from here.
+          // Barge-in or Esc. The placeholder retains whatever text
+          // streamed before the abort. If nothing streamed at all
+          // (instant abort), drop the empty placeholder rather than
+          // leaving an empty bubble in the transcript. Persist the
+          // partial so Save & Exit captures what the user saw.
+          if (!fullResponse.trim()) {
+            setMessages(prev => prev.filter(m => m.id !== aiMsgId));
+          } else if (session) {
+            const partialMsg: ConversationMessage = { ...placeholderMsg, content: fullResponse };
+            await updateSession(session.id, { transcript: [...allMessages, partialMsg] }).catch(() => {});
+          }
           return;
         }
         console.error('Streaming pipeline error:', pipelineErr);
         const detail = pipelineErr instanceof Error ? pipelineErr.message : String(pipelineErr);
         toast.error(`Voice pipeline failed: ${detail}`, { duration: 8000 });
+        // Pipeline error mid-stream: drop the empty placeholder if
+        // nothing arrived; otherwise keep the partial.
+        if (!fullResponse.trim()) {
+          setMessages(prev => prev.filter(m => m.id !== aiMsgId));
+        }
         setConversationState('idle');
       } finally {
         if (abortRef.current === ctrl) abortRef.current = null;
