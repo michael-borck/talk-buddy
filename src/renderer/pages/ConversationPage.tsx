@@ -110,9 +110,16 @@ export function ConversationPage() {
     };
   }, [session, messages, elapsedTime, sessionComplete]);
 
-  // Audio-analyser teardown on unmount — release any dangling nodes.
+  // Audio-analyser + streaming pipeline teardown on unmount. Without
+  // the pipeline abort, navigating away mid-response (pause, switch
+  // session, delete library) leaves an orphaned TTSPipeline running:
+  // its self-perpetuating audio.onended → playNext loop keeps creating
+  // and playing audio elements until the queue empties, with no
+  // surviving handle to stop it.
   useEffect(() => {
     return () => {
+      abortRef.current?.abort();
+      pipelineRef.current?.stopAndDrain();
       stopAmplitudeLoop();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
