@@ -5,7 +5,7 @@ import { transcribeAudio, generateSpeech } from '../services/speechProvider';
 import { generateResponse, streamChatCompletion } from '../services/chat';
 import { TTSPipeline } from '../services/ttsPipeline';
 import { Scenario, Session, ConversationMessage } from '../types';
-import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle, Play } from 'lucide-react';
+import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
 import { EditorialVoiceVisualizer } from '../components/EditorialVoiceVisualizer';
 import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
 import { playYourTurnCue, CueStyle } from '../services/audioCues';
@@ -45,6 +45,9 @@ export function ConversationPage() {
   // and we don't need it to drive renders — the play button just looks
   // up by id at click time.
   const audioByMessageRef = useRef<Map<string, Blob[]>>(new Map());
+  // Remembers the state we were in before pausing so resume can restore
+  // it instead of always landing on idle.
+  const prePauseStateRef = useRef<ConversationState>('idle');
 
   // Audio analyser refs — fed into the visualizer so motion responds
   // to the real signal instead of procedural sine waves.
@@ -724,13 +727,23 @@ export function ConversationPage() {
     setShowEndModal(true);
   };
 
-  // Pause-in-place: silence the AI, freeze state. The conversation is
-  // not saved or exited; resume returns to 'idle' from any prior state.
+  // Pause-in-place: pause the audio element without aborting the
+  // streaming pipeline. Queued sentences keep arriving in the
+  // background; on resume, audio.play() picks up exactly where it
+  // left off and the queue drains naturally. Distinct from Esc, which
+  // aborts the pipeline entirely.
   const togglePause = () => {
     if (conversationState === 'paused') {
-      setConversationState('idle');
+      // Resume: restart the audio element if it was mid-utterance.
+      if (audioRef.current && audioRef.current.paused) {
+        audioRef.current.play().catch((err) => console.warn('Resume play failed:', err));
+      }
+      setConversationState(prePauseStateRef.current);
     } else {
-      stopSpeaking();
+      prePauseStateRef.current = conversationState;
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+      }
       setConversationState('paused');
     }
   };
@@ -983,11 +996,12 @@ export function ConversationPage() {
                     {msg.role === 'assistant' && audioByMessageRef.current.has(msg.id) && (
                       <button
                         onClick={() => rehearMessage(msg.id)}
-                        className="text-ink-quiet hover:text-accent transition-colors"
-                        aria-label="Rehear this message"
-                        title="Rehear this message"
+                        className="flex items-center gap-1 text-ink-muted hover:text-accent transition-colors"
+                        aria-label="Replay this message"
+                        title="Replay this message"
                       >
-                        <Play size={11} strokeWidth={1.8} />
+                        <Volume2 size={14} strokeWidth={1.5} />
+                        <span className="text-[0.68rem] uppercase tracking-[0.18em] font-sans">replay</span>
                       </button>
                     )}
                   </div>
