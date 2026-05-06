@@ -175,25 +175,6 @@ export async function getCategorizedVoices(): Promise<{
   }
 }
 
-// Get voices by gender from embedded server
-export async function getVoicesByGender(gender: 'male' | 'female' | 'unknown' | 'all'): Promise<Array<{id: number, name: string, gender: string}>> {
-  try {
-    const baseUrl = await getEmbeddedTTSUrl();
-    
-    const response = await fetch(`${baseUrl}/v1/voices/${gender}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${gender} voices`);
-    }
-    
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error(`Failed to get ${gender} voices:`, error);
-    return [];
-  }
-}
-
 // Check if embedded STT server is available
 export async function checkSTTConnection(): Promise<boolean> {
   try {
@@ -267,9 +248,3 @@ export async function restartEmbeddedServer(): Promise<boolean> {
   }
 }
 
-// Check overall embedded server connection
-export async function checkEmbeddedConnection(): Promise<boolean> {
-  const sttOk = await checkSTTConnection();
-  const ttsOk = await checkTTSConnection();
-  return sttOk && ttsOk;
-}

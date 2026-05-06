@@ -138,31 +138,6 @@ export async function getAvailableVoices(): Promise<string[]> {
   }
 }
 
-// Provider status information
-export async function getProviderStatus(): Promise<{
-  stt: { provider: STTProvider; available: boolean };
-  tts: { provider: TTSProvider; available: boolean };
-}> {
-  const sttProvider = await getSTTProvider();
-  const ttsProvider = await getTTSProvider();
-  
-  const [sttAvailable, ttsAvailable] = await Promise.all([
-    checkSTTConnection(),
-    checkTTSConnection()
-  ]);
-  
-  return {
-    stt: {
-      provider: sttProvider,
-      available: sttAvailable
-    },
-    tts: {
-      provider: ttsProvider,
-      available: ttsAvailable
-    }
-  };
-}
-
 // Provider management functions
 export const embeddedServer = {
   start: embeddedService.startEmbeddedServer,
@@ -178,17 +153,6 @@ export const embeddedServer = {
     }
   }
 };
-
-// Provider switching (useful for settings or fallback scenarios)
-export async function switchSTTProvider(newProvider: STTProvider): Promise<void> {
-  console.log(`Switching STT provider to: ${newProvider}`);
-  // This would be handled by the settings save process, but we can add logic here if needed
-}
-
-export async function switchTTSProvider(newProvider: TTSProvider): Promise<void> {
-  console.log(`Switching TTS provider to: ${newProvider}`);
-  // This would be handled by the settings save process, but we can add logic here if needed
-}
 
 // Backward compatibility - keep existing API
 export { checkSTTConnection as checkSpeachesConnection } from './speaches';
