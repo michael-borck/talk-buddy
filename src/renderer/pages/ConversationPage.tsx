@@ -5,7 +5,7 @@ import { transcribeAudio, generateSpeech } from '../services/speechProvider';
 import { generateResponse, streamChatCompletion } from '../services/chat';
 import { TTSPipeline } from '../services/ttsPipeline';
 import { Scenario, Session, ConversationMessage } from '../types';
-import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle, Square } from 'lucide-react';
 import { EditorialVoiceVisualizer } from '../components/EditorialVoiceVisualizer';
 import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
 import { playYourTurnCue, CueStyle } from '../services/audioCues';
@@ -65,6 +65,11 @@ export function ConversationPage() {
   const abortRef = useRef<AbortController | null>(null);
   const pipelineRef = useRef<TTSPipeline | null>(null);
   const [chunkProgress, setChunkProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+  // Which AI message is currently being replayed (null when no replay
+  // is active). Used to swap the replay button to a stop button and
+  // visually mark the message being replayed.
+  const [replayingMessageId, setReplayingMessageId] = useState<string | null>(null);
+  const replayAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Load scenario
   useEffect(() => {
@@ -135,6 +140,14 @@ export function ConversationPage() {
     return () => {
       abortRef.current?.abort();
       pipelineRef.current?.stopAndDrain();
+      if (replayAudioRef.current) {
+        try {
+          replayAudioRef.current.onended = null;
+          replayAudioRef.current.onerror = null;
+          replayAudioRef.current.pause();
+        } catch { /* ignore */ }
+        replayAudioRef.current = null;
+      }
       stopAmplitudeLoop();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
@@ -721,21 +734,46 @@ export function ConversationPage() {
     teardownTtsAnalyser();
   };
 
-  // Replay an earlier AI message's audio. Uses the cached per-message
-  // blobs from the original synthesis so there's no second TTS call.
-  // Silences anything currently playing first so we don't overlap.
+  // Stop the currently-playing replay (if any).
+  const stopReplay = () => {
+    if (replayAudioRef.current) {
+      try {
+        replayAudioRef.current.onended = null;
+        replayAudioRef.current.onerror = null;
+        replayAudioRef.current.pause();
+      } catch { /* ignore */ }
+      replayAudioRef.current = null;
+    }
+    setReplayingMessageId(null);
+  };
+
+  // Replay an earlier AI message's audio, or stop the current replay
+  // if the same message is already playing. Uses the cached per-message
+  // blobs so there's no second TTS call. Silences any live conversation
+  // audio first so we don't overlap.
   const rehearMessage = (msgId: string) => {
+    if (replayingMessageId === msgId) {
+      stopReplay();
+      return;
+    }
     const blobs = audioByMessageRef.current.get(msgId);
     if (!blobs || blobs.length === 0) {
       toast.error('Audio for this message is not available.');
       return;
     }
+    stopReplay();
     stopSpeaking();
+    setReplayingMessageId(msgId);
     let i = 0;
     const playNext = () => {
-      if (i >= blobs.length) return;
+      if (i >= blobs.length) {
+        replayAudioRef.current = null;
+        setReplayingMessageId(null);
+        return;
+      }
       const url = URL.createObjectURL(blobs[i]);
       const audio = new Audio(url);
+      replayAudioRef.current = audio;
       audio.onended = () => {
         URL.revokeObjectURL(url);
         i++;
@@ -1017,31 +1055,48 @@ export function ConversationPage() {
             </p>
           ) : (
             <div className="space-y-6 pb-4">
-              {messages.map((msg) => (
-                <div key={msg.id}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <p className={`text-[0.68rem] uppercase tracking-[0.18em] font-sans ${
-                      msg.role === 'user' ? 'text-accent' : 'text-ink-quiet'
-                    }`}>
-                      {msg.role === 'user' ? 'you' : 'tutor'}
+              {messages.map((msg) => {
+                const isReplaying = replayingMessageId === msg.id;
+                const hasReplay = msg.role === 'assistant' && audioByMessageRef.current.has(msg.id);
+                return (
+                  <div
+                    key={msg.id}
+                    className={isReplaying ? 'border-l-2 border-accent pl-3 -ml-3 transition-colors' : ''}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <p className={`text-[0.68rem] uppercase tracking-[0.18em] font-sans ${
+                        msg.role === 'user' ? 'text-accent' : 'text-ink-quiet'
+                      }`}>
+                        {msg.role === 'user' ? 'you' : 'tutor'}
+                      </p>
+                      {hasReplay && (
+                        <button
+                          onClick={() => rehearMessage(msg.id)}
+                          className={`flex items-center gap-1 transition-colors ${
+                            isReplaying
+                              ? 'text-accent'
+                              : 'text-ink-muted hover:text-accent'
+                          }`}
+                          aria-label={isReplaying ? 'Stop replay' : 'Replay this message'}
+                          title={isReplaying ? 'Stop replay' : 'Replay this message'}
+                        >
+                          {isReplaying ? (
+                            <Square size={12} strokeWidth={2} fill="currentColor" />
+                          ) : (
+                            <Volume2 size={14} strokeWidth={1.5} />
+                          )}
+                          <span className="text-[0.68rem] uppercase tracking-[0.18em] font-sans">
+                            {isReplaying ? 'replaying' : 'replay'}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-ink leading-relaxed font-sans text-[0.95rem]">
+                      {msg.content}
                     </p>
-                    {msg.role === 'assistant' && audioByMessageRef.current.has(msg.id) && (
-                      <button
-                        onClick={() => rehearMessage(msg.id)}
-                        className="flex items-center gap-1 text-ink-muted hover:text-accent transition-colors"
-                        aria-label="Replay this message"
-                        title="Replay this message"
-                      >
-                        <Volume2 size={14} strokeWidth={1.5} />
-                        <span className="text-[0.68rem] uppercase tracking-[0.18em] font-sans">replay</span>
-                      </button>
-                    )}
                   </div>
-                  <p className="text-ink leading-relaxed font-sans text-[0.95rem]">
-                    {msg.content}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
               <div ref={transcriptEndRef} />
             </div>
           )}

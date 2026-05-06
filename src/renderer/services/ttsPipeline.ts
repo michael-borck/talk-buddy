@@ -79,6 +79,10 @@ export class TTSPipeline {
       await this.waitForPlaybackDrain(signal);
       this.onTurnComplete?.(collectedBlobs);
     } catch (e) {
+      // Fire onTurnComplete even on abort so consumers can offer
+      // "replay what was synthesised so far" — useful when the user
+      // barge-ins or hits Esc but wants to rehear the partial.
+      this.onTurnComplete?.(collectedBlobs);
       this.stopAndDrain();
       throw e;
     }
