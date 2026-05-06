@@ -144,9 +144,20 @@ export function ConversationPage() {
     };
 
     const handleKeyDown = (ev: KeyboardEvent) => {
-      if (ev.code !== 'Space' || ev.repeat) return;
       if (showInfo || showEndModal || sessionComplete) return;
       if (isTypingTarget(ev.target)) return;
+
+      // Escape: silence the AI without starting to record. For when the
+      // user has the gist and wants quiet to think before replying.
+      // Distinct from spacebar barge-in, which cuts off AND records.
+      if (ev.code === 'Escape' && conversationState === 'speaking') {
+        ev.preventDefault();
+        stopSpeaking();
+        setConversationState('idle');
+        return;
+      }
+
+      if (ev.code !== 'Space' || ev.repeat) return;
 
       // Barge-in: pressing space while the AI is mid-response cancels
       // the turn (stopSpeaking aborts the pipeline) and starts a new
