@@ -854,6 +854,42 @@ export interface StreamOptions {
   signal?: AbortSignal;
 }
 
+// Wrap fetch with a connection timeout and one retry on transient
+// network failures. The timeout fires only on the initial connection
+// — once the response object is returned, the timer is cancelled so a
+// long-running stream body isn't cut. Retries do NOT apply to in-flight
+// streams (you can't resume an SSE response that already yielded
+// tokens), only to the initial fetch failing before any bytes arrived.
+// User-initiated aborts (init.signal.aborted) pass through immediately
+// without retry.
+async function fetchWithRetry(
+  input: string,
+  init: RequestInit & { signal?: AbortSignal },
+  opts: { timeoutMs?: number; retries?: number } = {},
+): Promise<Response> {
+  const timeoutMs = opts.timeoutMs ?? 60000;
+  const retries = opts.retries ?? 1;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const timeoutCtrl = new AbortController();
+    const timer = setTimeout(() => timeoutCtrl.abort(), timeoutMs);
+    const signals = init.signal ? [init.signal, timeoutCtrl.signal] : [timeoutCtrl.signal];
+    const combined = AbortSignal.any(signals);
+
+    try {
+      const response = await fetch(input, { ...init, signal: combined });
+      clearTimeout(timer);
+      return response;
+    } catch (e) {
+      clearTimeout(timer);
+      if (init.signal?.aborted) throw e;
+      if (attempt === retries) throw e;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+  throw new Error('fetchWithRetry: unreachable');
+}
+
 export async function* streamChatCompletion(
   messages: ConversationMessage[],
   systemPrompt: string,
@@ -934,7 +970,7 @@ async function* streamOpenAICompatible(
     temperature: 0.7,
   };
 
-  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+  const response = await fetchWithRetry(`${baseUrl}/v1/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -964,7 +1000,7 @@ async function* streamAnthropic(
   const model = await getChatModel();
   const apiKey = await getChatApiKey();
 
-  const response = await fetch(`${baseUrl}/v1/messages`, {
+  const response = await fetchWithRetry(`${baseUrl}/v1/messages`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1006,7 +1042,7 @@ async function* streamGemini(
   const apiKey = await getChatApiKey();
 
   const url = `${baseUrl}/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
