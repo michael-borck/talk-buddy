@@ -11,7 +11,7 @@ import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
 import { playYourTurnCue, CueStyle } from '../services/audioCues';
 import toast from 'react-hot-toast';
 
-type ConversationState = 'not-started' | 'idle' | 'listening' | 'thinking' | 'speaking';
+type ConversationState = 'not-started' | 'idle' | 'listening' | 'thinking' | 'speaking' | 'paused';
 
 export function ConversationPage() {
   const { scenarioId } = useParams();
@@ -73,9 +73,10 @@ export function ConversationPage() {
     }
   }, [resumeSessionId, scenario]);
 
-  // Timer
+  // Timer — pauses when state is 'paused' so the elapsed time reflects
+  // active conversation time only.
   useEffect(() => {
-    if (conversationState !== 'not-started' && !sessionComplete) {
+    if (conversationState !== 'not-started' && conversationState !== 'paused' && !sessionComplete) {
       startTimeRef.current = new Date();
       timerRef.current = setInterval(() => {
         if (startTimeRef.current) {
@@ -146,6 +147,7 @@ export function ConversationPage() {
     const handleKeyDown = (ev: KeyboardEvent) => {
       if (showInfo || showEndModal || sessionComplete) return;
       if (isTypingTarget(ev.target)) return;
+      if (conversationState === 'paused') return;
 
       // Escape: silence the AI without starting to record. For when the
       // user has the gist and wants quiet to think before replying.
@@ -673,7 +675,21 @@ export function ConversationPage() {
     setShowEndModal(true);
   };
 
-  const pauseSession = async () => {
+  // Pause-in-place: silence the AI, freeze state. The conversation is
+  // not saved or exited; resume returns to 'idle' from any prior state.
+  const togglePause = () => {
+    if (conversationState === 'paused') {
+      setConversationState('idle');
+    } else {
+      stopSpeaking();
+      setConversationState('paused');
+    }
+  };
+
+  // Save the current session and navigate back to the sessions list.
+  // Resumable later from the library. (This was previously called
+  // "Pause" in the UI, which conflicted with the in-place pause above.)
+  const saveAndExitSession = async () => {
     stopSpeaking();
     if (session) {
       await updateSession(session.id, {
@@ -815,10 +831,15 @@ export function ConversationPage() {
     );
   }
 
-  const visualizerState = conversationState === 'not-started' ? 'idle' : conversationState;
+  const visualizerState =
+    conversationState === 'not-started' || conversationState === 'paused'
+      ? 'idle'
+      : conversationState;
   const statusLabel =
     conversationState === 'not-started'
       ? 'ready'
+      : conversationState === 'paused'
+      ? 'paused.'
       : conversationState === 'listening'
       ? 'listening.'
       : conversationState === 'thinking'
@@ -830,10 +851,14 @@ export function ConversationPage() {
   const statusHint =
     conversationState === 'not-started'
       ? 'Press begin to start the session.'
+      : conversationState === 'paused'
+      ? 'Click Resume to continue.'
       : conversationState === 'listening'
       ? 'Release to stop — or let go of the space bar.'
       : conversationState === 'idle'
-      ? 'Hold the space bar, or press and hold the button to speak.'
+      ? 'Hold space to speak · Esc to silence the AI'
+      : conversationState === 'speaking'
+      ? 'Esc to silence · space to interrupt and reply'
       : '';
 
   return (
@@ -949,10 +974,17 @@ export function ConversationPage() {
 
               <div className="flex items-center gap-6 text-[0.82rem] font-sans">
                 <button
-                  onClick={pauseSession}
+                  onClick={togglePause}
                   className="text-ink-muted hover:text-ink transition-colors"
                 >
-                  Pause
+                  {conversationState === 'paused' ? 'Resume' : 'Pause'}
+                </button>
+                <span className="text-ink/20" aria-hidden="true">·</span>
+                <button
+                  onClick={saveAndExitSession}
+                  className="text-ink-muted hover:text-ink transition-colors"
+                >
+                  Save & exit
                 </button>
                 <span className="text-ink/20" aria-hidden="true">·</span>
                 <button
