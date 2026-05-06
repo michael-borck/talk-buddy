@@ -5,7 +5,7 @@ import { transcribeAudio, generateSpeech } from '../services/speechProvider';
 import { generateResponse, streamChatCompletion } from '../services/chat';
 import { TTSPipeline } from '../services/ttsPipeline';
 import { Scenario, Session, ConversationMessage } from '../types';
-import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle, Play } from 'lucide-react';
 import { EditorialVoiceVisualizer } from '../components/EditorialVoiceVisualizer';
 import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
 import { playYourTurnCue, CueStyle } from '../services/audioCues';
@@ -40,6 +40,11 @@ export function ConversationPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const initialMessageSpokenRef = useRef<boolean>(false);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+  // Per-message audio cache for rehear. Keyed by assistant message id.
+  // Lives in a ref because re-rendering a Map doesn't change identity
+  // and we don't need it to drive renders — the play button just looks
+  // up by id at click time.
+  const audioByMessageRef = useRef<Map<string, Blob[]>>(new Map());
 
   // Audio analyser refs — fed into the visualizer so motion responds
   // to the real signal instead of procedural sine waves.
@@ -501,12 +506,20 @@ export function ConversationPage() {
         }
       })();
 
+      // Allocate the assistant message id up front so the pipeline's
+      // onTurnComplete callback can store the synthesised blobs against
+      // the same id we'll use when adding the message to the transcript.
+      const aiMsgId = `msg_${Date.now() + 1}`;
+
       const pipeline = new TTSPipeline({
         synthesize: (sentence) => generateSpeech({ text: sentence, voice: scenario?.voice }),
         onChunkChange: (current, total) => setChunkProgress({ current, total }),
         onAudioStart: (audio) => {
           audioRef.current = audio;
           setupTtsAnalyser(audio);
+        },
+        onTurnComplete: (blobs) => {
+          audioByMessageRef.current.set(aiMsgId, blobs);
         },
       });
       pipelineRef.current = pipeline;
@@ -515,7 +528,7 @@ export function ConversationPage() {
         await pipeline.pump(tokenStream, ctrl.signal);
 
         const aiMsg: ConversationMessage = {
-          id: `msg_${Date.now() + 1}`,
+          id: aiMsgId,
           role: 'assistant',
           content: fullResponse,
           timestamp: new Date().toISOString()
@@ -671,6 +684,36 @@ export function ConversationPage() {
       audioRef.current = null;
     }
     teardownTtsAnalyser();
+  };
+
+  // Replay an earlier AI message's audio. Uses the cached per-message
+  // blobs from the original synthesis so there's no second TTS call.
+  // Silences anything currently playing first so we don't overlap.
+  const rehearMessage = (msgId: string) => {
+    const blobs = audioByMessageRef.current.get(msgId);
+    if (!blobs || blobs.length === 0) {
+      toast.error('Audio for this message is not available.');
+      return;
+    }
+    stopSpeaking();
+    let i = 0;
+    const playNext = () => {
+      if (i >= blobs.length) return;
+      const url = URL.createObjectURL(blobs[i]);
+      const audio = new Audio(url);
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        i++;
+        playNext();
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        i++;
+        playNext();
+      };
+      audio.play().catch((err) => console.warn('Rehear playback failed:', err));
+    };
+    playNext();
   };
 
   const handleEndSession = () => {
@@ -931,11 +974,23 @@ export function ConversationPage() {
             <div className="space-y-6 pb-4">
               {messages.map((msg) => (
                 <div key={msg.id}>
-                  <p className={`text-[0.68rem] uppercase tracking-[0.18em] font-sans mb-1.5 ${
-                    msg.role === 'user' ? 'text-accent' : 'text-ink-quiet'
-                  }`}>
-                    {msg.role === 'user' ? 'you' : 'tutor'}
-                  </p>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <p className={`text-[0.68rem] uppercase tracking-[0.18em] font-sans ${
+                      msg.role === 'user' ? 'text-accent' : 'text-ink-quiet'
+                    }`}>
+                      {msg.role === 'user' ? 'you' : 'tutor'}
+                    </p>
+                    {msg.role === 'assistant' && audioByMessageRef.current.has(msg.id) && (
+                      <button
+                        onClick={() => rehearMessage(msg.id)}
+                        className="text-ink-quiet hover:text-accent transition-colors"
+                        aria-label="Rehear this message"
+                        title="Rehear this message"
+                      >
+                        <Play size={11} strokeWidth={1.8} />
+                      </button>
+                    )}
+                  </div>
                   <p className="text-ink leading-relaxed font-sans text-[0.95rem]">
                     {msg.content}
                   </p>

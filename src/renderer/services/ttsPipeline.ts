@@ -5,6 +5,11 @@ export interface TTSPipelineOptions {
   autoPlay?: boolean;
   onChunkChange?: (current: number, total: number) => void;
   onAudioStart?: (audio: HTMLAudioElement) => void;
+  // Fires once after pump completes successfully (not on abort), passing
+  // every blob synthesised this turn in playback order. Consumers use
+  // this to enable "rehear" — replaying the AI's full message later
+  // without a second TTS round-trip.
+  onTurnComplete?: (blobs: Blob[]) => void;
 }
 
 export class TTSPipeline {
@@ -12,6 +17,7 @@ export class TTSPipeline {
   private readonly autoPlay: boolean;
   private readonly onChunkChange?: (current: number, total: number) => void;
   private readonly onAudioStart?: (audio: HTMLAudioElement) => void;
+  private readonly onTurnComplete?: (blobs: Blob[]) => void;
 
   private audioQueue: Blob[] = [];
   private currentAudio: HTMLAudioElement | null = null;
@@ -27,6 +33,7 @@ export class TTSPipeline {
     this.autoPlay = options.autoPlay ?? true;
     this.onChunkChange = options.onChunkChange;
     this.onAudioStart = options.onAudioStart;
+    this.onTurnComplete = options.onTurnComplete;
   }
 
   pump(stream: AsyncIterable<string>, signal: AbortSignal): Promise<void> {
@@ -37,6 +44,9 @@ export class TTSPipeline {
 
   private async runPump(stream: AsyncIterable<string>, signal: AbortSignal): Promise<void> {
     const splitter = new SentenceStream();
+    // Captured separately from audioQueue so onTurnComplete sees the
+    // full set even after playback has shifted blobs out of the queue.
+    const collectedBlobs: Blob[] = [];
 
     const handleSentence = async (sentence: string) => {
       if (signal.aborted) return;
@@ -46,6 +56,7 @@ export class TTSPipeline {
         const blob = await this.synthesize(sentence);
         if (signal.aborted) return;
         this.audioQueue.push(blob);
+        collectedBlobs.push(blob);
         if (this.autoPlay) this.tryStartPlayback(signal);
       } catch (e) {
         if (signal.aborted) return;
@@ -66,6 +77,7 @@ export class TTSPipeline {
         if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
       }
       await this.waitForPlaybackDrain(signal);
+      this.onTurnComplete?.(collectedBlobs);
     } catch (e) {
       this.stopAndDrain();
       throw e;
