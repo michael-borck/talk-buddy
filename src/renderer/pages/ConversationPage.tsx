@@ -519,7 +519,8 @@ export function ConversationPage() {
           return;
         }
         console.error('Streaming pipeline error:', pipelineErr);
-        toast.error('Voice pipeline failed. Try again.');
+        const detail = pipelineErr instanceof Error ? pipelineErr.message : String(pipelineErr);
+        toast.error(`Voice pipeline failed: ${detail}`, { duration: 8000 });
         setConversationState('idle');
       } finally {
         if (abortRef.current === ctrl) abortRef.current = null;

@@ -595,29 +595,73 @@ export function SettingsPage() {
         return;
       }
       
+      // Chat: actually validate the API key by hitting an authenticated
+      // endpoint. The old "ping the base URL with no headers" approach
+      // gave false confidence — Anthropic's domain returns 200 to
+      // anonymous GETs, so the test always passed even when the key was
+      // missing or wrong, hiding the real problem until users tried to
+      // talk and got 401s.
+      if (serviceType === 'chat') {
+        const provider = preferences.chatProvider;
+        const apiKey = await resolveApiKey(preferences.ollamaApiKey);
+        let endpoint: string;
+        const headers: Record<string, string> = {};
+
+        if (provider === 'anthropic') {
+          endpoint = `${CHAT_PROVIDER_URLS.anthropic}/v1/models`;
+          if (apiKey) {
+            headers['x-api-key'] = apiKey;
+            headers['anthropic-version'] = '2023-06-01';
+          }
+        } else if (provider === 'openai' || provider === 'groq') {
+          endpoint = `${CHAT_PROVIDER_URLS[provider]}/v1/models`;
+          if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+        } else if (provider === 'gemini') {
+          endpoint = `${CHAT_PROVIDER_URLS.gemini}/v1beta/models${apiKey ? `?key=${encodeURIComponent(apiKey)}` : ''}`;
+        } else {
+          // Ollama / Custom — unauthenticated tags endpoint
+          const url = preferences.ollamaUrl?.endsWith('/')
+            ? preferences.ollamaUrl.slice(0, -1)
+            : preferences.ollamaUrl || '';
+          endpoint = `${url}/api/tags`;
+        }
+
+        const response = await window.electronAPI.fetch({
+          url: endpoint,
+          options: { method: 'GET', headers },
+        });
+
+        if (response.ok) {
+          setTestResults(prev => ({
+            ...prev,
+            chat: `✅ ${provider} reachable and API key valid`,
+          }));
+        } else if (response.status === 401 || response.status === 403) {
+          const hint = !apiKey
+            ? ' (no key found — check the API key field, and if it starts with `env:`, verify the env var is set in the shell that launched Talk Buddy)'
+            : '';
+          setTestResults(prev => ({
+            ...prev,
+            chat: `❌ ${provider} rejected the API key (HTTP ${response.status})${hint}`,
+          }));
+        } else {
+          setTestResults(prev => ({
+            ...prev,
+            chat: `⚠️ ${provider} returned HTTP ${response.status} ${response.statusText}`,
+          }));
+        }
+        notifyFooter();
+        return;
+      }
+
       let baseUrl;
-      
+
       switch (serviceType as string) {
         case 'stt':
           baseUrl = preferences.sttUrl;
           break;
         case 'tts':
           baseUrl = preferences.ttsUrl;
-          break;
-        case 'chat':
-          // Hardcode canonical URLs for hosted providers — ignore the
-          // stored preference, which may be stale from a previous
-          // provider choice.
-          if (
-            preferences.chatProvider === 'anthropic' ||
-            preferences.chatProvider === 'openai' ||
-            preferences.chatProvider === 'groq' ||
-            preferences.chatProvider === 'gemini'
-          ) {
-            baseUrl = CHAT_PROVIDER_URLS[preferences.chatProvider];
-          } else {
-            baseUrl = preferences.ollamaUrl;
-          }
           break;
       }
 
@@ -634,9 +678,9 @@ export function SettingsPage() {
       });
 
       if (baseResponse.ok) {
-        setTestResults(prev => ({ 
-          ...prev, 
-          [serviceType]: '✅ Server reachable and responding' 
+        setTestResults(prev => ({
+          ...prev,
+          [serviceType]: '✅ Server reachable and responding'
         }));
         return;
       }
