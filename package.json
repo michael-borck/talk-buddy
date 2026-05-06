@@ -1,6 +1,6 @@
 {
   "name": "talk-buddy-desktop",
-  "version": "2.9.5",
+  "version": "2.9.6",
   "description": "Talk Buddy - AI-powered conversation practice desktop app",
   "author": {
     "name": "Michael Borck",
@@ -20,9 +20,9 @@
     "electron:prod": "NODE_ENV=production electron .",
     "electron:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:3307 && electron . --dev\"",
     "electron:dev-nosandbox": "concurrently -k \"npm run dev\" \"wait-on tcp:3307 && electron . --dev --no-sandbox\"",
-    "electron:build": "npm run build && electron-builder",
-    "electron:dist": "npm run build && electron-builder --publish=never",
-    "electron:dist-all": "npm run build && electron-builder -mwl --publish=never",
+    "electron:build": "npm run build && electron-builder --config electron-builder.config.js",
+    "electron:dist": "npm run build && electron-builder --config electron-builder.config.js --publish=never",
+    "electron:dist-all": "npm run build && electron-builder --config electron-builder.config.js -mwl --publish=never",
     "test": "vitest",
     "test:run": "vitest run"
   },
