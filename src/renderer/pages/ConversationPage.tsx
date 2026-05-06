@@ -821,6 +821,10 @@ export function ConversationPage() {
       setConversationState(prePauseStateRef.current);
     } else {
       prePauseStateRef.current = conversationState;
+      // Pause should silence anything currently playing — including a
+      // replay that might be running in the background. Without this,
+      // clicking Pause while a replay was playing left it audible.
+      stopReplay();
       if (audioRef.current && !audioRef.current.paused) {
         audioRef.current.pause();
       }
