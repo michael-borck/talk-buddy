@@ -176,14 +176,20 @@ export function ConversationPage() {
       if (isTypingTarget(ev.target)) return;
       if (conversationState === 'paused') return;
 
-      // Escape: silence the AI without starting to record. For when the
-      // user has the gist and wants quiet to think before replying.
-      // Distinct from spacebar barge-in, which cuts off AND records.
-      if (ev.code === 'Escape' && conversationState === 'speaking') {
-        ev.preventDefault();
-        stopSpeaking();
-        setConversationState('idle');
-        return;
+      // Escape: stop whatever is currently making sound. Replay first
+      // (since it's not part of the live conversation), then live AI.
+      if (ev.code === 'Escape') {
+        if (replayingMessageId) {
+          ev.preventDefault();
+          stopReplay();
+          return;
+        }
+        if (conversationState === 'speaking') {
+          ev.preventDefault();
+          stopSpeaking();
+          setConversationState('idle');
+          return;
+        }
       }
 
       if (ev.code !== 'Space' || ev.repeat) return;
@@ -218,7 +224,7 @@ export function ConversationPage() {
       window.removeEventListener('keyup', handleKeyUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationState, showInfo, showEndModal, sessionComplete]);
+  }, [conversationState, showInfo, showEndModal, sessionComplete, replayingMessageId]);
 
   // --- Audio analyser helpers ----------------------------------------------
 
@@ -420,6 +426,10 @@ export function ConversationPage() {
   };
 
   const startRecording = async () => {
+    // Any new turn implicitly cancels a replay — replay is "look back",
+    // a new turn is "look forward." Without this the replay audio keeps
+    // playing alongside the recording, then alongside the AI's reply.
+    stopReplay();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -967,31 +977,33 @@ export function ConversationPage() {
     conversationState === 'not-started' || conversationState === 'paused'
       ? 'idle'
       : conversationState;
-  const statusLabel =
-    conversationState === 'not-started'
-      ? 'ready'
-      : conversationState === 'paused'
-      ? 'paused.'
-      : conversationState === 'listening'
-      ? 'listening.'
-      : conversationState === 'thinking'
-      ? 'thinking.'
-      : conversationState === 'speaking'
-      ? 'speaking.'
-      : 'your turn.';
+  const statusLabel = replayingMessageId
+    ? 'replaying.'
+    : conversationState === 'not-started'
+    ? 'ready'
+    : conversationState === 'paused'
+    ? 'paused.'
+    : conversationState === 'listening'
+    ? 'listening.'
+    : conversationState === 'thinking'
+    ? 'thinking.'
+    : conversationState === 'speaking'
+    ? 'speaking.'
+    : 'your turn.';
 
-  const statusHint =
-    conversationState === 'not-started'
-      ? 'Press begin to start the session.'
-      : conversationState === 'paused'
-      ? 'Click Resume to continue.'
-      : conversationState === 'listening'
-      ? 'Release to stop — or let go of the space bar.'
-      : conversationState === 'idle'
-      ? 'Hold space to speak · Esc to silence the AI'
-      : conversationState === 'speaking'
-      ? 'Esc to silence · space to interrupt and reply'
-      : '';
+  const statusHint = replayingMessageId
+    ? 'Esc or click stop to end the replay.'
+    : conversationState === 'not-started'
+    ? 'Press begin to start the session.'
+    : conversationState === 'paused'
+    ? 'Click Resume to continue.'
+    : conversationState === 'listening'
+    ? 'Release to stop — or let go of the space bar.'
+    : conversationState === 'idle'
+    ? 'Hold space to speak · Esc to silence the AI'
+    : conversationState === 'speaking'
+    ? 'Esc to silence · space to interrupt and reply'
+    : '';
 
   return (
     <div className="flex flex-col h-full bg-paper">
