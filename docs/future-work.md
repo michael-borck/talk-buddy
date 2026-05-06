@@ -2,43 +2,7 @@
 
 Ideas worth doing but not yet scheduled. Each entry should explain *why* it's parked (cost, dependency, low priority, design uncertainty) so future-Michael knows whether to revive it. Newest entries at the top.
 
-Grouped roughly by size: **UX improvements** (half a day to a day), **architecture decisions** (multi-day, design-heavy), **conversation features** (variable, design-heavy).
-
----
-
-## UX improvements
-
-### Re-synthesis fallback for replay on resumed sessions
-
-**Idea:** Replay button currently only appears for AI messages whose audio was synthesized in the current component instance (cache lives in a `useRef` Map). Resume a saved session from the library and the cache is empty — no replay buttons appear even for messages that have full text.
-
-**Why parked:** scope creep at the time. The current behavior is honest (the button reflects actual cache state) but disappointing for resumed sessions, which are exactly when you'd want to re-listen.
-
-**When to revive:** when students start using Save & Exit / library resume regularly. Fix is to re-synthesize on first replay click for resumed messages, then cache the result. Adds a TTS round-trip on first click (couple of seconds), free thereafter.
-
-### Push-to-talk toggle alternative
-
-**Idea:** Spacebar is hold-to-talk. For younger learners or users with motor difficulties, click-to-start / click-to-stop is friendlier. Settings option to switch between hold and toggle modes.
-
-**Why parked:** out of scope for the streaming pipeline work. UX-only change, no architectural impact.
-
-**When to revive:** when a student or teacher reports the hold gesture as friction.
-
-### Visualizer reacts during replay
-
-**Idea:** The voice-rings visualizer sits idle while replay audio plays because the AnalyserNode isn't hooked up to the replay audio element. Connecting it would make the visualizer ripple in time with replay too.
-
-**Why parked:** the message-level visual indicator (sage left border + "REPLAYING" status word) provides enough feedback that the audio is playing. Hooking the analyser would be ~15 lines but adds complexity to the replay teardown path.
-
-**When to revive:** if "is anything actually playing?" feedback feels weak in observed use.
-
-### Per-provider timeout / retry policy
-
-**Idea:** Wrap each provider's streaming fetch in a uniform `AbortSignal.timeout(20000)` plus 1 retry on network errors. Currently a flaky provider call (Groq sometimes drops mid-SSE) hangs the whole turn until the user hits Esc.
-
-**Why parked:** has been working OK so far. Adds nontrivial state machinery (distinguishing retryable network errors from real provider errors, deciding whether to replay tokens already received before the disconnect).
-
-**When to revive:** first time a student reports "the AI just stopped" with no error in the toast. Likely manifests on cellular networks more than wifi.
+Grouped roughly by size: **architecture decisions** (multi-day, design-heavy), **conversation features** (variable, design-heavy).
 
 ---
 
