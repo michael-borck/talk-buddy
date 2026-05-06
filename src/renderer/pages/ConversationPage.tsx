@@ -39,6 +39,7 @@ export function ConversationPage() {
   const startTimeRef = useRef<Date | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const initialMessageSpokenRef = useRef<boolean>(false);
+  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
   // Audio analyser refs — fed into the visualizer so motion responds
   // to the real signal instead of procedural sine waves.
@@ -97,6 +98,11 @@ export function ConversationPage() {
     };
   }, [conversationState, sessionComplete]);
   
+  // Auto-scroll the transcript pane to the latest message.
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages.length]);
+
   // Save transcript on unmount if session exists
   useEffect(() => {
     return () => {
@@ -910,9 +916,38 @@ export function ConversationPage() {
         </div>
       </header>
 
-      {/* Main — centered visualizer, editorial status, restrained button */}
-      <div className="flex-1 flex items-center justify-center px-8 py-12">
-        <div className="flex flex-col items-center max-w-xl">
+      {/* Main — two columns: live transcript on the left, visualizer
+          and controls on the right. The visualizer column sits slightly
+          above vertical centre so the eye lands on it first; transcript
+          fills its column and auto-scrolls to the latest message. */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8 px-8 py-8 min-h-0 overflow-hidden">
+        {/* Left: live transcript */}
+        <div className="overflow-y-auto pr-4 hidden lg:block">
+          {messages.length === 0 ? (
+            <p className="text-ink-quiet font-sans italic text-center mt-12">
+              The conversation will appear here as you speak.
+            </p>
+          ) : (
+            <div className="space-y-6 pb-4">
+              {messages.map((msg) => (
+                <div key={msg.id}>
+                  <p className={`text-[0.68rem] uppercase tracking-[0.18em] font-sans mb-1.5 ${
+                    msg.role === 'user' ? 'text-accent' : 'text-ink-quiet'
+                  }`}>
+                    {msg.role === 'user' ? 'you' : 'tutor'}
+                  </p>
+                  <p className="text-ink leading-relaxed font-sans text-[0.95rem]">
+                    {msg.content}
+                  </p>
+                </div>
+              ))}
+              <div ref={transcriptEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* Right: visualizer, status, controls */}
+        <div className="flex flex-col items-center justify-start pt-8 lg:pt-12">
           <div className="mb-10">
             <EditorialVoiceVisualizer
               state={visualizerState}
