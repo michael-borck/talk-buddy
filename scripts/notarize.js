@@ -8,6 +8,9 @@ const { notarize } = require('@electron/notarize');
 module.exports = async function notarizing(context) {
   const { electronPlatformName, appOutDir } = context;
 
+  // Diagnostic — confirms electron-builder loaded this hook at all.
+  console.log(`[notarize] afterSign hook entered (platform=${electronPlatformName})`);
+
   if (electronPlatformName !== 'darwin') {
     return;
   }
