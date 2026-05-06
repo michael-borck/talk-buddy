@@ -930,7 +930,7 @@ async function* streamOpenAICompatible(
       ...messages.map((m) => ({ role: m.role, content: m.content })),
     ],
     stream: true,
-    max_tokens: 400,
+    max_tokens: 2048,
     temperature: 0.7,
   };
 
@@ -976,7 +976,7 @@ async function* streamAnthropic(
       model,
       system: systemPrompt || undefined,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
-      max_tokens: 400,
+      max_tokens: 2048,
       stream: true,
     }),
     signal: opts.signal,
@@ -1015,7 +1015,7 @@ async function* streamGemini(
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }],
       })),
-      generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
+      generationConfig: { maxOutputTokens: 2048, temperature: 0.7 },
     }),
     signal: opts.signal,
   });
