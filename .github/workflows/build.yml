@@ -162,3 +162,21 @@ jobs:
             dist/*.yml
             dist/*.yaml
 
+  publish:
+    # Promote the draft release that electron-builder's --publish=always
+    # creates into a published "Latest" release — but only after every
+    # matrix build has succeeded, so we never publish a partial release
+    # missing one or more platforms.
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark release as published and Latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "Publishing release $TAG"
+          gh release edit "$TAG" \
+            --draft=false \
+            --latest \
+            --repo "${{ github.repository }}"
