@@ -282,6 +282,7 @@ export function SettingsPage() {
     ttsSpeed: '1.25',
     conversationCue: 'rise' as 'rise' | 'click' | 'none',
     pttMode: 'hold' as 'hold' | 'toggle',
+    theme: 'system' as 'light' | 'dark' | 'system',
     promptTemplate: 'natural',
     customPrompt: '',
     promptBehavior: 'enhance' as 'enhance' | 'override' | 'scenario-only',
@@ -448,6 +449,7 @@ export function SettingsPage() {
         ttsSpeed: prefs.ttsSpeed || '1.25',
         conversationCue: ((prefs.conversationCue as 'rise' | 'click' | 'none') || 'rise'),
         pttMode: ((prefs.pttMode as 'hold' | 'toggle') || 'hold'),
+        theme: ((prefs.theme as 'light' | 'dark' | 'system') || 'system'),
         promptTemplate: prefs.promptTemplate || 'natural',
         customPrompt: prefs.customPrompt || '',
         promptBehavior: (prefs.promptBehavior as 'enhance' | 'override' | 'scenario-only') || 'enhance',
@@ -489,6 +491,10 @@ export function SettingsPage() {
       await setPreference('ttsSpeed', preferences.ttsSpeed);
       await setPreference('conversationCue', preferences.conversationCue);
       await setPreference('pttMode', preferences.pttMode);
+      await setPreference('theme', preferences.theme);
+      // Tell the App-level theme manager to re-apply immediately so the
+      // user sees the change without a reload.
+      window.dispatchEvent(new CustomEvent('talkbuddy:theme-change', { detail: preferences.theme }));
       await setPreference('promptTemplate', preferences.promptTemplate);
       await setPreference('customPrompt', preferences.customPrompt);
       await setPreference('promptBehavior', preferences.promptBehavior);
@@ -1459,6 +1465,25 @@ export function SettingsPage() {
                   <p className="mt-1 text-sm text-gray-600">
                     Hold is the default and works like a walkie-talkie. Toggle is friendlier for
                     longer turns or for users who find holding a key awkward.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Appearance
+                  </label>
+                  <select
+                    value={preferences.theme}
+                    onChange={(e) => setPreferences({ ...preferences, theme: e.target.value as 'light' | 'dark' | 'system' })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="system">Match system</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Dark mode is designed for late-night practice — the warm-paper-and-soft-ink
+                    character is preserved, just inverted.
                   </p>
                 </div>
 

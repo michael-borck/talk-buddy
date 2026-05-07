@@ -13,13 +13,59 @@ import { LicensePage } from './pages/LicensePage';
 import { HelpPage } from './pages/HelpPage';
 import { DocumentationPage } from './pages/DocumentationPage';
 import { useState, useEffect } from 'react';
-import { listScenarios, listPacks, startStandaloneSession } from './services/sqlite';
+import { listScenarios, listPacks, startStandaloneSession, getPreference } from './services/sqlite';
 import { Scenario, Pack } from './types';
 import { Home, BookOpen, History, Settings, ChevronRight, ChevronLeft, Archive, Info, HelpCircle, Package } from 'lucide-react';
 import { StatusFooter } from './components/StatusFooter';
 import { Toaster } from 'react-hot-toast';
 
+// Apply the user's theme preference and respond to system colour-scheme
+// changes when they've chosen "system". Studio Calm CSS already defines
+// the dark tokens under html[data-theme='dark']; this hook just toggles
+// the attribute. No transition animation — a snap is honest, a fade
+// would feel "designed."
+function useTheme() {
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const apply = (mode: 'light' | 'dark' | 'system') => {
+      const effective = mode === 'system' ? (mq.matches ? 'dark' : 'light') : mode;
+      document.documentElement.setAttribute('data-theme', effective);
+    };
+
+    let currentMode: 'light' | 'dark' | 'system' = 'system';
+
+    getPreference('theme').then((v) => {
+      currentMode = v === 'light' || v === 'dark' || v === 'system' ? v : 'system';
+      apply(currentMode);
+    });
+
+    const onSystemChange = () => {
+      if (currentMode === 'system') apply('system');
+    };
+    mq.addEventListener('change', onSystemChange);
+
+    // Cross-component bridge: the Settings page dispatches this event
+    // when the user changes the theme preference, so we re-apply
+    // without a full app reload.
+    const onPrefChange = (e: Event) => {
+      const detail = (e as CustomEvent<'light' | 'dark' | 'system'>).detail;
+      if (detail === 'light' || detail === 'dark' || detail === 'system') {
+        currentMode = detail;
+        apply(currentMode);
+      }
+    };
+    window.addEventListener('talkbuddy:theme-change', onPrefChange);
+
+    return () => {
+      mq.removeEventListener('change', onSystemChange);
+      window.removeEventListener('talkbuddy:theme-change', onPrefChange);
+    };
+  }, []);
+}
+
 function App() {
+  useTheme();
   return (
     <HashRouter>
       <div className="flex flex-col h-screen relative">
