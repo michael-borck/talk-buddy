@@ -5,6 +5,7 @@ const { spawn } = require('child_process');
 const { net } = require('electron');
 const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'production' && require('electron-is-dev'));
 const Database = require('better-sqlite3');
+const { autoUpdater } = require('electron-updater');
 
 // Disable sandbox on Linux only in development or when explicitly requested
 if (process.platform === 'linux' && (isDev || process.argv.includes('--no-sandbox'))) {
@@ -753,6 +754,25 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+
+  // Auto-updater — skip in dev (no built artifact, no signed build).
+  // electron-updater reads the latest-{platform}.yml files that the
+  // CI workflow already publishes to GitHub Releases, so we don't
+  // need a separate update server. Logs at info level so we can see
+  // what happened in production logs without overwhelming the user.
+  if (!isDev) {
+    autoUpdater.logger = console;
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    // Wait 30s after launch before checking — give the app time to
+    // settle (window painted, embedded server warmed up) so the
+    // update check doesn't compete for resources at the worst moment.
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+        console.warn('[auto-updater] Check failed (non-fatal):', err.message);
+      });
+    }, 30_000);
+  }
 });
 
 app.on('window-all-closed', () => {

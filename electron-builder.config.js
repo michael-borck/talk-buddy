@@ -24,6 +24,16 @@ module.exports = {
   // We disable it here and run @electron/notarize directly from the
   // afterSign hook, which gives us full control over the options object.
   afterSign: './scripts/notarize.js',
+
+  // Explicit publish config so electron-updater knows where to check
+  // for updates at runtime. The CI workflow already publishes here
+  // via --publish=always; this just makes it explicit instead of
+  // relying on git-remote auto-detection.
+  publish: {
+    provider: 'github',
+    owner: 'michael-borck',
+    repo: 'talk-buddy',
+  },
   mac: {
     category: 'public.app-category.education',
     icon: 'assets/icon.icns',
