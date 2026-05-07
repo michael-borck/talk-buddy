@@ -8,24 +8,13 @@ Grouped roughly by size: **architecture decisions** (multi-day, design-heavy), *
 
 ## Architecture decisions
 
-### Web Speech fallback — wire it up or delete it
-
-**Idea:** `src/renderer/services/webspeech.ts` was the original justification for choosing Electron over Tauri (browser-context Web Speech API for system-voice TTS/STT fallback), but it's never been wired into the conversation flow. Two paths:
-
-1. **Wire it as a third-tier fallback** behind cloud and embedded — if both fail, use system voices via Web Speech API. ~2 hours to wire properly into `speechProvider.ts`.
-2. **Delete the file** — accepts that the Electron-vs-Tauri justification was aspirational, not load-bearing. ~10 minutes.
-
-**Why parked:** decision needed about whether the Electron-only justification still matters strategically. Connects to the Tauri migration question below — they're really one decision.
-
-**When to revive:** when the orphan cleanup happens, or when the Tauri question gets re-evaluated.
-
 ### Tauri migration
 
 **Idea:** Port from Electron 28 to Tauri 2 (Rust + WebView). Smaller binaries (~5MB vs ~150MB), better native integration, modern stack.
 
-**Why parked:** original analysis (see Dexter inspiration in commit history) flagged the Web Speech fallback as the main blocker. That fallback turns out to be aspirational, so the blocker is dissolved — but the migration is still a multi-day rewrite touching the entire main process (sqlite, embedded server lifecycle, code signing, notarization, auto-updater path, GitHub Actions matrix). Not worth doing for its own sake.
+**Why parked indefinitely:** the original analysis (see Dexter inspiration in commit history) flagged the now-deleted Web Speech fallback as the only architectural reason to stay on Electron. With that gone, the reason-not-to dissolves — but no positive reason emerged either. The migration is a 1-2 week rewrite touching the entire main process (sqlite, embedded server lifecycle, code signing, notarization, auto-updater path, GitHub Actions matrix). Real user-facing benefit for ESL students: roughly zero — binary size doesn't matter for desktop installs, perceived performance is identical (both are Chromium rendering a React app), the rewrite cost is high. Pure engineer-aesthetic at this point.
 
-**When to revive:** if Electron 28→34+ bump (already parked separately) becomes painful enough that "just rewrite the main process" looks comparable in effort.
+**When to revive:** only if Electron 28→34+ bump (parked separately in project memory) becomes painful enough that "rewrite the main process" looks comparable in effort. Until then, this is not worth a session.
 
 ---
 
