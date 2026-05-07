@@ -1,0 +1,89 @@
+# Dependabot configuration — supply-chain hygiene without alert fatigue.
+#
+# Strategy:
+#   - Weekly cadence so PRs don't pile up daily.
+#   - Runtime deps get individual PRs (we want to read each one).
+#   - DevDeps get grouped (less risk; review collectively).
+#   - electron-builder's whole cluster lands as one PR so we don't
+#     fight version-skew across @electron/*, electron-builder, and
+#     app-builder-lib three separate times.
+#   - GitHub Actions also tracked — keeps actions/checkout, setup-node,
+#     etc. up to date for the build pipeline.
+
+version: 2
+updates:
+  # npm — application dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Australia/Perth"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      # The whole electron-builder + @electron + app-builder cluster
+      # always needs to move together; one combined PR.
+      electron-builder-cluster:
+        patterns:
+          - "electron-builder"
+          - "@electron/*"
+          - "app-builder-*"
+          - "builder-util*"
+      # React + ReactDOM + types — lock-step.
+      react-cluster:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      # Vite + its plugins.
+      vite-cluster:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+      # Test tooling moves together too.
+      test-cluster:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "@testing-library/*"
+          - "jsdom"
+      # Catch-all for devDeps that don't fit a more specific cluster —
+      # one PR per week to skim instead of N individual PRs.
+      dev-deps-misc:
+        dependency-type: "development"
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "electron-builder"
+          - "@electron/*"
+          - "app-builder-*"
+          - "builder-util*"
+          - "vite"
+          - "@vitejs/*"
+          - "vitest"
+          - "@vitest/*"
+          - "@testing-library/*"
+          - "jsdom"
+    ignore:
+      # Electron major bumps are a known dedicated-session task (see
+      # project_future_ideas.md memory). Let security patches through;
+      # block major version PRs until we're ready for the rewrite.
+      - dependency-name: "electron"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions used by .github/workflows/build.yml
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Australia/Perth"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "ci"
