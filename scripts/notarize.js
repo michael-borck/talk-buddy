@@ -4,6 +4,7 @@
 // builds and when Apple credentials aren't set (local dev).
 
 const { notarize } = require('@electron/notarize');
+const { execFileSync } = require('child_process');
 
 // electron-builder loads this hook via `require(path).default`, NOT
 // `require(path)` directly — so the function MUST be exported on the
@@ -46,5 +47,17 @@ exports.default = async function notarizing(context) {
     teamId,
   });
 
-  console.log('[notarize] Done');
+  console.log('[notarize] Notarisation accepted; stapling ticket');
+
+  // Staple the notarisation ticket into the .app so Gatekeeper can verify
+  // offline (and during Apple-server outages). Notarytool itself does not
+  // staple — @electron/notarize only submits and polls. Stapling failures
+  // are logged but do not fail the build: the app is still validly
+  // notarised, the ticket is just fetched online instead of embedded.
+  try {
+    execFileSync('xcrun', ['stapler', 'staple', appPath], { stdio: 'inherit' });
+    console.log('[notarize] Stapled');
+  } catch (err) {
+    console.warn(`[notarize] Staple failed (build will continue): ${err.message}`);
+  }
 };
