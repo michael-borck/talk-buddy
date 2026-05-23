@@ -64,11 +64,15 @@ module.exports = {
     maintainer: 'Michael Borck <michael@talkbuddy.app>',
     executableName: 'TalkBuddy',
     synopsis: 'AI-powered conversation practice desktop app',
+    // electron-builder 26 moved desktop-entry fields under `entry`
+    // (was flat in 24.x).
     desktop: {
-      Name: 'TalkBuddy',
-      Comment: 'AI-powered conversation practice',
-      Categories: 'Education;Languages;',
-      Keywords: 'ai;conversation;practice;language;learning;',
+      entry: {
+        Name: 'TalkBuddy',
+        Comment: 'AI-powered conversation practice',
+        Categories: 'Education;Languages;',
+        Keywords: 'ai;conversation;practice;language;learning;',
+      },
     },
     extraResources: [],
   },
