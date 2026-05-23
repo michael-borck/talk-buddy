@@ -52,7 +52,7 @@ npm install
 npm run dev
 ```
 
-The first `npm install` rebuilds `better-sqlite3` against Electron's ABI automatically (via the `postinstall` hook). If you see a `NODE_MODULE_VERSION` mismatch, run `npm run rebuild`.
+No native build step is needed — the database uses `node:sqlite`, which ships inside Electron's bundled Node, so there's nothing to compile against Electron's ABI.
 
 ## How it works
 
@@ -144,10 +144,9 @@ Studio Calm is shared across the Buddy suite (Talk Buddy, Study Buddy, Career Co
 ## Development
 
 ```bash
-npm install          # Install deps + rebuild native modules for Electron
+npm install          # Install deps (no native build — node:sqlite is built in)
 npm run dev          # Start Vite + Electron together (hot reload)
 npm run build        # Vite production build (type-checks + bundles)
-npm run rebuild      # Rebuild better-sqlite3 against Electron ABI
 npm run electron:dist  # Package for current platform via electron-builder
 ```
 

@@ -9,6 +9,7 @@
 import { getPreference } from './sqlite';
 import { TranscriptionResult, SpeechGenerationOptions } from '../types';
 import { resolveApiKey } from './chat';
+import { SpeachesSTT, SpeachesTTS } from './config';
 
 // Get the STT server URL from preferences
 async function getSTTUrl(): Promise<string> {
@@ -48,10 +49,10 @@ function stripTrailingSlash(url: string): string {
 }
 
 // Speech-to-Text using Speaches API (via main-process proxy)
-export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionResult> {
-  const baseUrl = stripTrailingSlash(await getSTTUrl());
-  const sttModel = (await getPreference('sttModel')) || 'Systran/faster-whisper-small';
-  const apiKey = await getSTTApiKey();
+export async function transcribeAudio(audioBlob: Blob, cfg: SpeachesSTT): Promise<TranscriptionResult> {
+  const baseUrl = stripTrailingSlash(cfg.url);
+  const sttModel = cfg.model;
+  const apiKey = await resolveApiKey(cfg.apiKey);
 
   // Serialize the blob into a Uint8Array for IPC transport.
   const arrayBuffer = await audioBlob.arrayBuffer();
@@ -91,20 +92,13 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionRes
 }
 
 // Text-to-Speech using Speaches API (via main-process proxy)
-export async function generateSpeech(options: SpeechGenerationOptions): Promise<Blob> {
-  const baseUrl = stripTrailingSlash(await getTTSUrl());
-  const preferredVoice = (await getPreference('voice')) || 'female';
-  const isMale = (options.voice || preferredVoice) === 'male';
+export async function generateSpeech(options: SpeechGenerationOptions, cfg: SpeachesTTS): Promise<Blob> {
+  const baseUrl = stripTrailingSlash(cfg.url);
+  const isMale = (options.voice || cfg.voice) === 'male';
 
-  const maleTTSModel = (await getPreference('maleTTSModel')) || 'speaches-ai/Kokoro-82M-v1.0-ONNX';
-  const femaleTTSModel = (await getPreference('femaleTTSModel')) || 'speaches-ai/Kokoro-82M-v1.0-ONNX';
-  const maleVoice = (await getPreference('maleVoice')) || 'am_adam';
-  const femaleVoice = (await getPreference('femaleVoice')) || 'af_bella';
-  const ttsSpeed = parseFloat((await getPreference('ttsSpeed')) || '1.25');
-
-  const ttsModel = isMale ? maleTTSModel : femaleTTSModel;
-  const voice = isMale ? maleVoice : femaleVoice;
-  const apiKey = await getTTSApiKey();
+  const { model: ttsModel, voice } = isMale ? cfg.male : cfg.female;
+  const ttsSpeed = cfg.speed;
+  const apiKey = await resolveApiKey(cfg.apiKey);
 
   const result = await window.electronAPI.speaches.speak({
     url: `${baseUrl}/v1/audio/speech`,

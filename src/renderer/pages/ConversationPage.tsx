@@ -1,183 +1,136 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getScenario, createSession, updateSession, getSession, getPreference } from '../services/sqlite';
-import { transcribeAudio, generateSpeech } from '../services/speechProvider';
-import { generateResponse, streamChatCompletion } from '../services/chat';
-import { TTSPipeline } from '../services/ttsPipeline';
 import { Scenario, Session, ConversationMessage } from '../types';
 import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle, Square, Loader2 } from 'lucide-react';
 import { EditorialVoiceVisualizer } from '../components/EditorialVoiceVisualizer';
 import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
-import { playYourTurnCue, CueStyle } from '../services/audioCues';
+import { useConversationTurn } from '../hooks/useConversationTurn';
+import { EndReason } from '../turn/turnEngine';
 import toast from 'react-hot-toast';
 
-type ConversationState = 'not-started' | 'idle' | 'listening' | 'thinking' | 'speaking' | 'paused';
-
+// The spoken-conversation orchestration (turn-taking, streaming, barge-in,
+// replay, audio lifecycle) lives in the TurnEngine core behind
+// useConversationTurn. This page is the thin view: it loads the scenario,
+// owns the Session lifecycle, and renders the engine's snapshot.
 export function ConversationPage() {
   const { scenarioId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const resumeSessionId = searchParams.get('sessionId');
-  
-  // State
+
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
-  const [conversationState, setConversationState] = useState<ConversationState>('not-started');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
-  const [sessionComplete, setSessionComplete] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
-  
-  // Refs
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const contextRef = useRef<number[] | undefined>();
-  const startTimeRef = useRef<Date | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const initialMessageSpokenRef = useRef<boolean>(false);
-  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
-  // Per-message audio cache for rehear. Keyed by assistant message id.
-  // Lives in a ref because re-rendering a Map doesn't change identity
-  // and we don't need it to drive renders — the play button just looks
-  // up by id at click time.
-  const audioByMessageRef = useRef<Map<string, Blob[]>>(new Map());
-  // Remembers the state we were in before pausing so resume can restore
-  // it instead of always landing on idle.
-  const prePauseStateRef = useRef<ConversationState>('idle');
-
-  // Audio analyser refs — fed into the visualizer so motion responds
-  // to the real signal instead of procedural sine waves.
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const activeAnalyserRef = useRef<AnalyserNode | null>(null);
-  const ttsSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const amplitudeRef = useRef<number>(0);
-  const amplitudeRafRef = useRef<number | null>(null);
+  const [pttMode, setPttMode] = useState<'hold' | 'toggle'>('hold');
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  // Streaming TTS pipeline state — one AbortController per turn drives
-  // both the LLM stream and the TTS playback queue. Held in refs so the
-  // spacebar handler (and end-session) can abort the live turn.
-  const abortRef = useRef<AbortController | null>(null);
-  const pipelineRef = useRef<TTSPipeline | null>(null);
-  const [chunkProgress, setChunkProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
-  // Which AI message is currently being replayed (null when no replay
-  // is active). Used to swap the replay button to a stop button and
-  // visually mark the message being replayed.
-  const [replayingMessageId, setReplayingMessageId] = useState<string | null>(null);
-  // While we're synthesising audio for a message that wasn't cached
-  // (e.g. a session resumed from the library), the button shows a
-  // loading state instead of jumping straight to playback.
-  const [synthesizingForMsgId, setSynthesizingForMsgId] = useState<string | null>(null);
-  const replayAudioRef = useRef<HTMLAudioElement | null>(null);
-  // Hold (walkie-talkie) vs toggle (tap-to-start, tap-to-stop). Read
-  // once on mount; pref changes mid-session apply on next mount.
-  const [pttMode, setPttMode] = useState<'hold' | 'toggle'>('hold');
+  const startTimeRef = useRef<Date | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+  const initialMessageSpokenRef = useRef(false);
 
-  // Load scenario
+  // Refs so the engine callbacks always see the latest values.
+  const sessionRef = useRef<Session | null>(null);
+  sessionRef.current = session;
+  const elapsedRef = useRef(0);
+  elapsedRef.current = elapsedTime;
+  const messagesRef = useRef<ConversationMessage[]>([]);
+  const completeRef = useRef(false);
+
+  const wordsSpokenOf = (messages: ConversationMessage[]) =>
+    messages.filter((m) => m.role === 'user').reduce((acc, m) => acc + m.content.split(' ').length, 0);
+
+  const t = useConversationTurn({
+    scenario,
+    audioEnabled,
+    saveTranscript: async (messages) => {
+      if (sessionRef.current) await updateSession(sessionRef.current.id, { transcript: messages });
+    },
+    onComplete: async (reason: EndReason) => {
+      if (reason === 'natural') toast.success('Great conversation! Session ending naturally.');
+      if (sessionRef.current) {
+        await updateSession(sessionRef.current.id, {
+          status: 'ended',
+          endTime: new Date().toISOString(),
+          duration: elapsedRef.current,
+          metadata: {
+            naturalEnding: reason === 'natural',
+            endReason: reason,
+            wordsSpoken: wordsSpokenOf(messagesRef.current),
+            encouragementShown: false,
+          },
+        }).catch((err) => console.error('Failed to finalise session:', err));
+      }
+    },
+    onError: (message) => { toast.error(message); },
+  });
+
+  messagesRef.current = t.messages;
+  completeRef.current = t.sessionComplete;
+
+  // Load scenario.
   useEffect(() => {
     if (scenarioId) {
-      // Reset the spoken flag when scenario changes
       initialMessageSpokenRef.current = false;
-      loadScenario();
+      void loadScenario();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenarioId]);
-  
-  // Resume session if provided
-  useEffect(() => {
-    if (resumeSessionId && scenario) {
-      resumeSession();
-    }
-  }, [resumeSessionId, scenario]);
 
-  // Timer — pauses when state is 'paused' so the elapsed time reflects
-  // active conversation time only.
+  // Resume a session once the engine is ready (so seed/greet land). Re-runs if
+  // the engine is recreated (e.g. StrictMode remount) to re-seed it; greet is
+  // idempotent via initialMessageSpokenRef + the persisted transcript.
   useEffect(() => {
-    if (conversationState !== 'not-started' && conversationState !== 'paused' && !sessionComplete) {
+    if (resumeSessionId && scenario && t.ready) void resumeSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeSessionId, scenario, t.ready]);
+
+  // Elapsed-time ticker — paused while the session is paused or complete.
+  // (Preserves the original behaviour of re-basing on each active phase.)
+  useEffect(() => {
+    if (t.phase !== 'not-started' && t.phase !== 'paused' && !t.sessionComplete) {
       startTimeRef.current = new Date();
       timerRef.current = setInterval(() => {
         if (startTimeRef.current) {
-          const elapsed = Math.floor((new Date().getTime() - startTimeRef.current.getTime()) / 1000);
-          setElapsedTime(elapsed);
+          setElapsedTime(Math.floor((Date.now() - startTimeRef.current.getTime()) / 1000));
         }
       }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
-    
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [conversationState, sessionComplete]);
-  
-  // Auto-scroll the transcript pane to the latest message.
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [t.phase, t.sessionComplete]);
+
+  // Auto-scroll the transcript to the latest message.
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length]);
+  }, [t.messages.length]);
 
   // Load push-to-talk preference once on mount.
   useEffect(() => {
-    getPreference('pttMode').then((v) => {
-      if (v === 'toggle' || v === 'hold') setPttMode(v);
-    });
+    getPreference('pttMode').then((v) => { if (v === 'toggle' || v === 'hold') setPttMode(v); });
   }, []);
 
-  // Save transcript on unmount if session exists
+  // Save the transcript on unmount as a safety net (per-turn saves cover the
+  // happy path; this catches navigate-away). Audio teardown is handled by the
+  // engine's dispose() inside the hook.
   useEffect(() => {
     return () => {
-      // Cleanup function runs on unmount
-      if (session && messages.length > 0 && !sessionComplete) {
-        // Save current transcript state
-        updateSession(session.id, {
-          transcript: messages,
-          duration: elapsedTime
-        }).catch(err => console.error('Failed to save transcript on unmount:', err));
+      if (sessionRef.current && messagesRef.current.length > 0 && !completeRef.current) {
+        updateSession(sessionRef.current.id, {
+          transcript: messagesRef.current,
+          duration: elapsedRef.current,
+        }).catch((err) => console.error('Failed to save transcript on unmount:', err));
       }
     };
-  }, [session, messages, elapsedTime, sessionComplete]);
-
-  // Audio-analyser + streaming pipeline teardown on unmount. Without
-  // the pipeline abort, navigating away mid-response (pause, switch
-  // session, delete library) leaves an orphaned TTSPipeline running:
-  // its self-perpetuating audio.onended → playNext loop keeps creating
-  // and playing audio elements until the queue empties, with no
-  // surviving handle to stop it.
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-      pipelineRef.current?.stopAndDrain();
-      if (replayAudioRef.current) {
-        try {
-          replayAudioRef.current.onended = null;
-          replayAudioRef.current.onerror = null;
-          replayAudioRef.current.pause();
-        } catch { /* ignore */ }
-        replayAudioRef.current = null;
-      }
-      stopAmplitudeLoop();
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close().catch(() => {});
-        audioContextRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Spacebar push-to-talk. Guards: no text-input focus, no open modals,
-  // no key-repeat storms, and only fires when the session is in a state
-  // where speaking makes sense.
+  // Spacebar push-to-talk. Each branch resolves to a single engine verb.
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
@@ -186,64 +139,48 @@ export function ConversationPage() {
     };
 
     const handleKeyDown = (ev: KeyboardEvent) => {
-      if (showInfo || showEndModal || sessionComplete) return;
+      if (showInfo || showEndModal || t.sessionComplete) return;
       if (isTypingTarget(ev.target)) return;
-      if (conversationState === 'paused') return;
+      if (t.phase === 'paused') return;
 
-      // Escape: stop whatever is currently making sound. Replay first
-      // (since it's not part of the live conversation), then live AI.
+      // Escape silences whatever is making sound (replay or live AI).
       if (ev.code === 'Escape') {
-        if (replayingMessageId) {
+        if (t.replayingMessageId || t.phase === 'speaking') {
           ev.preventDefault();
-          stopReplay();
-          return;
+          t.abort();
         }
-        if (conversationState === 'speaking') {
-          ev.preventDefault();
-          stopSpeaking();
-          setConversationState('idle');
-          return;
-        }
+        return;
       }
 
       if (ev.code !== 'Space' || ev.repeat) return;
 
-      // Barge-in: pressing space while the AI is mid-response cancels
-      // the turn (stopSpeaking aborts the pipeline) and starts a new
-      // recording in the same gesture. Same in both PTT modes.
-      if (conversationState === 'speaking') {
-        stopSpeaking();
+      // Barge-in: space while the AI is speaking cancels the turn and starts a
+      // new recording in one gesture (beginListening is barge-in aware).
+      if (t.phase === 'speaking') {
         ev.preventDefault();
-        void startRecording();
+        void t.beginListening();
         return;
       }
 
-      // Toggle mode: tap to start, tap again to stop.
       if (pttMode === 'toggle') {
-        if (conversationState === 'idle') {
-          ev.preventDefault();
-          void startRecording();
-        } else if (conversationState === 'listening') {
-          ev.preventDefault();
-          stopRecording();
-        }
+        if (t.phase === 'idle') { ev.preventDefault(); void t.beginListening(); }
+        else if (t.phase === 'listening') { ev.preventDefault(); void t.endListening(); }
         return;
       }
 
-      // Hold mode (default): keyDown starts, keyUp stops.
-      if (conversationState !== 'idle') return;
+      // Hold mode: key-down starts, key-up stops.
+      if (t.phase !== 'idle') return;
       ev.preventDefault();
-      void startRecording();
+      void t.beginListening();
     };
 
     const handleKeyUp = (ev: KeyboardEvent) => {
       if (ev.code !== 'Space') return;
       if (isTypingTarget(ev.target)) return;
-      // In toggle mode, key-up is a no-op — only key-down toggles state.
       if (pttMode === 'toggle') return;
-      if (conversationState !== 'listening') return;
+      if (t.phase !== 'listening') return;
       ev.preventDefault();
-      stopRecording();
+      void t.endListening();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -252,108 +189,15 @@ export function ConversationPage() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationState, showInfo, showEndModal, sessionComplete, replayingMessageId, pttMode]);
-
-  // --- Audio analyser helpers ----------------------------------------------
-
-  const getAudioContext = (): AudioContext => {
-    if (!audioContextRef.current) {
-      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      audioContextRef.current = new Ctor();
-    }
-    if (audioContextRef.current.state === 'suspended') {
-      void audioContextRef.current.resume();
-    }
-    return audioContextRef.current;
-  };
-
-  const startAmplitudeLoop = () => {
-    if (amplitudeRafRef.current !== null) return;
-    const buffer = new Uint8Array(128);
-    const tick = () => {
-      const analyser = activeAnalyserRef.current;
-      if (analyser) {
-        analyser.getByteFrequencyData(buffer);
-        // Mean of low-mid bins (speech range sits in the lower half).
-        let sum = 0;
-        const limit = Math.min(64, buffer.length);
-        for (let i = 0; i < limit; i++) sum += buffer[i];
-        const mean = sum / limit / 255; // 0..1
-        // Light smoothing so the visual doesn't jitter.
-        amplitudeRef.current = amplitudeRef.current * 0.6 + mean * 0.4;
-      } else {
-        amplitudeRef.current = amplitudeRef.current * 0.85;
-      }
-      amplitudeRafRef.current = requestAnimationFrame(tick);
-    };
-    amplitudeRafRef.current = requestAnimationFrame(tick);
-  };
-
-  const stopAmplitudeLoop = () => {
-    if (amplitudeRafRef.current !== null) {
-      cancelAnimationFrame(amplitudeRafRef.current);
-      amplitudeRafRef.current = null;
-    }
-    amplitudeRef.current = 0;
-  };
-
-  const setupMicAnalyser = (stream: MediaStream) => {
-    try {
-      const audioContext = getAudioContext();
-      const source = audioContext.createMediaStreamSource(stream);
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.7;
-      source.connect(analyser);
-      activeAnalyserRef.current = analyser;
-      startAmplitudeLoop();
-    } catch (err) {
-      console.warn('Mic analyser setup failed:', err);
-    }
-  };
-
-  const teardownMicAnalyser = () => {
-    activeAnalyserRef.current = null;
-    stopAmplitudeLoop();
-  };
-
-  const setupTtsAnalyser = (audio: HTMLAudioElement) => {
-    try {
-      const audioContext = getAudioContext();
-      // createMediaElementSource can only be called once per element. Since
-      // we create a fresh <audio> for every utterance this is fine.
-      const source = audioContext.createMediaElementSource(audio);
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.7;
-      source.connect(analyser);
-      analyser.connect(audioContext.destination);
-      ttsSourceRef.current = source;
-      activeAnalyserRef.current = analyser;
-      startAmplitudeLoop();
-    } catch (err) {
-      console.warn('TTS analyser setup failed:', err);
-    }
-  };
-
-  const teardownTtsAnalyser = () => {
-    activeAnalyserRef.current = null;
-    ttsSourceRef.current = null;
-    stopAmplitudeLoop();
-  };
+  }, [t.phase, t.replayingMessageId, t.sessionComplete, showInfo, showEndModal, pttMode, t.abort, t.beginListening, t.endListening]);
 
   const loadScenario = async () => {
     if (!scenarioId) return;
-    
     setLoading(true);
     try {
       const data = await getScenario(scenarioId);
-      if (data) {
-        setScenario(data);
-      } else {
-        setError('Scenario not found');
-      }
+      if (data) setScenario(data);
+      else setError('Scenario not found');
     } catch (err) {
       console.error('Failed to load scenario:', err);
       setError('Failed to load scenario');
@@ -364,50 +208,25 @@ export function ConversationPage() {
 
   const resumeSession = async () => {
     try {
-      const existingSession = await getSession(resumeSessionId!);
-      if (existingSession && !existingSession.endTime) {
-        setSession(existingSession);
-        
-        // Check if this is a brand new session (no transcript yet)
-        if (!existingSession.transcript || existingSession.transcript.length === 0) {
-          // This is a new session, add initial message if scenario has one
-          if (scenario?.initialMessage && !initialMessageSpokenRef.current) {
-            initialMessageSpokenRef.current = true;
-            
-            const initialMsg: ConversationMessage = {
-              id: `msg_${Date.now()}`,
-              role: 'assistant',
-              content: scenario.initialMessage,
-              timestamp: new Date().toISOString()
-            };
-            setMessages([initialMsg]);
-            
-            // Save initial transcript
-            await updateSession(existingSession.id, {
-              transcript: [initialMsg]
-            });
-            
-            // Speak initial message
-            if (audioEnabled) {
-              await speakText(scenario.initialMessage, true, initialMsg.id);
-            } else {
-              setConversationState('idle');
-            }
-          } else {
-            setConversationState('idle');
-          }
+      const existing = await getSession(resumeSessionId!);
+      if (!existing || existing.endTime) return;
+      setSession(existing);
+      sessionRef.current = existing;
+
+      if (!existing.transcript || existing.transcript.length === 0) {
+        if (scenario?.initialMessage && !initialMessageSpokenRef.current) {
+          initialMessageSpokenRef.current = true;
+          await t.greet(scenario.initialMessage);
         } else {
-          // Load existing transcript for resumed sessions
-          setMessages(existingSession.transcript);
-          setConversationState('idle');
+          t.markReady();
         }
-        
-        // Calculate elapsed time from start
-        const startTime = existingSession.startTime ? new Date(existingSession.startTime) : new Date();
-        const elapsed = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
-        setElapsedTime(elapsed);
-        startTimeRef.current = startTime;
+      } else {
+        t.seed(existing.transcript);
       }
+
+      const startTime = existing.startTime ? new Date(existing.startTime) : new Date();
+      setElapsedTime(Math.floor((Date.now() - startTime.getTime()) / 1000));
+      startTimeRef.current = startTime;
     } catch (err) {
       console.error('Failed to resume session:', err);
     }
@@ -415,38 +234,13 @@ export function ConversationPage() {
 
   const startConversation = async () => {
     if (!scenario) return;
-    
     try {
-      // Create session
       const newSession = await createSession(scenario.id);
       setSession(newSession);
-      
+      sessionRef.current = newSession;
       toast.success('Session started! Begin speaking when ready.');
-      
-      // Add initial message if provided
-      if (scenario.initialMessage) {
-        const initialMsg: ConversationMessage = {
-          id: `msg_${Date.now()}`,
-          role: 'assistant',
-          content: scenario.initialMessage,
-          timestamp: new Date().toISOString()
-        };
-        setMessages([initialMsg]);
-        
-        // Save initial transcript
-        await updateSession(newSession.id, {
-          transcript: [initialMsg]
-        });
-        
-        // Speak initial message
-        if (audioEnabled) {
-          await speakText(scenario.initialMessage, true, initialMsg.id);
-        } else {
-          setConversationState('idle');
-        }
-      } else {
-        setConversationState('idle');
-      }
+      if (scenario.initialMessage) await t.greet(scenario.initialMessage);
+      else t.markReady();
     } catch (err) {
       console.error('Failed to start conversation:', err);
       toast.error('Failed to start conversation. Please try again.');
@@ -454,473 +248,24 @@ export function ConversationPage() {
     }
   };
 
-  const startRecording = async () => {
-    // Any new turn implicitly cancels a replay — replay is "look back",
-    // a new turn is "look forward." Without this the replay audio keeps
-    // playing alongside the recording, then alongside the AI's reply.
-    stopReplay();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      audioChunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        teardownMicAnalyser();
-        stream.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-        await processAudio(audioBlob);
-      };
-
-      mediaRecorderRef.current.start();
-      setupMicAnalyser(stream);
-      setConversationState('listening');
-    } catch (err) {
-      console.error('Failed to start recording:', err);
-      setError('Failed to access microphone');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setConversationState('thinking');
-    }
-  };
-
-  const processAudio = async (audioBlob: Blob) => {
-    try {
-      // Transcribe audio
-      const result = await transcribeAudio(audioBlob);
-      
-      if (!result.text.trim()) {
-        setConversationState('idle');
-        return;
-      }
-      
-      // Add user message
-      const userMsg: ConversationMessage = {
-        id: `msg_${Date.now()}`,
-        role: 'user',
-        content: result.text,
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, userMsg]);
-      const allMessages = [...messages, userMsg];
-
-      // Audio-disabled path: non-streaming, persist text only.
-      if (!audioEnabled) {
-        const { response, context } = await generateResponse(
-          allMessages,
-          scenario?.systemPrompt,
-          contextRef.current
-        );
-        contextRef.current = context;
-
-        const aiMsg: ConversationMessage = {
-          id: `msg_${Date.now() + 1}`,
-          role: 'assistant',
-          content: response,
-          timestamp: new Date().toISOString()
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        if (session) await updateSession(session.id, { transcript: [...allMessages, aiMsg] });
-
-        if (checkForNaturalEnding(response)) {
-          toast.success('Great conversation! Session ending naturally.');
-          await completeSession('natural');
-        } else {
-          setConversationState('idle');
-        }
-        return;
-      }
-
-      // Audio-enabled path: stream LLM tokens into TTSPipeline so audio
-      // begins playing on the first sentence rather than after the whole
-      // response is buffered.
-      stopSpeaking();
-      setConversationState('speaking');
-
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-
-      // Allocate the assistant message id up front so:
-      //  1. the pipeline's onTurnComplete can store synthesised blobs
-      //     against the same id used in the transcript
-      //  2. tokens can update the placeholder live as they stream in,
-      //     so a barge-in or Esc preserves the partial response in the
-      //     transcript instead of discarding it
-      const aiMsgId = `msg_${Date.now() + 1}`;
-      const placeholderMsg: ConversationMessage = {
-        id: aiMsgId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, placeholderMsg]);
-
-      let fullResponse = '';
-      const tokenStream = (async function* () {
-        for await (const tok of streamChatCompletion(
-          allMessages,
-          scenario?.systemPrompt ?? '',
-          { signal: ctrl.signal },
-        )) {
-          fullResponse += tok;
-          // Update the placeholder live. Slightly behind the audio
-          // (text streams faster than TTS plays), but that's the
-          // intent: on Esc, the user sees what the AI was about to
-          // say even if they didn't hear all of it.
-          setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: fullResponse } : m));
-          yield tok;
-        }
-      })();
-
-      const pipeline = new TTSPipeline({
-        synthesize: (sentence) => generateSpeech({ text: sentence, voice: scenario?.voice }),
-        onChunkChange: (current, total) => setChunkProgress({ current, total }),
-        onAudioStart: (audio) => {
-          audioRef.current = audio;
-          setupTtsAnalyser(audio);
-        },
-        onTurnComplete: (blobs) => {
-          audioByMessageRef.current.set(aiMsgId, blobs);
-        },
-      });
-      pipelineRef.current = pipeline;
-
-      try {
-        await pipeline.pump(tokenStream, ctrl.signal);
-
-        // Placeholder already holds the full content from the live
-        // token updates; just persist the transcript.
-        const finalMsg: ConversationMessage = { ...placeholderMsg, content: fullResponse };
-        if (session) await updateSession(session.id, { transcript: [...allMessages, finalMsg] });
-
-        teardownTtsAnalyser();
-
-        if (checkForNaturalEnding(fullResponse)) {
-          toast.success('Great conversation! Session ending naturally.');
-          await completeSession('natural');
-        } else {
-          setConversationState('idle');
-          try {
-            const style = ((await getPreference('conversationCue')) as CueStyle | null) || 'rise';
-            playYourTurnCue(style);
-          } catch (cueErr) {
-            console.warn('Failed to play turn cue:', cueErr);
-          }
-        }
-      } catch (pipelineErr) {
-        teardownTtsAnalyser();
-        if ((pipelineErr as Error).name === 'AbortError') {
-          // Barge-in or Esc. The placeholder retains whatever text
-          // streamed before the abort. If nothing streamed at all
-          // (instant abort), drop the empty placeholder rather than
-          // leaving an empty bubble in the transcript. Persist the
-          // partial so Save & Exit captures what the user saw.
-          if (!fullResponse.trim()) {
-            setMessages(prev => prev.filter(m => m.id !== aiMsgId));
-          } else if (session) {
-            const partialMsg: ConversationMessage = { ...placeholderMsg, content: fullResponse };
-            await updateSession(session.id, { transcript: [...allMessages, partialMsg] }).catch(() => {});
-          }
-          return;
-        }
-        console.error('Streaming pipeline error:', pipelineErr);
-        const detail = pipelineErr instanceof Error ? pipelineErr.message : String(pipelineErr);
-        toast.error(`Voice pipeline failed: ${detail}`, { duration: 8000 });
-        // Pipeline error mid-stream: drop the empty placeholder if
-        // nothing arrived; otherwise keep the partial.
-        if (!fullResponse.trim()) {
-          setMessages(prev => prev.filter(m => m.id !== aiMsgId));
-        }
-        setConversationState('idle');
-      } finally {
-        if (abortRef.current === ctrl) abortRef.current = null;
-        if (pipelineRef.current === pipeline) pipelineRef.current = null;
-        setChunkProgress({ current: 0, total: 0 });
-      }
-    } catch (err) {
-      console.error('Failed to process audio:', err);
-      toast.error('Speech processing failed. Check your STT settings.');
-      setError('Speech-to-text failed. The STT server may not have models loaded. Consider using Web Speech API in settings.');
-      setConversationState('idle');
-      setTimeout(() => setError(null), 5000);
-    }
-  };
-
-  const speakText = async (text: string, isInitialGreeting: boolean = false, messageId?: string) => {
-    try {
-      // Aggressive pre-flight teardown. A prior Audio may still exist
-      // (race: onended hasn't fired yet, or the element is mid-decode),
-      // and we absolutely must not overlap voices. stopSpeaking() also
-      // nulls out the onended handler so any in-flight cleanup can't
-      // come back and fire the turn cue for audio we're about to
-      // replace.
-      stopSpeaking();
-
-      // For initial greetings, show thinking state while generating audio
-      // For responses, we're already in speaking state from processAudio
-      if (isInitialGreeting) {
-        setConversationState('thinking');
-      }
-
-      const audioBlob = await generateSpeech({
-        text,
-        voice: scenario?.voice
-      });
-
-      // Cache for rehear if a message id was provided. The non-streaming
-      // path produces a single blob, so wrap it in an array to match the
-      // shape the rehear button expects.
-      if (messageId) {
-        audioByMessageRef.current.set(messageId, [audioBlob]);
-      }
-
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      setupTtsAnalyser(audio);
-
-      // Set speaking state when audio actually starts
-      audio.onplay = () => {
-        setConversationState('speaking');
-      };
-
-      // Playback finished — tear down the analyser, play the cue, return to idle.
-      audio.onended = async () => {
-        teardownTtsAnalyser();
-        URL.revokeObjectURL(audioUrl);
-        setConversationState('idle');
-
-        if (audioEnabled) {
-          try {
-            const style = ((await getPreference('conversationCue')) as CueStyle | null) || 'rise';
-            playYourTurnCue(style);
-          } catch (err) {
-            console.warn('Failed to play turn cue:', err);
-          }
-        }
-      };
-
-      audio.onerror = () => {
-        console.error('Audio playback error');
-        teardownTtsAnalyser();
-        setConversationState('idle');
-      };
-
-      // Play audio - this will block until play() starts
-      await audio.play();
-      // Audio is now playing, animation continues until onended fires
-    } catch (err) {
-      console.error('Failed to speak text:', err);
-      teardownTtsAnalyser();
-      setConversationState('idle');
-    }
-  };
-
-  const checkForNaturalEnding = (response: string): boolean => {
-    const endingPhrases = [
-      'goodbye', 'bye bye', 'have a nice day', 'take care', 
-      'see you later', 'thank you for coming', 'thanks for calling',
-      'have a great day', 'have a great evening', 'have a wonderful day'
-    ];
-    
-    const strictEndingPhrases = [
-      'is there anything else i can help you with today',
-      'anything else i can help you with',
-      'will that be all for today'
-    ];
-    
-    const lowerResponse = response.toLowerCase();
-    
-    // Check for strict phrases that need more context
-    const hasStrictEnding = strictEndingPhrases.some(phrase => lowerResponse.includes(phrase));
-    
-    // Check for definite goodbye phrases
-    const hasGoodbye = endingPhrases.some(phrase => lowerResponse.includes(phrase));
-    
-    // Only end if we have a clear goodbye or a strict ending phrase with sufficient conversation
-    return hasGoodbye || (hasStrictEnding && messages.length > 4);
-  };
-
-  // Immediately silences any TTS audio currently playing, releases the
-  // analyser, and clears event handlers so stale onended callbacks
-  // from a half-played utterance can't flip state back to idle or fire
-  // the turn cue after the session is over. Also aborts any live
-  // streaming pipeline so the LLM stops generating and the TTS queue
-  // stops synthesizing once the user has visibly stopped the AI.
-  const stopSpeaking = () => {
-    abortRef.current?.abort();
-    pipelineRef.current?.stopAndDrain();
-    if (audioRef.current) {
-      try {
-        audioRef.current.onplay = null;
-        audioRef.current.onended = null;
-        audioRef.current.onerror = null;
-        if (!audioRef.current.paused) {
-          audioRef.current.pause();
-        }
-      } catch { /* ignore */ }
-      audioRef.current = null;
-    }
-    teardownTtsAnalyser();
-  };
-
-  // Stop the currently-playing replay (if any).
-  const stopReplay = () => {
-    if (replayAudioRef.current) {
-      try {
-        replayAudioRef.current.onended = null;
-        replayAudioRef.current.onerror = null;
-        replayAudioRef.current.pause();
-      } catch { /* ignore */ }
-      replayAudioRef.current = null;
-    }
-    teardownTtsAnalyser();
-    setReplayingMessageId(null);
-  };
-
-  // Replay an earlier AI message's audio, or stop the current replay
-  // if the same message is already playing. Uses the cached per-message
-  // blobs when available; for messages whose audio wasn't cached (e.g.
-  // a session resumed from the library), synthesise once on first
-  // click and cache the result for subsequent clicks.
-  const rehearMessage = async (msgId: string) => {
-    if (replayingMessageId === msgId) {
-      stopReplay();
-      return;
-    }
-
-    if (!audioByMessageRef.current.has(msgId)) {
-      const msg = messages.find((m) => m.id === msgId && m.role === 'assistant');
-      if (!msg || !msg.content.trim()) {
-        toast.error('Cannot replay this message.');
-        return;
-      }
-      setSynthesizingForMsgId(msgId);
-      try {
-        const blob = await generateSpeech({ text: msg.content, voice: scenario?.voice });
-        audioByMessageRef.current.set(msgId, [blob]);
-      } catch (err) {
-        console.error('Failed to synthesise replay audio:', err);
-        toast.error('Failed to generate replay audio.');
-        setSynthesizingForMsgId(null);
-        return;
-      }
-      setSynthesizingForMsgId(null);
-    }
-
-    const blobs = audioByMessageRef.current.get(msgId)!;
-    stopReplay();
-    stopSpeaking();
-    setReplayingMessageId(msgId);
-    let i = 0;
-    const playNext = () => {
-      if (i >= blobs.length) {
-        teardownTtsAnalyser();
-        replayAudioRef.current = null;
-        setReplayingMessageId(null);
-        return;
-      }
-      const url = URL.createObjectURL(blobs[i]);
-      const audio = new Audio(url);
-      replayAudioRef.current = audio;
-      // Hook the analyser so the visualiser ripples in time with the
-      // replay audio. Must be set up before play() — Web Audio's
-      // createMediaElementSource needs the routing in place first.
-      setupTtsAnalyser(audio);
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        i++;
-        playNext();
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(url);
-        i++;
-        playNext();
-      };
-      audio.play().catch((err) => console.warn('Rehear playback failed:', err));
-    };
-    playNext();
-  };
-
   const handleEndSession = () => {
-    // Freeze the talking AI the moment the user opens the end-session
-    // modal — otherwise the voice keeps going while the user is trying
-    // to decide, which is disorienting.
-    stopSpeaking();
+    t.abort(); // freeze the talking AI while the user decides
     setShowEndModal(true);
   };
 
-  // Pause-in-place: pause the audio element without aborting the
-  // streaming pipeline. Queued sentences keep arriving in the
-  // background; on resume, audio.play() picks up exactly where it
-  // left off and the queue drains naturally. Distinct from Esc, which
-  // aborts the pipeline entirely.
-  const togglePause = () => {
-    if (conversationState === 'paused') {
-      // Resume: restart the audio element if it was mid-utterance.
-      if (audioRef.current && audioRef.current.paused) {
-        audioRef.current.play().catch((err) => console.warn('Resume play failed:', err));
-      }
-      setConversationState(prePauseStateRef.current);
-    } else {
-      prePauseStateRef.current = conversationState;
-      // Pause should silence anything currently playing — including a
-      // replay that might be running in the background. Without this,
-      // clicking Pause while a replay was playing left it audible.
-      stopReplay();
-      if (audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause();
-      }
-      setConversationState('paused');
-    }
-  };
-
-  // Save the current session and navigate back to the sessions list.
-  // Resumable later from the library. (This was previously called
-  // "Pause" in the UI, which conflicted with the in-place pause above.)
   const saveAndExitSession = async () => {
-    stopSpeaking();
-    if (session) {
-      await updateSession(session.id, {
+    t.abort();
+    if (sessionRef.current) {
+      await updateSession(sessionRef.current.id, {
         status: 'paused',
         duration: elapsedTime,
         metadata: {
           endReason: 'user_paused',
-          wordsSpoken: messages.filter(m => m.role === 'user').reduce((acc, m) => acc + m.content.split(' ').length, 0)
-        }
-      });
+          wordsSpoken: wordsSpokenOf(t.messages),
+        },
+      }).catch((err) => console.error('Failed to save session:', err));
     }
     navigate('/sessions');
-  };
-
-  const completeSession = async (reason: 'natural' | 'user_ended' = 'user_ended') => {
-    // Defensive: if the user skipped the modal path (e.g. natural end),
-    // still make sure nothing is talking.
-    stopSpeaking();
-    if (session) {
-      await updateSession(session.id, {
-        status: 'ended',
-        endTime: new Date().toISOString(),
-        duration: elapsedTime,
-        metadata: {
-          naturalEnding: reason === 'natural',
-          endReason: reason,
-          wordsSpoken: messages.filter(m => m.role === 'user').reduce((acc, m) => acc + m.content.split(' ').length, 0),
-          encouragementShown: false
-        }
-      });
-    }
-    setSessionComplete(true);
-    setConversationState('not-started');
   };
 
   const formatTime = (seconds: number): string => {
@@ -929,12 +274,10 @@ export function ConversationPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Loading state with professional skeleton
   if (loading) {
     return <ConversationLoadingSkeleton />;
   }
 
-  // Error state
   if (error || !scenario) {
     return (
       <div className="flex items-center justify-center h-full bg-paper">
@@ -954,11 +297,8 @@ export function ConversationPage() {
     );
   }
 
-  // Session complete state — editorial summary
-  if (sessionComplete) {
-    const wordsSpoken = messages
-      .filter((m) => m.role === 'user')
-      .reduce((acc, m) => acc + m.content.split(' ').length, 0);
+  if (t.sessionComplete) {
+    const wordsSpoken = wordsSpokenOf(t.messages);
     return (
       <div className="min-h-full bg-paper px-12 lg:px-20 py-16 animate-fadeIn">
         <div className="max-w-3xl">
@@ -992,7 +332,7 @@ export function ConversationPage() {
               <dt className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet font-sans mb-2">
                 Messages
               </dt>
-              <dd className="font-sans text-3xl text-ink tabular-nums">{messages.length}</dd>
+              <dd className="font-sans text-3xl text-ink tabular-nums">{t.messages.length}</dd>
             </div>
             <div>
               <dt className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet font-sans mb-2">
@@ -1029,40 +369,37 @@ export function ConversationPage() {
     );
   }
 
-  // While replaying, drive the visualiser with the speaking-state
-  // ripples so it responds to the replay audio's amplitude. The
-  // message-level border + REPLAYING status word make it clear this
-  // isn't part of the live conversation.
-  const visualizerState = replayingMessageId
+  // While replaying, drive the visualiser with the speaking ripples.
+  const visualizerState = t.replayingMessageId
     ? 'speaking'
-    : conversationState === 'not-started' || conversationState === 'paused'
+    : t.phase === 'not-started' || t.phase === 'paused'
     ? 'idle'
-    : conversationState;
-  const statusLabel = replayingMessageId
+    : t.phase;
+  const statusLabel = t.replayingMessageId
     ? 'replaying.'
-    : conversationState === 'not-started'
+    : t.phase === 'not-started'
     ? 'ready'
-    : conversationState === 'paused'
+    : t.phase === 'paused'
     ? 'paused.'
-    : conversationState === 'listening'
+    : t.phase === 'listening'
     ? 'listening.'
-    : conversationState === 'thinking'
+    : t.phase === 'thinking'
     ? 'thinking.'
-    : conversationState === 'speaking'
+    : t.phase === 'speaking'
     ? 'speaking.'
     : 'your turn.';
 
-  const statusHint = replayingMessageId
+  const statusHint = t.replayingMessageId
     ? 'Esc or click stop to end the replay.'
-    : conversationState === 'not-started'
+    : t.phase === 'not-started'
     ? 'Press begin to start the session.'
-    : conversationState === 'paused'
+    : t.phase === 'paused'
     ? 'Click Resume to continue.'
-    : conversationState === 'listening'
+    : t.phase === 'listening'
     ? (pttMode === 'toggle' ? 'Tap space (or click below) to send.' : 'Release to stop — or let go of the space bar.')
-    : conversationState === 'idle'
+    : t.phase === 'idle'
     ? (pttMode === 'toggle' ? 'Tap space to speak · Esc to silence the AI' : 'Hold space to speak · Esc to silence the AI')
-    : conversationState === 'speaking'
+    : t.phase === 'speaking'
     ? 'Esc to silence · space to interrupt and reply'
     : '';
 
@@ -1115,22 +452,19 @@ export function ConversationPage() {
         </div>
       </header>
 
-      {/* Main — two columns: live transcript on the left, visualizer
-          and controls on the right. The visualizer column sits slightly
-          above vertical centre so the eye lands on it first; transcript
-          fills its column and auto-scrolls to the latest message. */}
+      {/* Main — live transcript on the left, visualizer + controls on the right. */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8 px-8 py-8 min-h-0 overflow-hidden">
         {/* Left: live transcript */}
         <div className="overflow-y-auto pr-4 hidden lg:block">
-          {messages.length === 0 ? (
+          {t.messages.length === 0 ? (
             <p className="text-ink-quiet font-sans italic text-center mt-12">
               The conversation will appear here as you speak.
             </p>
           ) : (
             <div className="space-y-6 pb-4">
-              {messages.map((msg) => {
-                const isReplaying = replayingMessageId === msg.id;
-                const isSynthesizing = synthesizingForMsgId === msg.id;
+              {t.messages.map((msg) => {
+                const isReplaying = t.replayingMessageId === msg.id;
+                const isSynthesizing = t.synthesizingForMsgId === msg.id;
                 const showReplay = msg.role === 'assistant' && msg.content.trim().length > 0;
                 return (
                   <div
@@ -1145,7 +479,7 @@ export function ConversationPage() {
                       </p>
                       {showReplay && (
                         <button
-                          onClick={() => void rehearMessage(msg.id)}
+                          onClick={() => void t.replay(msg.id)}
                           disabled={isSynthesizing}
                           className={`flex items-center gap-1 transition-colors disabled:opacity-60 disabled:cursor-wait ${
                             isReplaying || isSynthesizing
@@ -1184,7 +518,7 @@ export function ConversationPage() {
           <div className="mb-10">
             <EditorialVoiceVisualizer
               state={visualizerState}
-              amplitudeRef={amplitudeRef}
+              amplitudeRef={t.amplitudeRef}
               size={280}
             />
           </div>
@@ -1197,22 +531,22 @@ export function ConversationPage() {
             {statusHint && (
               <p className="text-[0.82rem] text-ink-muted font-sans">{statusHint}</p>
             )}
-            {conversationState === 'speaking' && chunkProgress.total > 0 && (
+            {t.phase === 'speaking' && t.chunkProgress.total > 0 && (
               <p className="text-[0.72rem] text-ink-muted/70 font-sans mt-1 tabular-nums">
-                {chunkProgress.current} of {chunkProgress.total}
+                {t.chunkProgress.current} of {t.chunkProgress.total}
               </p>
             )}
           </div>
 
           {/* Error Message */}
-          {error && (
+          {t.error && (
             <div className="mb-6 px-5 py-3 border-l-2 border-accent bg-paper-warm max-w-md">
-              <p className="text-ink text-sm font-sans leading-relaxed">{error}</p>
+              <p className="text-ink text-sm font-sans leading-relaxed">{t.error}</p>
             </div>
           )}
 
           {/* Primary action */}
-          {conversationState === 'not-started' && !session ? (
+          {t.phase === 'not-started' && !session ? (
             <button
               onClick={startConversation}
               className="btn-gradient px-10 py-4 text-[1rem]"
@@ -1223,35 +557,35 @@ export function ConversationPage() {
             <div className="flex flex-col items-center gap-8">
               <button
                 onMouseDown={pttMode === 'toggle'
-                  ? (conversationState === 'listening' ? stopRecording : () => void startRecording())
-                  : () => void startRecording()}
-                onMouseUp={pttMode === 'hold' ? stopRecording : undefined}
-                onMouseLeave={pttMode === 'hold' ? stopRecording : undefined}
+                  ? (t.phase === 'listening' ? () => void t.endListening() : () => void t.beginListening())
+                  : () => void t.beginListening()}
+                onMouseUp={pttMode === 'hold' ? () => void t.endListening() : undefined}
+                onMouseLeave={pttMode === 'hold' ? () => void t.endListening() : undefined}
                 onTouchStart={pttMode === 'toggle'
-                  ? (conversationState === 'listening' ? stopRecording : () => void startRecording())
-                  : () => void startRecording()}
-                onTouchEnd={pttMode === 'hold' ? stopRecording : undefined}
-                disabled={conversationState !== 'idle' && conversationState !== 'listening'}
+                  ? (t.phase === 'listening' ? () => void t.endListening() : () => void t.beginListening())
+                  : () => void t.beginListening()}
+                onTouchEnd={pttMode === 'hold' ? () => void t.endListening() : undefined}
+                disabled={t.phase !== 'idle' && t.phase !== 'listening'}
                 className={`px-10 py-4 text-[1rem] font-sans font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-30 ${
-                  conversationState === 'listening'
+                  t.phase === 'listening'
                     ? 'bg-accent text-paper'
-                    : conversationState === 'idle'
+                    : t.phase === 'idle'
                     ? 'bg-ink text-paper hover:bg-accent'
                     : 'bg-ink/20 text-ink-muted'
                 }`}
                 style={{ borderRadius: '2px' }}
               >
-                {conversationState === 'listening'
+                {t.phase === 'listening'
                   ? (pttMode === 'toggle' ? 'Tap to send' : 'Release to stop')
                   : (pttMode === 'toggle' ? 'Tap to speak' : 'Hold to speak')}
               </button>
 
               <div className="flex items-center gap-6 text-[0.82rem] font-sans">
                 <button
-                  onClick={togglePause}
+                  onClick={() => (t.phase === 'paused' ? t.resume() : t.pause())}
                   className="text-ink-muted hover:text-ink transition-colors"
                 >
-                  {conversationState === 'paused' ? 'Resume' : 'Pause'}
+                  {t.phase === 'paused' ? 'Resume' : 'Pause'}
                 </button>
                 <span className="text-ink/20" aria-hidden="true">·</span>
                 <button
@@ -1340,7 +674,7 @@ export function ConversationPage() {
             </p>
             <div className="flex gap-6 items-center">
               <button
-                onClick={() => completeSession('user_ended')}
+                onClick={() => t.end('user_ended')}
                 className="btn-gradient px-6 py-3 text-[0.9rem]"
               >
                 End session

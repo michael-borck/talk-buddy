@@ -1,6 +1,6 @@
 // Embedded TTS/STT service
-import { getPreference } from './sqlite';
 import { TranscriptionResult, SpeechGenerationOptions } from '../types';
+import { EmbeddedTTS } from './config';
 
 // Get embedded server status from main process
 async function getEmbeddedServerStatus(): Promise<{ running: boolean; url: string; port: number }> {
@@ -72,15 +72,11 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionRes
 }
 
 // Text-to-Speech using embedded server
-export async function generateSpeech(options: SpeechGenerationOptions): Promise<Blob> {
+export async function generateSpeech(options: SpeechGenerationOptions, cfg: EmbeddedTTS): Promise<Blob> {
   const baseUrl = await getEmbeddedTTSUrl();
-  const preferredVoice = await getPreference('voice') || 'female';
-  const voice = options.voice || preferredVoice;
-  
-  // Get speech speed from preferences (default 1.2x)
-  const embeddedSpeed = await getPreference('embeddedSpeechSpeed') || '1.2';
-  const speed = options.speed || parseFloat(embeddedSpeed);
-  
+  const voice = options.voice || cfg.voice;
+  const speed = options.speed || cfg.speed;
+
   // Simplify voice selection - just use alan/amy directly
   let selectedVoice = (voice === 'male') ? 'alan' : 'amy';
   
