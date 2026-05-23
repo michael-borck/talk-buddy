@@ -4,7 +4,10 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const { net } = require('electron');
 const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'production' && require('electron-is-dev'));
-const Database = require('better-sqlite3');
+// node:sqlite ships inside Electron's bundled Node — no native compile,
+// no node-gyp/electron-rebuild, and it tracks Electron's V8 automatically.
+// API is drop-in for our usage (prepare / run / get / all / exec).
+const { DatabaseSync } = require('node:sqlite');
 const { autoUpdater } = require('electron-updater');
 
 // Disable sandbox on Linux only in development or when explicitly requested
@@ -619,7 +622,7 @@ function createWindow() {
 app.whenReady().then(() => {
   // Initialize SQLite database
   const dbPath = path.join(app.getPath('userData'), 'talkbuddy.db');
-  db = new Database(dbPath);
+  db = new DatabaseSync(dbPath);
   
   // Add missing columns to existing databases
   try {
