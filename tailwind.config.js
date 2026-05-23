@@ -16,6 +16,9 @@ export default {
           DEFAULT: '#F4F1EA',
           warm: '#FBF8F1',
         },
+        // Fixed light text for the Ink sidebar (.glass-card-dark), which stays
+        // dark in BOTH themes — so this must NOT flip with the theme tokens.
+        ivory: '#F4F1EA',
         ink: {
           DEFAULT: '#252420',
           soft: '#3B3830',
