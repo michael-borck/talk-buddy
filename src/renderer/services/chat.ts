@@ -1,6 +1,7 @@
 // Chat service for AI conversations (OpenAI, Anthropic, Ollama, etc.)
 import { getPreference } from './sqlite';
 import { ConversationMessage } from '../types';
+import { resolveChat, loadPreferences } from './config';
 
 // Default prompt templates (same as in SettingsPage)
 // Canonical prompt templates. Exported so the Settings UI can render
@@ -83,31 +84,10 @@ interface OllamaGenerateResponse {
   eval_count?: number;
 }
 
-// Canonical base URLs for the hosted chat providers we support. Users
-// do not (and should not) need to type these — picking the provider
-// alone determines the URL. Only Ollama and Custom read their URL from
-// the preference store, since Ollama can live at any self-hosted
-// address and Custom is explicitly user-defined.
-export const CHAT_PROVIDER_URLS = {
-  anthropic: 'https://api.anthropic.com',
-  openai:    'https://api.openai.com',
-  groq:      'https://api.groq.com/openai',
-  gemini:    'https://generativelanguage.googleapis.com',
-} as const;
-
-// Default environment variable names each hosted provider reads when
-// a user stores their key as env:VAR. The Settings UI also uses this
-// map to populate the env-var placeholder when the radio is clicked,
-// so picking Anthropic and clicking "Environment Variable" writes
-// 'env:ANTHROPIC_API_KEY', not a hardcoded OpenAI string.
-export const CHAT_PROVIDER_ENV_VARS = {
-  anthropic: 'ANTHROPIC_API_KEY',
-  openai:    'OPENAI_API_KEY',
-  groq:      'GROQ_API_KEY',
-  gemini:    'GEMINI_API_KEY',
-  ollama:    'OLLAMA_API_KEY',
-  custom:    'API_KEY',
-} as const;
+// Canonical hosted-Provider URLs and env-var names now live in config.ts —
+// the single source of Provider defaults. Re-exported here so existing
+// importers (StatusFooter, SettingsPage) keep working unchanged.
+export { CHAT_PROVIDER_URLS, CHAT_PROVIDER_ENV_VARS } from './config';
 
 export type ChatProvider = 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom';
 
@@ -131,36 +111,24 @@ export async function resolveApiKey(storedValue: string | null | undefined): Pro
   }
 }
 
-// Get Chat API URL from preferences. For known hosted providers, the
-// URL is hardcoded — ignoring whatever stale value may be in the DB
-// from a previous provider. For Ollama and Custom, read the stored
-// preference.
+// The four getters below delegate to the config module's pure resolveChat()
+// so AI Brain defaults and the provider-conditional URL live in exactly one
+// place (services/config.ts). resolveChat returns the RAW apiKey; only
+// getChatApiKey resolves an env:VAR reference, just before use.
 async function getChatApiUrl(): Promise<string> {
-  const provider = await getChatProvider();
-  if (provider in CHAT_PROVIDER_URLS) {
-    return CHAT_PROVIDER_URLS[provider as keyof typeof CHAT_PROVIDER_URLS];
-  }
-  const url = await getPreference('ollamaUrl'); // keeping key name for backward compatibility
-  return url || 'https://ollama.serveur.au';
+  return resolveChat(await loadPreferences()).url;
 }
 
-// Get chat provider from preferences
 async function getChatProvider(): Promise<ChatProvider> {
-  const provider = await getPreference('chatProvider') as ChatProvider;
-  return provider || 'ollama';
+  return resolveChat(await loadPreferences()).provider;
 }
 
-// Get Chat model from preferences
 async function getChatModel(): Promise<string> {
-  const model = await getPreference('ollamaModel'); // keeping key name for backward compatibility
-  return model || 'llama2';
+  return resolveChat(await loadPreferences()).model;
 }
 
-// Get Chat API key from preferences. Env-var references are resolved
-// through the main process via resolveApiKey().
 async function getChatApiKey(): Promise<string> {
-  const stored = await getPreference('ollamaApiKey');
-  return resolveApiKey(stored);
+  return resolveApiKey(resolveChat(await loadPreferences()).apiKey);
 }
 
 // Get configured prompt enhancement

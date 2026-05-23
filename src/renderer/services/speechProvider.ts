@@ -5,6 +5,7 @@ import { getPreference } from './sqlite';
 import { TranscriptionResult, SpeechGenerationOptions } from '../types';
 import * as speachesService from './speaches';
 import * as embeddedService from './embedded';
+import { loadPreferences, resolveSTT, resolveTTS, STTConfig, TTSConfig } from './config';
 
 // Types for provider selection
 export type STTProvider = 'embedded' | 'speaches';
@@ -22,78 +23,58 @@ async function getTTSProvider(): Promise<TTSProvider> {
   return (provider as TTSProvider) || 'embedded';
 }
 
-// Universal Speech-to-Text function
+// Universal Speech-to-Text function. Resolves the active Listening config from
+// one preference snapshot, then dispatches; on failure, resolves the OTHER
+// Provider from the same snapshot and retries once.
 export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionResult> {
-  const provider = await getSTTProvider();
-  
+  const prefs = await loadPreferences();
+  const cfg = resolveSTT(prefs);
+
   try {
-    switch (provider) {
-      case 'embedded':
-        return await embeddedService.transcribeAudio(audioBlob);
-      case 'speaches':
-        return await speachesService.transcribeAudio(audioBlob);
-      default:
-        throw new Error(`Unknown STT provider: ${provider}`);
-    }
+    return await callSTT(audioBlob, cfg);
   } catch (error) {
-    console.error(`STT failed with ${provider} provider:`, error);
-    
-    // Fallback strategy: try the other provider if available
-    const fallbackProvider = provider === 'embedded' ? 'speaches' : 'embedded';
-    console.log(`Attempting fallback to ${fallbackProvider} provider...`);
-    
+    const fallback = cfg.provider === 'embedded' ? 'speaches' : 'embedded';
+    console.error(`STT failed with ${cfg.provider} provider:`, error);
+    console.log(`Attempting fallback to ${fallback} provider...`);
     try {
-      switch (fallbackProvider) {
-        case 'embedded':
-          return await embeddedService.transcribeAudio(audioBlob);
-        case 'speaches':
-          return await speachesService.transcribeAudio(audioBlob);
-        default:
-          throw new Error(`Fallback provider ${fallbackProvider} not available`);
-      }
+      return await callSTT(audioBlob, resolveSTT(prefs, fallback));
     } catch (fallbackError) {
-      console.error(`Fallback STT also failed:`, fallbackError);
-      // Re-throw original error since fallback failed
-      throw error;
+      console.error('Fallback STT also failed:', fallbackError);
+      throw error; // surface the original error
     }
   }
 }
 
-// Universal Text-to-Speech function
+async function callSTT(audioBlob: Blob, cfg: STTConfig): Promise<TranscriptionResult> {
+  return cfg.provider === 'embedded'
+    ? embeddedService.transcribeAudio(audioBlob)
+    : speachesService.transcribeAudio(audioBlob, cfg);
+}
+
+// Universal Text-to-Speech function. Same resolve-then-dispatch shape as STT.
 export async function generateSpeech(options: SpeechGenerationOptions): Promise<Blob> {
-  const provider = await getTTSProvider();
-  
+  const prefs = await loadPreferences();
+  const cfg = resolveTTS(prefs);
+
   try {
-    switch (provider) {
-      case 'embedded':
-        return await embeddedService.generateSpeech(options);
-      case 'speaches':
-        return await speachesService.generateSpeech(options);
-      default:
-        throw new Error(`Unknown TTS provider: ${provider}`);
-    }
+    return await callTTS(options, cfg);
   } catch (error) {
-    console.error(`TTS failed with ${provider} provider:`, error);
-    
-    // Fallback strategy: try the other provider if available
-    const fallbackProvider = provider === 'embedded' ? 'speaches' : 'embedded';
-    console.log(`Attempting fallback to ${fallbackProvider} provider...`);
-    
+    const fallback = cfg.provider === 'embedded' ? 'speaches' : 'embedded';
+    console.error(`TTS failed with ${cfg.provider} provider:`, error);
+    console.log(`Attempting fallback to ${fallback} provider...`);
     try {
-      switch (fallbackProvider) {
-        case 'embedded':
-          return await embeddedService.generateSpeech(options);
-        case 'speaches':
-          return await speachesService.generateSpeech(options);
-        default:
-          throw new Error(`Fallback provider ${fallbackProvider} not available`);
-      }
+      return await callTTS(options, resolveTTS(prefs, fallback));
     } catch (fallbackError) {
-      console.error(`Fallback TTS also failed:`, fallbackError);
-      // Re-throw original error since fallback failed
-      throw error;
+      console.error('Fallback TTS also failed:', fallbackError);
+      throw error; // surface the original error
     }
   }
+}
+
+async function callTTS(options: SpeechGenerationOptions, cfg: TTSConfig): Promise<Blob> {
+  return cfg.provider === 'embedded'
+    ? embeddedService.generateSpeech(options, cfg)
+    : speachesService.generateSpeech(options, cfg);
 }
 
 // Check STT connection based on current provider

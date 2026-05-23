@@ -3,12 +3,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getPreference, setPreference } from '../services/sqlite';
-import { 
-  AllSettings, 
-  STTProvider, 
-  TTSProvider, 
+import { DEFAULTS } from '../services/config';
+import {
+  AllSettings,
+  STTProvider,
+  TTSProvider,
   ChatProvider,
-  PromptBehavior 
+  PromptBehavior
 } from '../types/settings';
 
 const DEFAULT_SETTINGS: AllSettings = {
@@ -16,7 +17,10 @@ const DEFAULT_SETTINGS: AllSettings = {
     provider: 'embedded',
     url: 'http://127.0.0.1:8765',
     apiKey: '',
-    model: 'whisper-tiny'
+    // Source the model default from the single Provider-defaults table so the
+    // form display and runtime resolution can't diverge (was 'whisper-tiny',
+    // while runtime always used Systran/faster-whisper-small).
+    model: DEFAULTS.stt.speachesModel
   },
   tts: {
     provider: 'embedded',
