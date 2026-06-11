@@ -603,6 +603,26 @@ function createWindow() {
       : `file://${path.join(__dirname, '../../dist/index.html')}`
   );
 
+  // The renderer is a single-page app: it must never navigate the top
+  // frame elsewhere, and window.open should hand web links to the OS
+  // browser instead of spawning Electron windows.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (isSafeExternalUrl(url)) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const appOrigin = isDev ? 'http://localhost:3307' : 'file://';
+    if (!url.startsWith(appOrigin)) {
+      event.preventDefault();
+      if (isSafeExternalUrl(url)) {
+        shell.openExternal(url);
+      }
+    }
+  });
+
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
@@ -833,8 +853,23 @@ ipcMain.handle('dialog:saveFile', async (event, defaultPath) => {
   return result;
 });
 
-// Open external links
+// Open external links. Only web URLs — anything else (file:, smb:,
+// app-registered schemes) hands the renderer a way to launch local
+// programs, which defeats the sandbox.
+function isSafeExternalUrl(url) {
+  try {
+    const protocol = new URL(url).protocol;
+    return protocol === 'https:' || protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 ipcMain.handle('shell:openExternal', async (event, url) => {
+  if (!isSafeExternalUrl(url)) {
+    console.warn(`Blocked openExternal for non-web URL: ${url}`);
+    return;
+  }
   await shell.openExternal(url);
 });
 

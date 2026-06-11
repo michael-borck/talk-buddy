@@ -48,6 +48,17 @@ You are the conversation partner, not an assistant explaining things. Speak like
 5. Keep a patient, understanding tone`
 };
 
+// Credential-bearing headers must never reach the console — devtools is
+// often open during support sessions and screenshots end up in issues.
+const SENSITIVE_HEADERS = ['authorization', 'x-api-key'];
+function redactAuthHeaders(headers: HeadersInit): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(headers).map(([key, value]) =>
+      SENSITIVE_HEADERS.includes(key.toLowerCase()) ? [key, '***'] : [key, value]
+    )
+  );
+}
+
 // Unified interfaces for different providers
 interface ChatCompletionRequest {
   model: string;
@@ -395,7 +406,7 @@ async function generateChatCompletion(
     console.log('Chat API request:', {
       url: fullUrl,
       provider,
-      headers,
+      headers: redactAuthHeaders(headers),
       requestBody: request
     });
     
