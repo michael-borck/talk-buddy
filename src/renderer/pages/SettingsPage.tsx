@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getAllPreferences, setPreference, resetDatabase } from '../services/sqlite';
 import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server, Mic, Volume2, MessageSquare, PenLine, Database } from 'lucide-react';
 import * as embeddedService from '../services/embedded';
@@ -255,6 +256,7 @@ const PROMPT_TEMPLATES: Record<
 ) as Record<keyof typeof PROMPT_TEMPLATE_META, { name: string; description: string; prompt: string }>;
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const [preferences, setPreferences] = useState({
     speachesUrl: 'https://speaches.locopuente.org',
     sttUrl: 'https://speaches.locopuente.org',
@@ -1981,6 +1983,25 @@ export function SettingsPage() {
             <Save size={20} />
             {saving ? 'Saving...' : 'Save Settings'}
           </button>
+        </div>
+
+        {/* About & help — these pages hang off Settings now that the
+            sidebar is gone */}
+        <div className="mt-10 pt-6 border-t border-ink/10 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          {[
+            { label: 'Help', path: '/help' },
+            { label: 'Documentation', path: '/documentation' },
+            { label: 'About', path: '/about' },
+            { label: 'License', path: '/license' },
+          ].map(({ label, path }) => (
+            <button
+              key={path}
+              onClick={() => navigate(path)}
+              className="text-ink-muted hover:text-accent transition-colors"
+            >
+              {label} →
+            </button>
+          ))}
         </div>
       </div>
 

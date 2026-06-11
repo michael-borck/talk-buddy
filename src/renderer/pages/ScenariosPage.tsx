@@ -288,6 +288,21 @@ export function ScenariosPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Scenarios</h1>
           <p className="text-gray-600">Browse and manage conversation practice scenarios</p>
+          {/* Packs and Archive hang off Explore now that the sidebar is gone */}
+          <div className="mt-2 flex items-center gap-4 text-sm">
+            <button
+              onClick={() => navigate('/packs')}
+              className="text-ink-muted hover:text-accent transition-colors"
+            >
+              Practice packs →
+            </button>
+            <button
+              onClick={() => navigate('/archive')}
+              className="text-ink-muted hover:text-accent transition-colors"
+            >
+              Archive →
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
