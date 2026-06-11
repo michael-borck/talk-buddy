@@ -44,6 +44,14 @@ module.exports = {
         target: 'dmg',
         arch: ['x64', 'arm64'],
       },
+      // electron-updater on macOS can only install from a ZIP archive
+      // (Squirrel.Mac requirement) — without this target, update checks
+      // succeed but the download step fails. The DMG remains the
+      // human-facing download.
+      {
+        target: 'zip',
+        arch: ['x64', 'arm64'],
+      },
     ],
   },
   win: {
