@@ -20,7 +20,8 @@ import {
   BookOpen,
   Archive,
   Download,
-  Upload
+  Upload,
+  Link as LinkIcon
 } from 'lucide-react';
 
 export function PracticePacksPage() {
@@ -29,6 +30,9 @@ export function PracticePacksPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showUrlImport, setShowUrlImport] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [importingUrl, setImportingUrl] = useState(false);
 
   useEffect(() => {
     loadPacks();
@@ -111,7 +115,7 @@ export function PracticePacksPage() {
       try {
         const content = await file.text();
         const result = await importFromFile(content);
-        
+
         if (result.success) {
           alert(result.message);
           await loadPacks();
@@ -124,6 +128,35 @@ export function PracticePacksPage() {
       }
     };
     input.click();
+  };
+
+  // Import a pack a teacher (or anyone) shared as a link — same export
+  // format as the file import, fetched through main's https-only IPC.
+  const handleImportFromUrl = async () => {
+    const url = importUrl.trim();
+    if (!url) return;
+    setImportingUrl(true);
+    try {
+      const fetched = await window.electronAPI.fetchText(url);
+      if (!fetched.ok || !fetched.text) {
+        alert(`Could not fetch the pack: ${fetched.error || 'unknown error'}`);
+        return;
+      }
+      const result = await importFromFile(fetched.text);
+      if (result.success) {
+        alert(result.message);
+        setShowUrlImport(false);
+        setImportUrl('');
+        await loadPacks();
+      } else {
+        alert(`Import failed: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('URL import error:', error);
+      alert('Failed to import from URL. Check the link points to a Talk Buddy export file.');
+    } finally {
+      setImportingUrl(false);
+    }
   };
 
   if (loading) {
@@ -153,6 +186,13 @@ export function PracticePacksPage() {
             Import
           </button>
           <button
+            onClick={() => setShowUrlImport(true)}
+            className="flex items-center gap-2 px-4 py-2 text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
+          >
+            <LinkIcon size={20} />
+            Import from URL
+          </button>
+          <button
             onClick={() => setShowCreateForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
@@ -161,6 +201,33 @@ export function PracticePacksPage() {
           </button>
         </div>
       </div>
+
+      {showUrlImport && (
+        <div className="mb-6 bg-white rounded-lg shadow p-4 flex items-center gap-3">
+          <input
+            type="url"
+            autoFocus
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleImportFromUrl()}
+            placeholder="https://… link to a Talk Buddy pack export (.json)"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={handleImportFromUrl}
+            disabled={importingUrl || !importUrl.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {importingUrl ? 'Importing…' : 'Import'}
+          </button>
+          <button
+            onClick={() => { setShowUrlImport(false); setImportUrl(''); }}
+            className="px-3 py-2 text-gray-500 hover:text-gray-700"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {packs.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">

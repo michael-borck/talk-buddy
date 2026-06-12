@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { getScenario, createSession, updateSession, getSession, getPreference } from '../services/sqlite';
+import { getScenario, createSession, updateSession, getSession, getPreference, listSessions, startStandaloneSession } from '../services/sqlite';
 import { Scenario, Session, ConversationMessage } from '../types';
 import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle, Square, Loader2 } from 'lucide-react';
 import { EditorialVoiceVisualizer } from '../components/EditorialVoiceVisualizer';
@@ -268,6 +268,36 @@ export function ConversationPage() {
     navigate('/sessions');
   };
 
+  // Previous finished attempt at this Scenario — the completion screen
+  // shows the delta so practising the same conversation feels like
+  // progress, not repetition.
+  const [lastAttempt, setLastAttempt] = useState<Session | null>(null);
+  useEffect(() => {
+    if (!t.sessionComplete || !scenarioId) return;
+    listSessions(scenarioId)
+      .then((all) => {
+        const prev = all
+          .filter((s) => s.status === 'ended' && s.id !== sessionRef.current?.id && s.startTime)
+          .sort((a, b) => new Date(b.startTime!).getTime() - new Date(a.startTime!).getTime())[0];
+        setLastAttempt(prev || null);
+      })
+      .catch(() => setLastAttempt(null));
+  }, [t.sessionComplete, scenarioId]);
+
+  // Fresh Session for the same Scenario. A plain reload would reuse the
+  // ended session's id from the URL and resume a finished session.
+  const practiceAgain = async () => {
+    if (!scenarioId) return;
+    try {
+      const next = await startStandaloneSession(scenarioId);
+      window.location.hash = `/conversation/${scenarioId}?sessionId=${next.id}`;
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to start new session:', err);
+      toast.error('Could not start a new session.');
+    }
+  };
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -299,6 +329,9 @@ export function ConversationPage() {
 
   if (t.sessionComplete) {
     const wordsSpoken = wordsSpokenOf(t.messages);
+    const lastWords = lastAttempt?.metadata?.wordsSpoken;
+    const lastDuration = lastAttempt?.duration;
+    const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
     return (
       <div className="min-h-full bg-paper px-12 lg:px-20 py-16 animate-fadeIn">
         <div className="max-w-3xl">
@@ -327,6 +360,11 @@ export function ConversationPage() {
               <dd className="font-sans text-3xl text-ink tabular-nums">
                 {formatTime(elapsedTime)}
               </dd>
+              {lastDuration != null && (
+                <p className="mt-1 text-[0.75rem] text-ink-quiet font-sans tabular-nums">
+                  last time {formatTime(lastDuration)}
+                </p>
+              )}
             </div>
             <div>
               <dt className="text-[0.65rem] uppercase tracking-[0.22em] text-ink-quiet font-sans mb-2">
@@ -339,6 +377,11 @@ export function ConversationPage() {
                 Words spoken
               </dt>
               <dd className="font-sans text-3xl text-ink tabular-nums">{wordsSpoken}</dd>
+              {lastWords != null && (
+                <p className={`mt-1 text-[0.75rem] font-sans tabular-nums ${wordsSpoken >= lastWords ? 'text-accent' : 'text-ink-quiet'}`}>
+                  {signed(wordsSpoken - lastWords)} vs last time
+                </p>
+              )}
             </div>
           </dl>
 
@@ -352,10 +395,10 @@ export function ConversationPage() {
               </button>
             )}
             <button
-              onClick={() => window.location.reload()}
+              onClick={practiceAgain}
               className="text-[0.95rem] text-ink hover:text-accent transition-colors border-b border-ink hover:border-accent pb-0.5"
             >
-              Begin another session →
+              Practice this again →
             </button>
             <button
               onClick={() => navigate('/sessions')}

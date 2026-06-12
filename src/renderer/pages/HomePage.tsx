@@ -7,7 +7,50 @@ import { useNavigate } from 'react-router-dom';
 import { listScenarios, listSessions, startStandaloneSession } from '../services/sqlite';
 import { loadPreferences, resolveChat } from '../services/config';
 import { Scenario, Session } from '../types';
-import { Flame, NotebookPen, Sun } from 'lucide-react';
+import { OllamaSetupCard } from '../components/OllamaSetupCard';
+import { Flame, NotebookPen, Sun, TrendingUp } from 'lucide-react';
+
+export const TUTORIAL_SCENARIO_ID = 'seed_tutorial_1';
+
+// Pace per session in words/min, oldest → newest, for the progress
+// trend. Prefers actual speaking time; falls back to session duration.
+function paceSeries(sessions: Session[]): number[] {
+  return sessions
+    .filter((s) => s.status === 'ended' && s.startTime && s.metadata?.wordsSpoken)
+    .sort((a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime())
+    .map((s) => {
+      const seconds = s.metadata?.speakingDuration || s.duration || 0;
+      return seconds > 0 ? Math.round((s.metadata!.wordsSpoken! / seconds) * 60) : 0;
+    })
+    .filter((wpm) => wpm > 0 && wpm < 400); // discard nonsense outliers
+}
+
+function Sparkline({ values }: { values: number[] }) {
+  const w = 140;
+  const h = 36;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const points = values
+    .map((v, i) => {
+      const x = values.length === 1 ? w / 2 : (i / (values.length - 1)) * w;
+      const y = h - 4 - ((v - min) / span) * (h - 8);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+  return (
+    <svg width={w} height={h} className="overflow-visible" aria-hidden="true">
+      <polyline
+        points={points}
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -73,14 +116,25 @@ export function HomePage() {
 
   // Propose the most recently updated Scenario — the one the user last
   // touched (edited, imported, or practised against) is the best guess
-  // for what they're working on.
-  const suggested = useMemo(
-    () =>
-      [...scenarios].sort(
-        (a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime()
-      )[0],
-    [scenarios]
-  );
+  // for what they're working on. Exception: someone who has never
+  // finished a conversation gets the guided tutorial first.
+  const suggested = useMemo(() => {
+    const hasFinishedASession = sessions.some((s) => s.status === 'ended');
+    if (!hasFinishedASession) {
+      const tutorial = scenarios.find((s) => s.id === TUTORIAL_SCENARIO_ID);
+      if (tutorial) return tutorial;
+    }
+    return [...scenarios].sort(
+      (a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime()
+    )[0];
+  }, [scenarios, sessions]);
+
+  const pace = paceSeries(sessions);
+  const recentPace = pace.slice(-5);
+  const earlierPace = pace.slice(-10, -5);
+  const avg = (xs: number[]) => Math.round(xs.reduce((a, b) => a + b, 0) / xs.length);
+  const paceDelta =
+    recentPace.length > 0 && earlierPace.length > 0 ? avg(recentPace) - avg(earlierPace) : null;
 
   const journal = useMemo(
     () =>
@@ -134,20 +188,10 @@ export function HomePage() {
           {greeting()}
         </h1>
 
-        {/* Private mode until an AI Brain is connected — practising needs one */}
-        {!chatConfigured && (
-          <button
-            onClick={() => navigate('/settings')}
-            className="group w-full text-left mb-8 px-5 py-4 border border-ink/10 border-l-2 border-l-error rounded-soft"
-          >
-            <p className="text-[0.9rem] text-ink font-sans">
-              No AI partner connected yet — conversations need one.
-            </p>
-            <p className="text-[0.82rem] text-ink-muted font-sans mt-1 group-hover:text-accent transition-colors">
-              Connect your own server or API key in Settings →
-            </p>
-          </button>
-        )}
+        {/* Private mode until an AI Brain is connected — practising needs
+            one. The card detects a local Ollama, guides install, and can
+            download a model in-app. */}
+        {!chatConfigured && <OllamaSetupCard onConnected={() => setChatConfigured(true)} />}
 
         {/* Today's session — the one big affordance */}
         {suggested ? (
@@ -215,6 +259,30 @@ export function HomePage() {
             </div>
           ))}
         </div>
+
+        {/* Speaking pace trend — computed from per-session metadata the
+            app has always recorded but never shown */}
+        {pace.length >= 3 && (
+          <div className="-mt-8 mb-12 px-5 py-4 border border-ink/10 rounded-soft flex items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp size={13} strokeWidth={1.5} className="text-accent" />
+                <span className="text-[0.66rem] uppercase tracking-[0.16em] text-ink-quiet font-sans">
+                  Speaking pace
+                </span>
+              </div>
+              <p className="font-sans text-[1.05rem] text-ink tabular-nums">
+                {avg(recentPace)} words/min
+                {paceDelta !== null && paceDelta !== 0 && (
+                  <span className={`ml-2 text-[0.8rem] ${paceDelta > 0 ? 'text-accent' : 'text-ink-quiet'}`}>
+                    {paceDelta > 0 ? '+' : ''}{paceDelta} vs your earlier sessions
+                  </span>
+                )}
+              </p>
+            </div>
+            <Sparkline values={pace.slice(-10)} />
+          </div>
+        )}
 
         {/* Journal */}
         <div className="flex items-baseline justify-between mb-5">

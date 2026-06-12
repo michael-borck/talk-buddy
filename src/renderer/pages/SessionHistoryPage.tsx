@@ -9,13 +9,14 @@ import {
   updateSession
 } from '../services/sqlite';
 import { Session, Scenario, SessionPackWithSessions } from '../types';
-import { 
-  Calendar, 
-  Clock, 
-  MessageSquare, 
- 
-  Trash2, 
-  Play, 
+import { downloadSessionReport } from '../services/sessionReport';
+import {
+  Calendar,
+  Clock,
+  MessageSquare,
+  FileDown,
+  Trash2,
+  Play,
   BarChart3,
   Package,
   ChevronDown,
@@ -522,16 +523,28 @@ function SessionCard({
               </button>
             )}
             {session.status === 'ended' && session.transcript && session.transcript.length > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/analysis/${session.id}`);
-                }}
-                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                title="View analysis"
-              >
-                <BarChart3 size={18} />
-              </button>
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/analysis/${session.id}`);
+                  }}
+                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                  title="View analysis"
+                >
+                  <BarChart3 size={18} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadSessionReport(session).catch((err) => console.error('Report export failed:', err));
+                  }}
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Download report (Markdown)"
+                >
+                  <FileDown size={18} />
+                </button>
+              </>
             )}
             <button
               onClick={(e) => onDelete(session.id, e)}

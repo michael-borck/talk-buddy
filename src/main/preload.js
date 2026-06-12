@@ -46,6 +46,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // API proxy to bypass CORS
   fetch: ({ url, options }) => ipcRenderer.invoke('api:fetch', { url, options }),
 
+  // User-initiated https text fetch (pack import from URL)
+  fetchText: (url) => ipcRenderer.invoke('net:fetchText', url),
+
   // Speaches proxies — multipart + binary, main-process fetch to bypass CORS
   speaches: {
     transcribe: (params) => ipcRenderer.invoke('speaches:transcribe', params),

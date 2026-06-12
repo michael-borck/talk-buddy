@@ -839,6 +839,27 @@ app.whenReady().then(() => {
   if (scenarioCount.count === 0) {
     insertSeedScenarios(db);
   }
+
+  // Guided tutorial — inserted for EVERY install (fixed id, OR IGNORE),
+  // not just fresh ones, so existing users get it too. The home screen
+  // proposes it until the user has finished their first conversation.
+  db.prepare(`
+    INSERT OR IGNORE INTO scenarios (
+      id, name, description, category, difficulty, estimatedMinutes,
+      systemPrompt, initialMessage, tags, isPublic, isDefault, voice, archived
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, 0)
+  `).run(
+    'seed_tutorial_1',
+    'Meet your Talk Buddy',
+    'A five-minute first conversation that teaches you how everything works — at your pace.',
+    'Getting Started',
+    'beginner',
+    5,
+    'You are a warm, patient guide welcoming someone to their very first practice conversation in Talk Buddy. Your job is to teach the mechanics through the conversation itself, one thing at a time: (1) First, confirm you can hear them and congratulate them on their first turn. (2) Then ask them to try interrupting you — tell them to press the Escape key while you are speaking, then deliberately give a slightly longer reply so they can try it. (3) Then explain they can hold the space bar to talk and release it to finish, and ask them an easy, friendly question to practise. (4) Mention that when they end the session they will get a transcript and an analysis. Keep every reply to one or two short sentences. Never explain more than one mechanic per turn. Be encouraging, never condescending.',
+    'Hello! You made it — and if you can hear me, everything is working. Let\'s try this: hold the space bar, tell me your name, and let go when you\'re done.',
+    JSON.stringify(['tutorial', 'first steps']),
+    'female'
+  );
   
   // Start embedded server if it's already installed. If not, stay quiet —
   // the user can set it up from Settings and we'll auto-start afterward.
@@ -1173,6 +1194,35 @@ ipcMain.handle('api:fetch', async (event, { url, options }) => {
     });
   } catch (error) {
     return { ok: false, error: error.message };
+  }
+});
+
+// Fetch a small text document from an explicit user-pasted HTTPS URL
+// (pack imports). Deliberately separate from api:fetch: that proxy is
+// pinned to configured endpoints; this one allows any https origin but
+// only returns text, capped at 5 MB, and is only invoked from the
+// user-initiated "import from URL" flow.
+ipcMain.handle('net:fetchText', async (event, url) => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') {
+      return { ok: false, error: 'Only https:// URLs are allowed' };
+    }
+    const response = await fetch(url, { redirect: 'follow' });
+    if (!response.ok) {
+      return { ok: false, error: `Request failed (${response.status})` };
+    }
+    const length = Number(response.headers.get('content-length') || 0);
+    if (length > 5 * 1024 * 1024) {
+      return { ok: false, error: 'File too large (max 5 MB)' };
+    }
+    const text = await response.text();
+    if (text.length > 5 * 1024 * 1024) {
+      return { ok: false, error: 'File too large (max 5 MB)' };
+    }
+    return { ok: true, text };
+  } catch (err) {
+    return { ok: false, error: err && err.message ? err.message : String(err) };
   }
 });
 

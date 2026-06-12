@@ -28,6 +28,7 @@ interface ElectronAPI {
     set: (key: string, value: string) => Promise<{ success: boolean; error?: string }>;
   };
   fetch: (params: { url: string; options: any }) => Promise<{ ok: boolean; status?: number; statusText?: string; headers?: any; data?: any; error?: string }>;
+  fetchText: (url: string) => Promise<{ ok: boolean; text?: string; error?: string }>;
   speaches: {
     transcribe: (params: {
       url: string;
