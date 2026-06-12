@@ -64,9 +64,21 @@ export const DEFAULTS = {
   },
   chat: {
     provider: 'ollama' as ChatProvider,
-    url: 'https://ollama.serveur.au',
+    // Deliberately empty: there is no silent remote default. The
+    // community server URL is only written by an explicit first-run
+    // choice (WelcomePage) or typed into Settings. An empty URL means
+    // "no AI Brain connected yet" and the UI says so.
+    url: '',
     model: 'llama2',
   },
+} as const;
+
+// The project's hosted servers — offered as an explicit choice during
+// first-run onboarding and as a Settings preset, never as a silent default.
+export const COMMUNITY_SERVERS = {
+  speech: 'https://speaches.locopuente.org',
+  chat: 'https://ollama.serveur.au',
+  chatModel: 'llama2',
 } as const;
 
 // Preference keys the Settings UI still writes but no runtime path reads.

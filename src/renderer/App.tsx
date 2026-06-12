@@ -1,5 +1,5 @@
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ConversationPage } from './pages/ConversationPage';
 import { ScenariosPage } from './pages/ScenariosPage';
 import { ScenarioFormPage } from './pages/ScenarioFormPage';
@@ -14,6 +14,7 @@ import { LicensePage } from './pages/LicensePage';
 import { HelpPage } from './pages/HelpPage';
 import { DocumentationPage } from './pages/DocumentationPage';
 import { HomePage } from './pages/HomePage';
+import { WelcomePage } from './pages/WelcomePage';
 import { getPreference } from './services/sqlite';
 import { StatusFooter } from './components/StatusFooter';
 import { TabBar } from './components/TabBar';
@@ -118,6 +119,21 @@ function AppContent() {
   const location = useLocation();
   const inConversation = location.pathname.startsWith('/conversation');
   const inSettings = location.pathname.startsWith('/settings');
+
+  // First-run privacy gate: until the user has chosen where their voice
+  // goes (WelcomePage), no other screen renders and no network
+  // preference exists.
+  const [onboarding, setOnboarding] = useState<'loading' | 'needed' | 'done'>('loading');
+  useEffect(() => {
+    getPreference('onboardingComplete')
+      .then((v) => setOnboarding(v === 'true' ? 'done' : 'needed'))
+      .catch(() => setOnboarding('done')); // never trap the user on a DB error
+  }, []);
+
+  if (onboarding === 'loading') return null;
+  if (onboarding === 'needed') {
+    return <WelcomePage onComplete={() => setOnboarding('done')} />;
+  }
 
   return (
     <>

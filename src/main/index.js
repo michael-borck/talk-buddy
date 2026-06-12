@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -9,6 +9,7 @@ const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'produ
 // API is drop-in for our usage (prepare / run / get / all / exec).
 const { DatabaseSync } = require('node:sqlite');
 const { autoUpdater } = require('electron-updater');
+const { runOperation } = require('./db-operations');
 
 // Disable sandbox on Linux only in development or when explicitly requested
 if (process.platform === 'linux' && (isDev || process.argv.includes('--no-sandbox'))) {
@@ -20,6 +21,10 @@ let db;
 let embeddedServer = null;
 let embeddedServerPort = 8765;
 let embeddedInstallProcess = null;
+// Per-session bearer token for the embedded server: localhost-only
+// binding doesn't stop other local processes (or webpage form POSTs)
+// from reaching it, so every route except /health requires this.
+const embeddedServerToken = require('crypto').randomBytes(32).toString('hex');
 
 // Default scenarios data - kept separately for restoration
 const DEFAULT_SCENARIOS = [
@@ -352,11 +357,21 @@ async function startEmbeddedServer() {
     console.log(`Using port ${embeddedServerPort} for embedded server`);
 
     const serverPath = getEmbeddedServerPath();
-    const env = {
-      ...process.env,
-      PORT: embeddedServerPort.toString(),
-      HOST: '127.0.0.1'
-    };
+    // Whitelisted environment: the Python server needs none of the
+    // shell's secrets (API keys, tokens), so don't hand them over.
+    const PASSTHROUGH_ENV = [
+      'PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP', 'TMP',
+      // Windows process essentials
+      'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'APPDATA', 'LOCALAPPDATA',
+      'PROGRAMDATA', 'USERPROFILE', 'SYSTEMDRIVE', 'PATHEXT', 'NUMBER_OF_PROCESSORS',
+    ];
+    const env = {};
+    for (const key of PASSTHROUGH_ENV) {
+      if (process.env[key] !== undefined) env[key] = process.env[key];
+    }
+    env.PORT = embeddedServerPort.toString();
+    env.HOST = '127.0.0.1';
+    env.EMBEDDED_AUTH_TOKEN = embeddedServerToken;
 
     if (isDev) {
       // Development: run Python script using venv
@@ -453,6 +468,7 @@ function stopEmbeddedServer() {
         method: 'POST',
         url: `http://127.0.0.1:${embeddedServerPort}/shutdown`
       });
+      request.setHeader('Authorization', `Bearer ${embeddedServerToken}`);
       request.end();
     } catch (error) {
       console.log('Graceful shutdown failed, forcing termination');
@@ -484,7 +500,10 @@ async function warmupEmbeddedServer(baseUrl) {
   try {
     await fetch(`${baseUrl}/v1/audio/speech`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${embeddedServerToken}`,
+      },
       body: JSON.stringify({
         model: 'tts-embedded',
         input: 'hi',
@@ -527,6 +546,7 @@ async function warmupEmbeddedServer(baseUrl) {
     formData.append('response_format', 'json');
     await fetch(`${baseUrl}/v1/audio/transcriptions`, {
       method: 'POST',
+      headers: { 'Authorization': `Bearer ${embeddedServerToken}` },
       body: formData,
     });
     console.log('[embedded-server] STT warmup complete');
@@ -580,6 +600,58 @@ async function updateEmbeddedServerConfig() {
     console.error('Failed to update embedded server config:', error);
   }
 }
+
+// ---- API key storage --------------------------------------------------------
+// BYOK keys live in user_preferences but encrypted with the OS keychain
+// (safeStorage) rather than plaintext. Stored format: 'enc:v1:<base64>'.
+// Values starting with 'env:' are references to environment variables,
+// not secrets themselves, and stay readable.
+const SECRET_PREF_KEYS = ['sttApiKey', 'ttsApiKey', 'ollamaApiKey'];
+const ENC_PREFIX = 'enc:v1:';
+
+function encryptSecret(value) {
+  if (!value || value.startsWith('env:') || !safeStorage.isEncryptionAvailable()) {
+    return value;
+  }
+  return ENC_PREFIX + safeStorage.encryptString(value).toString('base64');
+}
+
+function decryptSecret(stored) {
+  if (!stored || !stored.startsWith(ENC_PREFIX)) return stored || '';
+  try {
+    return safeStorage.decryptString(Buffer.from(stored.slice(ENC_PREFIX.length), 'base64'));
+  } catch (err) {
+    // Wrong keychain (copied DB from another machine) — treat as unset
+    // rather than handing the renderer ciphertext.
+    console.warn('Failed to decrypt stored API key:', err.message);
+    return '';
+  }
+}
+
+// One-time migration: encrypt any plaintext keys already on disk.
+function migrateSecretsToSafeStorage() {
+  if (!safeStorage.isEncryptionAvailable()) return;
+  for (const key of SECRET_PREF_KEYS) {
+    const row = db.prepare('SELECT value FROM user_preferences WHERE key = ?').get(key);
+    if (row && row.value && !row.value.startsWith(ENC_PREFIX) && !row.value.startsWith('env:')) {
+      db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)')
+        .run(key, encryptSecret(row.value));
+    }
+  }
+}
+
+ipcMain.handle('secrets:get', (event, key) => {
+  if (!SECRET_PREF_KEYS.includes(key)) return '';
+  const row = db.prepare('SELECT value FROM user_preferences WHERE key = ?').get(key);
+  return decryptSecret(row ? row.value : '');
+});
+
+ipcMain.handle('secrets:set', (event, { key, value }) => {
+  if (!SECRET_PREF_KEYS.includes(key)) return { success: false, error: 'Unknown secret key' };
+  db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)')
+    .run(key, encryptSecret(value || ''));
+  return { success: true };
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -727,15 +799,11 @@ app.whenReady().then(() => {
       FOREIGN KEY (scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE
     );
 
-    INSERT OR IGNORE INTO user_preferences (key, value) VALUES 
-      ('speachesUrl', 'https://speaches.locopuente.org'),
-      ('sttUrl', 'https://speaches.locopuente.org'),
-      ('ttsUrl', 'https://speaches.locopuente.org'),
-      ('sttApiKey', ''),
-      ('ttsApiKey', ''),
-      ('ollamaUrl', 'https://ollama.serveur.au'),
-      ('ollamaApiKey', ''),
-      ('ollamaModel', 'llama2'),
+    -- Non-network defaults only. Server URLs are deliberately NOT seeded:
+    -- a fresh install must not send voice audio or conversation text
+    -- anywhere until the user makes the first-run privacy choice
+    -- (renderer WelcomePage). Read-time fallbacks live in config.ts.
+    INSERT OR IGNORE INTO user_preferences (key, value) VALUES
       ('voice', 'female'),
       ('sttModel', 'Systran/faster-whisper-small'),
       ('ttsModel', 'speaches-ai/Kokoro-82M-v1.0-ONNX'),
@@ -751,6 +819,20 @@ app.whenReady().then(() => {
       ('includeResponseFormat', 'true'),
       ('addModelOptimizations', 'false');
   `);
+
+  // Installs that predate the first-run privacy choice already have the
+  // server URLs seeded (speachesUrl was in every legacy seed) — treat
+  // them as onboarded so the welcome screen only greets new users.
+  const onboardedRow = db.prepare("SELECT value FROM user_preferences WHERE key = 'onboardingComplete'").get();
+  if (!onboardedRow) {
+    const legacy = db.prepare("SELECT value FROM user_preferences WHERE key = 'speachesUrl'").get();
+    if (legacy) {
+      db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)')
+        .run('onboardingComplete', 'true');
+    }
+  }
+
+  migrateSecretsToSafeStorage();
   
   // Insert seed data if no scenarios exist
   const scenarioCount = db.prepare('SELECT COUNT(*) as count FROM scenarios').get();
@@ -785,13 +867,33 @@ app.whenReady().then(() => {
   // what happened in production logs without overwhelming the user.
   if (!isDev) {
     autoUpdater.logger = console;
-    autoUpdater.autoDownload = true;
+    // Ask before downloading: a privacy-positioned app shouldn't pull
+    // and install new binaries silently. One dialog, then install on quit.
+    autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
+
+    autoUpdater.on('update-available', async (info) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      const { response } = await dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Update available',
+        message: `Talk Buddy ${info.version} is available.`,
+        detail: 'Download now and install when you quit the app?',
+        buttons: ['Install on quit', 'Later'],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      if (response === 0) {
+        autoUpdater.downloadUpdate().catch((err) => {
+          console.warn('[auto-updater] Download failed:', err.message);
+        });
+      }
+    });
     // Wait 30s after launch before checking — give the app time to
     // settle (window painted, embedded server warmed up) so the
     // update check doesn't compete for resources at the worst moment.
     setTimeout(() => {
-      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      autoUpdater.checkForUpdates().catch((err) => {
         console.warn('[auto-updater] Check failed (non-fatal):', err.message);
       });
     }, 30_000);
@@ -809,22 +911,11 @@ app.on('before-quit', () => {
   stopEmbeddedServer();
 });
 
-// IPC Handlers for database operations
-ipcMain.handle('db:query', async (event, { query, params }) => {
+// IPC Handlers for database operations. The renderer invokes named
+// operations with structured params — raw SQL never crosses IPC.
+ipcMain.handle('db:op', async (event, { name, params }) => {
   try {
-    const stmt = db.prepare(query);
-    const result = stmt.all(...(params || []));
-    return { success: true, data: result };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('db:run', async (event, { query, params }) => {
-  try {
-    const stmt = db.prepare(query);
-    const result = stmt.run(...(params || []));
-    return { success: true, data: result };
+    return { success: true, data: runOperation(db, name, params) };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -888,8 +979,19 @@ ipcMain.handle('app:getPath', (event, name) => {
 // Node process that Electron's main was spawned from. Any feature that
 // resolves `env:VAR_NAME` prefs (chat API key, STT API key, TTS API key)
 // has to hop through this IPC.
+// Allowlisted: only credential vars the env:VAR settings feature is for.
+// Without this, a compromised renderer could read ANY shell secret
+// (AWS keys, GitHub tokens, ...) through this channel.
+const KNOWN_ENV_VARS = new Set([
+  'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GROQ_API_KEY', 'GEMINI_API_KEY',
+  'OLLAMA_API_KEY', 'API_KEY',
+]);
 ipcMain.handle('app:getEnvVar', (event, name) => {
   if (!name || typeof name !== 'string') return null;
+  if (!KNOWN_ENV_VARS.has(name) && !/^[A-Z][A-Z0-9_]*_API_KEY$/.test(name)) {
+    console.warn(`Blocked getEnvVar for non-allowlisted variable: ${name}`);
+    return null;
+  }
   return process.env[name] || null;
 });
 
@@ -899,6 +1001,9 @@ ipcMain.handle('app:getEnvVar', (event, name) => {
 // Main process has no CORS enforcement, so this bypasses the browser
 // preflight that blocks direct renderer fetches to speaches.locopuente.org.
 ipcMain.handle('speaches:transcribe', async (event, { url, apiKey, audioBuffer, model, filename }) => {
+  if (!isAllowedProxyUrl(url)) {
+    return { ok: false, status: 0, statusText: 'blocked', error: 'URL is not a configured endpoint' };
+  }
   try {
     const formData = new FormData();
     // audioBuffer arrives as a Uint8Array over IPC; wrap in Blob for FormData.
@@ -941,6 +1046,9 @@ ipcMain.handle('speaches:transcribe', async (event, { url, apiKey, audioBuffer, 
 // Speaches TTS — JSON POST returning binary audio. The response body is
 // returned as a Uint8Array that the renderer wraps in a Blob.
 ipcMain.handle('speaches:speak', async (event, { url, apiKey, payload }) => {
+  if (!isAllowedProxyUrl(url)) {
+    return { ok: false, status: 0, statusText: 'blocked', error: 'URL is not a configured endpoint' };
+  }
   try {
     const headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
@@ -980,8 +1088,44 @@ ipcMain.handle('speaches:speak', async (event, { url, apiKey, payload }) => {
   }
 });
 
-// Proxy for external API requests to bypass CORS
+// Proxy for external API requests to bypass CORS. Restricted to the
+// endpoints the user has actually configured (plus the hosted provider
+// APIs and localhost) — without this check the proxy is an arbitrary
+// exfiltration channel for a compromised renderer, bypassing the CSP.
+const HOSTED_API_ORIGINS = new Set([
+  'https://api.anthropic.com',
+  'https://api.openai.com',
+  'https://api.groq.com',
+  'https://generativelanguage.googleapis.com',
+]);
+
+function isAllowedProxyUrl(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') return true;
+  if (HOSTED_API_ORIGINS.has(parsed.origin)) return true;
+  // User-configured endpoints (BYO server URLs) from preferences.
+  const urlPrefKeys = ['speachesUrl', 'sttUrl', 'ttsUrl', 'ollamaUrl'];
+  for (const key of urlPrefKeys) {
+    const row = db.prepare('SELECT value FROM user_preferences WHERE key = ?').get(key);
+    if (row && row.value) {
+      try {
+        if (new URL(row.value).origin === parsed.origin) return true;
+      } catch { /* malformed pref — ignore */ }
+    }
+  }
+  return false;
+}
+
 ipcMain.handle('api:fetch', async (event, { url, options }) => {
+  if (!isAllowedProxyUrl(url)) {
+    console.warn(`Blocked api:fetch to non-configured origin: ${url}`);
+    return { ok: false, status: 0, error: 'URL is not a configured endpoint' };
+  }
   try {
     const { net } = require('electron');
     const request = net.request({
@@ -1123,7 +1267,8 @@ ipcMain.handle('embedded-server:status', async () => {
   return {
     running: embeddedServer !== null && !embeddedServer.killed,
     port: embeddedServerPort,
-    url: `http://127.0.0.1:${embeddedServerPort}`
+    url: `http://127.0.0.1:${embeddedServerPort}`,
+    token: embeddedServerToken
   };
 });
 

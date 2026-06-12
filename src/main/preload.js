@@ -3,10 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Database operations
+  // Database operations — named ops only, no raw SQL over IPC
   database: {
-    query: (query, params) => ipcRenderer.invoke('db:query', { query, params }),
-    run: (query, params) => ipcRenderer.invoke('db:run', { query, params }),
+    op: (name, params) => ipcRenderer.invoke('db:op', { name, params }),
     reset: () => ipcRenderer.invoke('db:reset')
   },
 
@@ -36,6 +35,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Scenarios
   scenarios: {
     restoreDefaults: () => ipcRenderer.invoke('scenarios:restoreDefaults')
+  },
+
+  // API keys — encrypted at rest via OS keychain (safeStorage) in main.
+  secrets: {
+    get: (key) => ipcRenderer.invoke('secrets:get', key),
+    set: (key, value) => ipcRenderer.invoke('secrets:set', { key, value }),
   },
 
   // API proxy to bypass CORS

@@ -57,9 +57,20 @@ jobs:
           curl -L -o models/en_US-amy-low.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx.json
           
           # Download whisper-tiny model for pywhispercpp (will be included in build)
+          # Pinned to an immutable revision, not the mutable main branch.
           mkdir -p whisper-models
-          curl -L -o whisper-models/ggml-tiny.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
-          
+          curl -L -o whisper-models/ggml-tiny.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny.bin
+
+          # Verify pinned checksums — these files ship inside the packaged
+          # binary, so a compromised upstream must fail the build, not ship.
+          shasum -a 256 -c <<'CHECKSUMS'
+          a1f60584620a2bed203de823d08f5abb336fb15f3d6f33f8c341e3e2cabf5dde  models/en_GB-alan-low.onnx
+          c8164cc04b6ce102c651ce4a1e788e8429fa638501fca0723860718d4b44637e  models/en_GB-alan-low.onnx.json
+          a5a91abb7de0f104358a25aded480ddacf1ff0762886325886ec406a2e86aab3  models/en_US-amy-low.onnx
+          2250a9a605b8dc35a116717fadc5056695dd809e34a15d02f72a0f52d53d3ebb  models/en_US-amy-low.onnx.json
+          be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21  whisper-models/ggml-tiny.bin
+          CHECKSUMS
+
           # Create PyInstaller executable with optimizations
           pyinstaller --onefile \
             --add-data "models:models" \
@@ -91,8 +102,24 @@ jobs:
           curl -L -o models/en_US-amy-low.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx.json
           
           mkdir whisper-models
-          curl -L -o whisper-models/ggml-tiny.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
-          
+          curl -L -o whisper-models/ggml-tiny.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny.bin
+
+          # Verify pinned checksums (same pins as the Unix step / server.py)
+          $expected = @{
+            "models/en_GB-alan-low.onnx"      = "a1f60584620a2bed203de823d08f5abb336fb15f3d6f33f8c341e3e2cabf5dde"
+            "models/en_GB-alan-low.onnx.json" = "c8164cc04b6ce102c651ce4a1e788e8429fa638501fca0723860718d4b44637e"
+            "models/en_US-amy-low.onnx"       = "a5a91abb7de0f104358a25aded480ddacf1ff0762886325886ec406a2e86aab3"
+            "models/en_US-amy-low.onnx.json"  = "2250a9a605b8dc35a116717fadc5056695dd809e34a15d02f72a0f52d53d3ebb"
+            "whisper-models/ggml-tiny.bin"    = "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21"
+          }
+          foreach ($f in $expected.Keys) {
+            $actual = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+            if ($actual -ne $expected[$f]) {
+              Write-Error "Checksum mismatch for ${f}: $actual"
+              exit 1
+            }
+          }
+
           pyinstaller --onefile --add-data "models;models" --add-data "whisper-models;whisper-models" --exclude-module torch --exclude-module tensorflow --exclude-module PIL --exclude-module matplotlib --exclude-module pandas --exclude-module scipy --name embedded-server server.py
           
           mkdir ..\dist-server

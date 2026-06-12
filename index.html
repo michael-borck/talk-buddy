@@ -4,16 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Fonts are bundled (public/fonts/) — the app makes no request to
+         Google on launch and typography works fully offline. script-src
+         deliberately has no 'unsafe-inline'/'unsafe-eval'; the dev-mode
+         relaxation for Vite's React-refresh preamble lives in vite.config.ts. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' blob:; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* https://speaches.locopuente.org https://ollama.serveur.au https://api.anthropic.com https://api.openai.com https://api.groq.com https://generativelanguage.googleapis.com"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* https://speaches.locopuente.org https://ollama.serveur.au https://api.anthropic.com https://api.openai.com https://api.groq.com https://generativelanguage.googleapis.com"
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
+    <link href="/fonts/fonts.css" rel="stylesheet" />
     <title>Talk Buddy</title>
   </head>
   <body>

@@ -7,6 +7,8 @@ Provides OpenAI-compatible API endpoints for text-to-speech and speech-to-text
 import os
 import sys
 import json
+import hashlib
+import hmac
 import logging
 import tempfile
 import threading
@@ -31,6 +33,25 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
+# Localhost-only is not enough: any local process (and, via form POSTs,
+# potentially any webpage in the user's browser) can reach 127.0.0.1.
+# Electron main generates a per-session token and passes it via env;
+# every route except /health requires it. When the env var is absent
+# (running the server standalone in dev) auth is disabled.
+_AUTH_TOKEN = os.environ.get("EMBEDDED_AUTH_TOKEN", "")
+
+
+@app.before_request
+def _require_auth():
+    if not _AUTH_TOKEN or request.path == "/health":
+        return None
+    supplied = request.headers.get("Authorization", "")
+    if supplied.startswith("Bearer "):
+        supplied = supplied[len("Bearer "):]
+    if not hmac.compare_digest(supplied, _AUTH_TOKEN):
+        return jsonify({"error": "Unauthorized"}), 401
+    return None
+
 # Global variables
 piper_male_voice = None
 piper_female_voice = None
@@ -41,12 +62,35 @@ whisper_model = None
 # truth would live in a shared config file, but duplication across
 # three callers is acceptable for a stable upstream path.
 _PIPER_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en"
+# url + pinned SHA-256 per file. HTTPS protects the transport; the pin
+# protects against a compromised upstream serving a poisoned model.
+# Hashes computed from the v1.0.0 tag (immutable revision).
 _PIPER_MODELS = {
-    "en_GB-alan-low.onnx":      f"{_PIPER_BASE}/en_GB/alan/low/en_GB-alan-low.onnx",
-    "en_GB-alan-low.onnx.json": f"{_PIPER_BASE}/en_GB/alan/low/en_GB-alan-low.onnx.json",
-    "en_US-amy-low.onnx":       f"{_PIPER_BASE}/en_US/amy/low/en_US-amy-low.onnx",
-    "en_US-amy-low.onnx.json":  f"{_PIPER_BASE}/en_US/amy/low/en_US-amy-low.onnx.json",
+    "en_GB-alan-low.onnx": (
+        f"{_PIPER_BASE}/en_GB/alan/low/en_GB-alan-low.onnx",
+        "a1f60584620a2bed203de823d08f5abb336fb15f3d6f33f8c341e3e2cabf5dde",
+    ),
+    "en_GB-alan-low.onnx.json": (
+        f"{_PIPER_BASE}/en_GB/alan/low/en_GB-alan-low.onnx.json",
+        "c8164cc04b6ce102c651ce4a1e788e8429fa638501fca0723860718d4b44637e",
+    ),
+    "en_US-amy-low.onnx": (
+        f"{_PIPER_BASE}/en_US/amy/low/en_US-amy-low.onnx",
+        "a5a91abb7de0f104358a25aded480ddacf1ff0762886325886ec406a2e86aab3",
+    ),
+    "en_US-amy-low.onnx.json": (
+        f"{_PIPER_BASE}/en_US/amy/low/en_US-amy-low.onnx.json",
+        "2250a9a605b8dc35a116717fadc5056695dd809e34a15d02f72a0f52d53d3ebb",
+    ),
 }
+
+
+def _sha256_of(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _download_piper_models_if_missing():
@@ -62,17 +106,23 @@ def _download_piper_models_if_missing():
         return
 
     os.makedirs("models", exist_ok=True)
-    for filename, url in _PIPER_MODELS.items():
+    for filename, (url, expected_sha256) in _PIPER_MODELS.items():
         dest = os.path.join("models", filename)
         if os.path.exists(dest) and os.path.getsize(dest) > 0:
             continue
         logger.info(f"Piper model missing, downloading: {filename}")
         try:
             urllib.request.urlretrieve(url, dest)
-            logger.info(f"  → saved {dest} ({os.path.getsize(dest)} bytes)")
+            actual = _sha256_of(dest)
+            if actual != expected_sha256:
+                raise ValueError(
+                    f"checksum mismatch (expected {expected_sha256}, got {actual})"
+                )
+            logger.info(f"  → saved {dest} ({os.path.getsize(dest)} bytes, sha256 ok)")
         except Exception as e:
             logger.error(f"  ✗ download failed for {url}: {e}")
-            # Leave any partial file removed so the next attempt retries cleanly.
+            # Leave any partial/poisoned file removed so the next attempt
+            # retries cleanly.
             try:
                 if os.path.exists(dest):
                     os.remove(dest)
@@ -325,21 +375,27 @@ def health_check():
 def list_models():
     """List available models (OpenAI-compatible)"""
     models = []
-    
-    # Add TTS models
-    if available_voices:
-        for i, voice in enumerate(available_voices):
-            models.append({
-                "id": f"tts-voice-{i}",
-                "object": "model",
-                "created": 1677610602,
-                "owned_by": "embedded-server",
-                "permission": [],
-                "root": f"tts-voice-{i}",
-                "parent": None,
-                "name": getattr(voice, 'name', f'Voice {i}'),
-                "gender": getattr(voice, 'gender', 'unknown')
-            })
+
+    # Add TTS models. (Was `available_voices`, an undefined name — this
+    # endpoint crashed whenever TTS voices were loaded.)
+    loaded_voices = [
+        ("alan", "male", piper_male_voice),
+        ("amy", "female", piper_female_voice),
+    ]
+    for i, (name, gender, voice) in enumerate(loaded_voices):
+        if voice is None:
+            continue
+        models.append({
+            "id": f"tts-voice-{i}",
+            "object": "model",
+            "created": 1677610602,
+            "owned_by": "embedded-server",
+            "permission": [],
+            "root": f"tts-voice-{i}",
+            "parent": None,
+            "name": name,
+            "gender": gender
+        })
     
     # Add STT model
     if whisper_model:

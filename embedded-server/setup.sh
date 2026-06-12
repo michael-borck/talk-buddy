@@ -70,9 +70,22 @@ pip install -r requirements.txt
 mkdir -p models
 PIPER_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en"
 
+# Downloads are verified against pinned SHA-256s (same pins as
+# server.py) so a compromised upstream can't hand us a poisoned model.
+sha256_check() {
+  local file="$1" expected="$2" actual
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual=$(sha256sum "$file" | awk '{print $1}')
+  else
+    actual=$(shasum -a 256 "$file" | awk '{print $1}')
+  fi
+  [ "$actual" = "$expected" ]
+}
+
 download_if_missing() {
   local dest="$1"
   local url="$2"
+  local sha="$3"
   if [ -s "$dest" ]; then
     echo "[setup] OK $(basename "$dest") (already present)"
   else
@@ -82,13 +95,18 @@ download_if_missing() {
       rm -f "$dest"
       exit 1
     }
+    sha256_check "$dest" "$sha" || {
+      echo "[setup] ERROR: checksum mismatch for $(basename "$dest") — refusing to use it"
+      rm -f "$dest"
+      exit 1
+    }
   fi
 }
 
-download_if_missing "models/en_GB-alan-low.onnx"      "$PIPER_BASE/en_GB/alan/low/en_GB-alan-low.onnx"
-download_if_missing "models/en_GB-alan-low.onnx.json" "$PIPER_BASE/en_GB/alan/low/en_GB-alan-low.onnx.json"
-download_if_missing "models/en_US-amy-low.onnx"       "$PIPER_BASE/en_US/amy/low/en_US-amy-low.onnx"
-download_if_missing "models/en_US-amy-low.onnx.json"  "$PIPER_BASE/en_US/amy/low/en_US-amy-low.onnx.json"
+download_if_missing "models/en_GB-alan-low.onnx"      "$PIPER_BASE/en_GB/alan/low/en_GB-alan-low.onnx"      "a1f60584620a2bed203de823d08f5abb336fb15f3d6f33f8c341e3e2cabf5dde"
+download_if_missing "models/en_GB-alan-low.onnx.json" "$PIPER_BASE/en_GB/alan/low/en_GB-alan-low.onnx.json" "c8164cc04b6ce102c651ce4a1e788e8429fa638501fca0723860718d4b44637e"
+download_if_missing "models/en_US-amy-low.onnx"       "$PIPER_BASE/en_US/amy/low/en_US-amy-low.onnx"       "a5a91abb7de0f104358a25aded480ddacf1ff0762886325886ec406a2e86aab3"
+download_if_missing "models/en_US-amy-low.onnx.json"  "$PIPER_BASE/en_US/amy/low/en_US-amy-low.onnx.json"  "2250a9a605b8dc35a116717fadc5056695dd809e34a15d02f72a0f52d53d3ebb"
 
 # -- done ----------------------------------------------------------------
 echo ""

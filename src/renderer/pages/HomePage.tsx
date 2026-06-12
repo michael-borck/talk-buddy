@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listScenarios, listSessions, startStandaloneSession } from '../services/sqlite';
+import { loadPreferences, resolveChat } from '../services/config';
 import { Scenario, Session } from '../types';
 import { Flame, NotebookPen, Sun } from 'lucide-react';
 
@@ -46,13 +47,19 @@ export function HomePage() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [starting, setStarting] = useState(false);
+  const [chatConfigured, setChatConfigured] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [allScenarios, allSessions] = await Promise.all([listScenarios(), listSessions()]);
+        const [allScenarios, allSessions, prefs] = await Promise.all([
+          listScenarios(),
+          listSessions(),
+          loadPreferences(),
+        ]);
         setScenarios(allScenarios.filter((s) => !s.archived));
         setSessions(allSessions);
+        setChatConfigured(Boolean(resolveChat(prefs).url));
       } catch (error) {
         console.error('Failed to load home data:', error);
       }
@@ -126,6 +133,21 @@ export function HomePage() {
         <h1 className="font-sans text-ink font-medium tracking-display text-[2.4rem] leading-tight mb-10">
           {greeting()}
         </h1>
+
+        {/* Private mode until an AI Brain is connected — practising needs one */}
+        {!chatConfigured && (
+          <button
+            onClick={() => navigate('/settings')}
+            className="group w-full text-left mb-8 px-5 py-4 border border-ink/10 border-l-2 border-l-error rounded-soft"
+          >
+            <p className="text-[0.9rem] text-ink font-sans">
+              No AI partner connected yet — conversations need one.
+            </p>
+            <p className="text-[0.82rem] text-ink-muted font-sans mt-1 group-hover:text-accent transition-colors">
+              Connect your own server or API key in Settings →
+            </p>
+          </button>
+        )}
 
         {/* Today's session — the one big affordance */}
         {suggested ? (
