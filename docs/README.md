@@ -1,3 +1,7 @@
+---
+permalink: /documentation/
+---
+
 # Talk Buddy Documentation
 
 Welcome to the Talk Buddy docs. Whether you're a student practising conversations, a teacher creating scenarios, or setting up the app for the first time — start here.
