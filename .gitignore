@@ -62,3 +62,6 @@ embedded-server/build/
 embedded-server/dist/
 embedded-server/*.spec
 dist-server/
+
+# macOS AppleDouble files (external drives)
+._*

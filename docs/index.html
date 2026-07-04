@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talk Buddy — Rehearse the conversation before it happens</title>
+  <meta name="description" content="Talk Buddy is a privacy-first desktop app for practising spoken conversations with an AI partner. Scenarios you write, voices that respond, transcripts you can revisit. Your recordings stay on your device." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <nav class="topnav">
+    <div class="container topnav-inner">
+      <span class="brand">Talk<span class="brand-dot">.</span>Buddy</span>
+      <div class="topnav-links">
+        <a href="README.html">Documentation</a>
+        <a href="https://github.com/michael-borck/talk-buddy">GitHub</a>
+        <a href="#download" class="nav-cta">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">A quiet place to practice speaking</p>
+        <h1>Rehearse the conversation <em>before it happens.</em></h1>
+        <p class="sub">Scenarios you write, voices that respond, transcripts you can revisit.
+          Talk Buddy is a studio for the conversations that matter — the difficult ones,
+          the first ones, the ones you want to get right.</p>
+
+        <div class="download-block" id="download">
+          <a id="download-btn" class="btn btn-primary" href="https://github.com/michael-borck/talk-buddy/releases/latest">Download</a>
+          <div class="platform-toggle" role="group" aria-label="Choose platform">
+            <button data-platform="mac" class="platform-btn">macOS</button>
+            <button data-platform="windows" class="platform-btn">Windows</button>
+            <button data-platform="linux" class="platform-btn">Linux</button>
+          </div>
+          <p class="version"><span id="version">&nbsp;</span> <a id="alt-arch" class="alt-arch" href="#" hidden></a></p>
+          <p class="all-releases"><a href="https://github.com/michael-borck/talk-buddy/releases">All releases &amp; older versions →</a></p>
+        </div>
+
+        <p class="privacy-tag">Local-first. Your recordings and transcripts stay on this device.</p>
+      </div>
+
+      <div class="hero-shots">
+        <!-- Screenshots auto-discovered from screenshots/talk-buddy-1.png, -2.png, -3.png…
+             Drop a new numbered PNG in docs/screenshots/ and it joins the rotation. -->
+        <div class="carousel" id="carousel" aria-label="App screenshots">
+          <noscript><img src="screenshots/talk-buddy-1.png" alt="Talk Buddy home screen" /></noscript>
+        </div>
+        <div class="carousel-dots" id="carousel-dots"></div>
+      </div>
+    </div>
+  </header>
+
+  <section class="container steps">
+    <h2>How practice works</h2>
+    <div class="grid three">
+      <div class="card">
+        <div class="card-num">01</div>
+        <h3>Pick a Scenario</h3>
+        <p>A job interview, a difficult meeting, a client call. Choose from the built-in
+          library, import a Practice Pack from a teacher, or write your own.</p>
+      </div>
+      <div class="card">
+        <div class="card-num">02</div>
+        <h3>Have the Conversation</h3>
+        <p>Speak naturally. Talk Buddy listens, and an AI partner replies aloud —
+          turn by turn, like the real thing. Interrupt it whenever you want.</p>
+      </div>
+      <div class="card">
+        <div class="card-num">03</div>
+        <h3>Revisit the Session</h3>
+        <p>Every attempt is saved as a transcript with optional analysis, so you can
+          see how you did, spot habits, and practice again.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="providers-band">
+    <div class="container">
+      <h2>Three parts, all yours to swap</h2>
+      <div class="grid three">
+        <div class="card plain">
+          <h3>Listening</h3>
+          <p>Speech-to-text that turns your voice into words. Runs fully offline with the
+            bundled Whisper server — no audio ever leaves your machine.</p>
+        </div>
+        <div class="card plain">
+          <h3>Voice</h3>
+          <p>Natural text-to-speech that speaks the replies. The bundled Piper voices work
+            offline; plug in a Speaches server for premium Kokoro voices.</p>
+        </div>
+        <div class="card plain">
+          <h3>AI Brain</h3>
+          <p>Bring your own AI: Anthropic, OpenAI, Gemini, Groq — or keep everything
+            local with Ollama. Your key, your choice, one settings tab each.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="container privacy">
+    <div class="privacy-grid">
+      <div>
+        <h2>Privacy-first, by default</h2>
+        <p>Talk Buddy is built for classrooms, counselling practice, and nervous rehearsals —
+          the conversations you <em>don't</em> want on someone else's server.</p>
+      </div>
+      <ul class="privacy-list">
+        <li><strong>No account, no telemetry.</strong> Install it and start talking.</li>
+        <li><strong>Recordings stay local.</strong> Sessions and transcripts live on your device.</li>
+        <li><strong>Offline speech.</strong> Listening and Voice run on bundled local models.</li>
+        <li><strong>Open source.</strong> MIT-licensed, auditable, yours.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="container audience">
+    <div class="grid two">
+      <div class="card">
+        <h3>For learners</h3>
+        <p>Practice interviews, presentations, and awkward conversations at your own pace,
+          in private, as many times as you need. Track your progress across sessions.</p>
+      </div>
+      <div class="card">
+        <h3>For teachers</h3>
+        <p>Write scenarios that feel real, group them into Practice Packs, and share them
+          with students as a single file — or a link. No accounts to manage.</p>
+      </div>
+    </div>
+    <p class="docs-pointer">Full guides for students, teachers, and scenario authors live in the
+      <a href="README.html">documentation</a>.</p>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <a href="README.html">Documentation</a>
+      <a href="https://github.com/michael-borck/talk-buddy">GitHub</a>
+      <a href="https://github.com/michael-borck/talk-buddy/releases">Releases</a>
+      <span class="copyright">MIT © Michael Borck</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
