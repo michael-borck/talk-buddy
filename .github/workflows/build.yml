@@ -188,6 +188,7 @@ jobs:
             dist/*.snap
             dist/*.yml
             dist/*.yaml
+          retention-days: 5
 
   publish:
     # Promote the draft release that electron-builder's --publish=always
