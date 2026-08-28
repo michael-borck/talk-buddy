@@ -232,6 +232,35 @@ const DEFAULT_SCENARIOS = [
     tags: ["trade shows", "marketing", "networking", "business development"],
     isDefault: true,
     voice: "male"
+  },
+
+  // Multi-persona role-play showcase — the AI voices every character and
+  // picks who would naturally speak next.
+  {
+    name: "Panel Interview",
+    description: "Face a two-person interview panel with different priorities. Practice addressing multiple people, handling questions from different angles, and holding your nerve.",
+    category: "Academic",
+    difficulty: "advanced",
+    estimatedMinutes: 15,
+    systemPrompt: "You are running a panel interview for a place on a competitive graduate program. The user is the candidate. Keep the interview professional, realistic, and reasonably encouraging.",
+    initialMessage: "[[Ms. Alvarez]] Good morning, thank you for joining us. I'm Ms. Alvarez, the program director, and this is my colleague Dr. Chen. To start, could you tell us a little about yourself and why you applied to this program?",
+    tags: ["interview", "panel", "graduate school", "multi-persona"],
+    isDefault: true,
+    voice: "male",
+    personas: [
+      {
+        id: "psn_seed_alvarez",
+        name: "Ms. Alvarez",
+        systemPrompt: "You are Ms. Alvarez, the program director. Warm but probing — you care about motivation, communication skills, and fit with the program. You usually open the interview and often hand over to Dr. Chen for the detailed academic questions.",
+        voice: "female"
+      },
+      {
+        id: "psn_seed_chen",
+        name: "Dr. Chen",
+        systemPrompt: "You are Dr. Chen, a senior faculty member. Precise and analytical — you ask detailed questions about the candidate's projects, methods, and problem-solving. Harder to impress, but fair.",
+        voice: "male"
+      }
+    ]
   }
 ];
 
@@ -239,8 +268,8 @@ function insertSeedScenarios(db) {
   const insertStmt = db.prepare(`
     INSERT OR IGNORE INTO scenarios (
       id, name, description, category, difficulty, estimatedMinutes,
-      systemPrompt, initialMessage, tags, isPublic, isDefault, voice, archived
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      systemPrompt, initialMessage, tags, isPublic, isDefault, voice, personas, archived
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   DEFAULT_SCENARIOS.forEach((scenario, index) => {
@@ -258,6 +287,7 @@ function insertSeedScenarios(db) {
       1, // isPublic = true (defaults)
       scenario.isDefault ? 1 : 0,
       scenario.voice,
+      scenario.personas ? JSON.stringify(scenario.personas) : null,
       0  // archived = false
     );
   });
@@ -719,6 +749,11 @@ app.whenReady().then(() => {
   // Add missing columns to existing databases
   try {
     db.exec('ALTER TABLE scenarios ADD COLUMN isPublic BOOLEAN DEFAULT 1');
+  } catch (e) {
+    // Column already exists, ignore error
+  }
+  try {
+    db.exec('ALTER TABLE scenarios ADD COLUMN personas TEXT');
   } catch (e) {
     // Column already exists, ignore error
   }
@@ -1281,10 +1316,10 @@ ipcMain.handle('scenarios:restoreDefaults', async () => {
     const insertStmt = db.prepare(`
       INSERT INTO scenarios (
         id, name, description, category, difficulty, estimatedMinutes,
-        systemPrompt, initialMessage, tags, isPublic, isDefault, voice, archived
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        systemPrompt, initialMessage, tags, isPublic, isDefault, voice, personas, archived
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    
+
     DEFAULT_SCENARIOS.forEach((scenario, index) => {
       const id = `restored_${Date.now()}_${index}`;
       insertStmt.run(
@@ -1300,6 +1335,7 @@ ipcMain.handle('scenarios:restoreDefaults', async () => {
         1, // isPublic = true
         1, // isDefault = true
         scenario.voice,
+        scenario.personas ? JSON.stringify(scenario.personas) : null,
         0  // archived = false
       );
       restoredCount++;

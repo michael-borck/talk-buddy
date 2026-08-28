@@ -9,8 +9,16 @@ import {
   addScenarioToPack,
   removeScenarioFromPack
 } from '../services/sqlite';
-import { Pack } from '../types';
-import { Save, X, Plus, Package } from 'lucide-react';
+import { Pack, ScenarioPersona } from '../types';
+import { Save, X, Plus, Package, UserPlus, Trash2, Users } from 'lucide-react';
+
+// New persona rows get a locally-unique id; persisted on save with the scenario.
+const newPersona = (): ScenarioPersona => ({
+  id: `psn_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+  name: '',
+  systemPrompt: '',
+  voice: 'female'
+});
 
 export function ScenarioFormPage() {
   const navigate = useNavigate();
@@ -34,7 +42,8 @@ export function ScenarioFormPage() {
     initialMessage: '',
     tags: [] as string[],
     isPublic: true,
-    voice: 'male' as 'male' | 'female'
+    voice: 'male' as 'male' | 'female',
+    personas: [] as ScenarioPersona[]
   });
 
   useEffect(() => {
@@ -70,7 +79,8 @@ export function ScenarioFormPage() {
           initialMessage: scenario.initialMessage,
           tags: scenario.tags || [],
           isPublic: scenario.isPublic || false,
-          voice: scenario.voice || 'male'
+          voice: scenario.voice || 'male',
+          personas: scenario.personas || []
         });
         
         // Load scenario's current packs
@@ -101,13 +111,15 @@ export function ScenarioFormPage() {
 
     setSaving(true);
     try {
+      // Drop persona rows the author left unnamed.
+      const payload = { ...formData, personas: formData.personas.filter((p) => p.name.trim()) };
       let savedScenarioId: string;
-      
+
       if (isEditing && scenarioId) {
-        await updateScenario(scenarioId, formData);
+        await updateScenario(scenarioId, payload);
         savedScenarioId = scenarioId;
       } else {
-        const newScenario = await createScenario(formData);
+        const newScenario = await createScenario(payload);
         savedScenarioId = newScenario.id;
       }
       
@@ -154,6 +166,21 @@ export function ScenarioFormPage() {
 
   const removeTag = (tag: string) => {
     setFormData({ ...formData, tags: formData.tags.filter(t => t !== tag) });
+  };
+
+  const addPersona = () => {
+    setFormData({ ...formData, personas: [...formData.personas, newPersona()] });
+  };
+
+  const removePersona = (id: string) => {
+    setFormData({ ...formData, personas: formData.personas.filter((p) => p.id !== id) });
+  };
+
+  const updatePersona = (id: string, patch: Partial<ScenarioPersona>) => {
+    setFormData({
+      ...formData,
+      personas: formData.personas.map((p) => (p.id === id ? { ...p, ...patch } : p))
+    });
   };
 
   const defaultSystemPrompts = {
@@ -323,6 +350,81 @@ export function ScenarioFormPage() {
               placeholder="The first message the AI will say to start the conversation..."
             />
           </div>
+        </div>
+
+        {/* Conversation partners (multi-persona role-play) */}
+        <div className="bg-white rounded-lg shadow p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <Users size={20} className="text-gray-600" />
+                Conversation Partners
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Optional. Add two or more characters and the AI will role-play them all —
+                each turn answered by whoever would naturally speak next, in their own voice.
+                Leave empty for a one-on-one conversation.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={addPersona}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium shrink-0"
+            >
+              <UserPlus size={16} />
+              Add character
+            </button>
+          </div>
+
+          {formData.personas.length > 0 && (
+            <div className="space-y-4">
+              {formData.personas.map((persona, index) => (
+                <div key={persona.id} className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      Character {index + 1}
+                    </span>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={persona.name}
+                        onChange={(e) => updatePersona(persona.id, { name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Name (e.g., Sarah — the hiring manager)"
+                      />
+                    </div>
+                    <select
+                      value={persona.voice}
+                      onChange={(e) => updatePersona(persona.id, { voice: e.target.value as 'male' | 'female' })}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="male">Male voice</option>
+                      <option value="female">Female voice</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removePersona(persona.id)}
+                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                      aria-label={`Remove ${persona.name || 'character'}`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <textarea
+                    value={persona.systemPrompt}
+                    onChange={(e) => updatePersona(persona.id, { systemPrompt: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    rows={2}
+                    placeholder="Who is this character? Their personality, attitude, and what they want from the conversation..."
+                  />
+                </div>
+              ))}
+              <p className="text-xs text-gray-500">
+                Tip: the first character typically opens the conversation — put an optional
+                opening line in “Initial AI Message” below.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Practice Packs */}

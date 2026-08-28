@@ -87,6 +87,18 @@ declare global {
 }
 
 // Scenario functions
+
+// Normalise a raw DB row: JSON-encoded columns deserialised here, once.
+function parseScenarioRow(scenario: any): Scenario {
+  return {
+    ...scenario,
+    tags: scenario.tags ? JSON.parse(scenario.tags) : [],
+    personas: scenario.personas ? JSON.parse(scenario.personas) : undefined,
+    isPublic: Boolean(scenario.isPublic),
+    archived: Boolean(scenario.archived)
+  };
+}
+
 export async function getScenario(id: string): Promise<Scenario | null> {
   const result = await window.electronAPI.database.op('scenarios:get', { id });
 
@@ -94,12 +106,7 @@ export async function getScenario(id: string): Promise<Scenario | null> {
     return null;
   }
 
-  const scenario = result.data[0];
-  return {
-    ...scenario,
-    tags: scenario.tags ? JSON.parse(scenario.tags) : [],
-    isPublic: Boolean(scenario.isPublic)
-  };
+  return parseScenarioRow(result.data[0]);
 }
 
 export async function listScenarios(filter?: { category?: string; difficulty?: string }): Promise<Scenario[]> {
@@ -108,13 +115,8 @@ export async function listScenarios(filter?: { category?: string; difficulty?: s
   if (!result.success || !result.data) {
     return [];
   }
-  
-  return result.data.map((scenario: any) => ({
-    ...scenario,
-    tags: scenario.tags ? JSON.parse(scenario.tags) : [],
-    isPublic: Boolean(scenario.isPublic),
-    archived: Boolean(scenario.archived)
-  }));
+
+  return result.data.map(parseScenarioRow);
 }
 
 export async function createScenario(scenario: Omit<Scenario, 'id' | 'created' | 'updated'>): Promise<Scenario> {
@@ -133,6 +135,7 @@ export async function createScenario(scenario: Omit<Scenario, 'id' | 'created' |
     tags: JSON.stringify(scenario.tags || []),
     isPublic: scenario.isPublic ? 1 : 0,
     voice: scenario.voice,
+    personas: scenario.personas ? JSON.stringify(scenario.personas) : null,
     created: now,
     updated: now
   });
@@ -172,6 +175,7 @@ export async function updateScenario(id: string, updates: Partial<Scenario>): Pr
       tags: JSON.stringify(updatedScenario.tags || []),
       isPublic: updatedScenario.isPublic ? 1 : 0,
       voice: updatedScenario.voice,
+      personas: updatedScenario.personas ? JSON.stringify(updatedScenario.personas) : null,
       updated: now
     }
   });
@@ -749,16 +753,12 @@ export async function removeScenarioFromPack(packId: string, scenarioId: string)
 
 export async function getPackScenarios(packId: string): Promise<Scenario[]> {
   const result = await window.electronAPI.database.op('packScenarios:listScenarios', { packId });
-  
+
   if (!result.success || !result.data) {
     return [];
   }
-  
-  return result.data.map((scenario: any) => ({
-    ...scenario,
-    tags: scenario.tags ? JSON.parse(scenario.tags) : [],
-    isPublic: Boolean(scenario.isPublic)
-  }));
+
+  return result.data.map(parseScenarioRow);
 }
 
 export async function getScenarioPacks(scenarioId: string): Promise<Pack[]> {
@@ -994,17 +994,12 @@ export async function startStandaloneSession(scenarioId: string): Promise<Sessio
 // Archive functions
 export async function listArchivedScenarios(): Promise<Scenario[]> {
   const result = await window.electronAPI.database.op('scenarios:listArchived');
-  
+
   if (!result.success || !result.data) {
     return [];
   }
-  
-  return result.data.map((scenario: any) => ({
-    ...scenario,
-    tags: scenario.tags ? JSON.parse(scenario.tags) : [],
-    isPublic: Boolean(scenario.isPublic),
-    archived: Boolean(scenario.archived)
-  }));
+
+  return result.data.map(parseScenarioRow);
 }
 
 export async function listArchivedPacks(): Promise<Pack[]> {

@@ -238,6 +238,16 @@ export class TurnEngine {
     }
   }
 
+  /** Discard the in-flight capture without transcribing (hands-free: no
+   *  speech was detected) and return to idle. */
+  cancelListening(): void {
+    if (this.phase !== 'listening') return;
+    this.capture?.cancel();
+    this.capture = null;
+    this.phase = 'idle';
+    this.emit();
+  }
+
   /** Commit the in-flight capture: transcribe, then produce the reply. */
   async endListening(): Promise<void> {
     const cap = this.capture;

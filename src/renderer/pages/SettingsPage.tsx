@@ -18,7 +18,6 @@ function ApiKeyInput({
   onChange,
   placeholder = "sk-... or leave empty",
   envVarName,
-  envPlaceholder,
   fieldName,
 }: {
   value: string;
@@ -26,47 +25,55 @@ function ApiKeyInput({
   placeholder?: string;
   envVarName?: string;
   envPlaceholder?: string;
-  fieldName: string;
+  fieldName?: string; // retained for call-site compatibility; no longer rendered
 }) {
   const resolvedEnvPlaceholder = envVarName
     ? `env:${envVarName}`
     : envPlaceholder || 'env:API_KEY_NAME';
   const isEnvVar = value?.startsWith('env:');
 
+  // Progressive disclosure: the common path is a single key field. Reading
+  // the key from the system environment stays one click away, but out of the
+  // way of a first-run student who just wants to paste a key.
+  if (isEnvVar) {
+    return (
+      <div className="space-y-2">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder={resolvedEnvPlaceholder}
+        />
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="text-sm text-gray-500 underline hover:text-gray-700"
+        >
+          ← Paste a key instead
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
-      <div className="flex gap-4">
-        <label className="flex items-center">
-          <input
-            type="radio"
-            name={`apiKeySource-${fieldName}`}
-            value="manual"
-            checked={!isEnvVar}
-            onChange={() => onChange('')}
-            className="mr-2"
-          />
-          <span className="text-sm">Paste a key</span>
-        </label>
-        <label className="flex items-center">
-          <input
-            type="radio"
-            name={`apiKeySource-${fieldName}`}
-            value="env"
-            checked={isEnvVar}
-            onChange={() => onChange(resolvedEnvPlaceholder)}
-            className="mr-2"
-          />
-          <span className="text-sm">Read from system (advanced)</span>
-        </label>
-      </div>
-
       <input
-        type={isEnvVar ? "text" : "password"}
+        type="password"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        placeholder={isEnvVar ? resolvedEnvPlaceholder : placeholder}
+        placeholder={placeholder}
       />
+      {envVarName && (
+        <button
+          type="button"
+          onClick={() => onChange(resolvedEnvPlaceholder)}
+          className="text-sm text-gray-500 underline hover:text-gray-700"
+        >
+          Read the key from your system environment instead (advanced)
+        </button>
+      )}
     </div>
   );
 }
@@ -283,6 +290,7 @@ export function SettingsPage() {
     femaleVoice: 'af_bella',
     ttsSpeed: '1.25',
     conversationCue: 'rise' as 'rise' | 'click' | 'none',
+    inputMode: 'hands-free' as 'hands-free' | 'ptt',
     pttMode: 'hold' as 'hold' | 'toggle',
     theme: 'system' as 'light' | 'dark' | 'system',
     promptTemplate: 'natural',
@@ -450,6 +458,7 @@ export function SettingsPage() {
         femaleVoice: prefs.femaleVoice || 'af_bella',
         ttsSpeed: prefs.ttsSpeed || '1.25',
         conversationCue: ((prefs.conversationCue as 'rise' | 'click' | 'none') || 'rise'),
+        inputMode: ((prefs.inputMode as 'hands-free' | 'ptt') || 'hands-free'),
         pttMode: ((prefs.pttMode as 'hold' | 'toggle') || 'hold'),
         theme: ((prefs.theme as 'light' | 'dark' | 'system') || 'system'),
         promptTemplate: prefs.promptTemplate || 'natural',
@@ -492,6 +501,7 @@ export function SettingsPage() {
       await setPreference('femaleVoice', preferences.femaleVoice);
       await setPreference('ttsSpeed', preferences.ttsSpeed);
       await setPreference('conversationCue', preferences.conversationCue);
+      await setPreference('inputMode', preferences.inputMode);
       await setPreference('pttMode', preferences.pttMode);
       await setPreference('theme', preferences.theme);
       // Tell the App-level theme manager to re-apply immediately so the
@@ -1454,6 +1464,25 @@ export function SettingsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Hands-free conversation
+                  </label>
+                  <select
+                    value={preferences.inputMode}
+                    onChange={(e) => setPreferences({ ...preferences, inputMode: e.target.value as 'hands-free' | 'ptt' })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="hands-free">On — just talk; a short pause hands the turn over</option>
+                    <option value="ptt">Off — push-to-talk (hold or tap space)</option>
+                  </select>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Hands-free listens automatically when it&apos;s your turn and detects when you
+                    stop speaking. You can also flip this anytime with the wave icon inside a
+                    conversation.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Push-to-talk mode
                   </label>
                   <select
@@ -1465,8 +1494,8 @@ export function SettingsPage() {
                     <option value="toggle">Toggle — tap space to start, tap again to stop</option>
                   </select>
                   <p className="mt-1 text-sm text-gray-600">
-                    Hold is the default and works like a walkie-talkie. Toggle is friendlier for
-                    longer turns or for users who find holding a key awkward.
+                    Used when hands-free is off. Hold works like a walkie-talkie. Toggle is
+                    friendlier for longer turns or for users who find holding a key awkward.
                   </p>
                 </div>
 
@@ -1559,31 +1588,40 @@ export function SettingsPage() {
           <section className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">The AI that drives conversations</h2>
             <div className="space-y-4">
-              {/* Provider Selection */}
+              {/* Provider Selection — one decision, shown as cards. The
+                  fields below adapt to the choice. */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Which AI service should power your conversations?
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {[
-                    { value: 'anthropic', label: 'Anthropic (Claude)' },
-                    { value: 'openai', label: 'OpenAI (GPT)' },
-                    { value: 'gemini', label: 'Google (Gemini)' },
-                    { value: 'groq', label: 'Groq' },
-                    { value: 'ollama', label: 'Ollama' },
-                    { value: 'custom', label: 'Custom/Other' }
-                  ].map(provider => (
-                    <label key={provider.value} className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        value={provider.value}
-                        checked={preferences.chatProvider === provider.value}
-                        onChange={(e) => setPreferences({ ...preferences, chatProvider: e.target.value as any })}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm">{provider.label}</span>
-                    </label>
-                  ))}
+                    { value: 'anthropic', label: 'Anthropic (Claude)', hint: 'Paste a key' },
+                    { value: 'openai', label: 'OpenAI (GPT)', hint: 'Paste a key' },
+                    { value: 'gemini', label: 'Google (Gemini)', hint: 'Paste a key' },
+                    { value: 'groq', label: 'Groq', hint: 'Paste a key' },
+                    { value: 'ollama', label: 'Ollama', hint: 'Local & private — no key' },
+                    { value: 'custom', label: 'Custom / Other', hint: 'Any OpenAI-compatible endpoint' }
+                  ].map(provider => {
+                    const selected = preferences.chatProvider === provider.value;
+                    return (
+                      <button
+                        key={provider.value}
+                        type="button"
+                        onClick={() => setPreferences({ ...preferences, chatProvider: provider.value as any })}
+                        className={`text-left px-4 py-3 rounded-lg border transition-colors ${
+                          selected
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                            : 'border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className={`block text-sm font-medium ${selected ? 'text-blue-700' : 'text-gray-800'}`}>
+                          {provider.label}
+                        </span>
+                        <span className="block text-xs text-gray-500 mt-0.5">{provider.hint}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1692,13 +1730,17 @@ export function SettingsPage() {
                 label="AI model"
                 description="Which AI model should power your conversations"
               />
-              <div className="mt-2 text-xs text-gray-500">
-                <p>Some popular choices:</p>
-                <p>• Claude (Anthropic): claude-sonnet-4-5, claude-haiku-4-5</p>
-                <p>• GPT (OpenAI): gpt-4o, gpt-4o-mini</p>
-                <p>• Gemini (Google): gemini-1.5-flash, gemini-1.5-pro</p>
-                <p>• Ollama (local): llama3, mistral, phi3</p>
-              </div>
+              <details className="text-xs text-gray-500">
+                <summary className="cursor-pointer select-none hover:text-gray-700">
+                  Not sure which model to pick?
+                </summary>
+                <div className="mt-2 space-y-1">
+                  <p>• Claude (Anthropic): claude-sonnet-4-5, claude-haiku-4-5</p>
+                  <p>• GPT (OpenAI): gpt-4o, gpt-4o-mini</p>
+                  <p>• Gemini (Google): gemini-1.5-flash, gemini-1.5-pro</p>
+                  <p>• Ollama (local): llama3, mistral, phi3</p>
+                </div>
+              </details>
             </div>
           </section>
         )}

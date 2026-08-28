@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  listScenarios, 
-  deleteScenario, 
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  listScenarios,
+  deleteScenario,
   restoreDefaultScenarios,
   getScenarioPacks,
   startStandaloneSession,
@@ -28,7 +28,9 @@ import {
   Download,
   Upload,
   CheckSquare,
-  Square
+  Square,
+  Package,
+  MoreHorizontal
 } from 'lucide-react';
 
 interface ScenarioWithPacks extends Scenario {
@@ -37,6 +39,8 @@ interface ScenarioWithPacks extends Scenario {
 
 export function ScenariosPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [scenarios, setScenarios] = useState<ScenarioWithPacks[]>([]);
   const [filteredScenarios, setFilteredScenarios] = useState<ScenarioWithPacks[]>([]);
   const [loading, setLoading] = useState(true);
@@ -283,43 +287,31 @@ export function ScenariosPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-8">
-      {/* Header */}
+      {/* Header — one Explore space: a Scenarios/Packs switcher up front, all
+          management actions tucked into the overflow menu. */}
       <div className="mb-8 flex items-center justify-between">
         <div>
+          <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden mb-3">
+            {[
+              { label: 'Scenarios', path: '/scenarios', icon: Trophy, active: location.pathname.startsWith('/scenarios') },
+              { label: 'Practice Packs', path: '/packs', icon: Package, active: location.pathname.startsWith('/packs') }
+            ].map(({ label, path, icon: Icon, active }) => (
+              <button
+                key={path}
+                onClick={() => navigate(path)}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  active ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Icon size={16} />
+                {label}
+              </button>
+            ))}
+          </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Scenarios</h1>
           <p className="text-gray-600">Browse and manage conversation practice scenarios</p>
-          {/* Packs and Archive hang off Explore now that the sidebar is gone */}
-          <div className="mt-2 flex items-center gap-4 text-sm">
-            <button
-              onClick={() => navigate('/packs')}
-              className="text-ink-muted hover:text-accent transition-colors"
-            >
-              Practice packs →
-            </button>
-            <button
-              onClick={() => navigate('/archive')}
-              className="text-ink-muted hover:text-accent transition-colors"
-            >
-              Archive →
-            </button>
-          </div>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleImport}
-            className="flex items-center gap-2 px-4 py-2 text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
-          >
-            <Upload size={20} />
-            Import
-          </button>
-          <button
-            onClick={handleRestore}
-            disabled={restoring}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={20} className={restoring ? 'animate-spin' : ''} />
-            Restore Defaults
-          </button>
           <button
             onClick={() => navigate('/scenarios/new')}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -327,6 +319,45 @@ export function ScenariosPage() {
             <Plus size={20} />
             New Scenario
           </button>
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              className="p-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              aria-label="More actions"
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                  <button
+                    onClick={() => { setMenuOpen(false); handleImport(); }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Upload size={16} />
+                    Import scenarios
+                  </button>
+                  <button
+                    onClick={() => { setMenuOpen(false); handleRestore(); }}
+                    disabled={restoring}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <RefreshCw size={16} className={restoring ? 'animate-spin' : ''} />
+                    Restore defaults
+                  </button>
+                  <div className="my-1 border-t border-gray-100" />
+                  <button
+                    onClick={() => { setMenuOpen(false); navigate('/archive'); }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Archive size={16} />
+                    Archive
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

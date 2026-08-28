@@ -1,13 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { getScenario, createSession, updateSession, getSession, getPreference, listSessions, startStandaloneSession } from '../services/sqlite';
+import { getScenario, createSession, updateSession, getSession, getPreference, setPreference, listSessions, startStandaloneSession } from '../services/sqlite';
 import { Scenario, Session, ConversationMessage } from '../types';
-import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle, Square, Loader2 } from 'lucide-react';
+import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle, Square, Loader2, AudioLines, Hand } from 'lucide-react';
 import { EditorialVoiceVisualizer } from '../components/EditorialVoiceVisualizer';
 import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
 import { useConversationTurn } from '../hooks/useConversationTurn';
+import { HandsFreeController } from '../turn/handsFree';
+import { splitSpeakerPrefix, parsePersonaTag } from '../turn/personaStream';
 import { EndReason } from '../turn/turnEngine';
 import toast from 'react-hot-toast';
+
+type InputMode = 'hands-free' | 'ptt';
+
+// A greeting may name its speaker with a leading [[Name]] tag (multi-persona
+// scenarios). Normalise it to the transcript label form so it displays and
+// speaks consistently with live turns.
+const greetingFor = (scenario: Scenario): string => {
+  const tag = parsePersonaTag(scenario.initialMessage);
+  return tag ? `${tag.name}: ${tag.rest}` : scenario.initialMessage;
+};
 
 // The spoken-conversation orchestration (turn-taking, streaming, barge-in,
 // replay, audio lifecycle) lives in the TurnEngine core behind
@@ -26,8 +38,10 @@ export function ConversationPage() {
   const [showInfo, setShowInfo] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [inputMode, setInputMode] = useState<InputMode>('hands-free');
   const [pttMode, setPttMode] = useState<'hold' | 'toggle'>('hold');
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [runId, setRunId] = useState(0); // bumped for a fresh Session on the same Scenario
 
   const startTimeRef = useRef<Date | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -41,6 +55,13 @@ export function ConversationPage() {
   elapsedRef.current = elapsedTime;
   const messagesRef = useRef<ConversationMessage[]>([]);
   const completeRef = useRef(false);
+  const phaseRef = useRef(t.phase);
+  phaseRef.current = t.phase;
+
+  const handsFree = inputMode === 'hands-free';
+  // The main button and key-up behave as tap-to-toggle under hands-free;
+  // only explicit push-to-talk keeps hold semantics.
+  const tapMode: 'hold' | 'toggle' = handsFree ? 'toggle' : pttMode;
 
   const wordsSpokenOf = (messages: ConversationMessage[]) =>
     messages.filter((m) => m.role === 'user').reduce((acc, m) => acc + m.content.split(' ').length, 0);
@@ -48,6 +69,7 @@ export function ConversationPage() {
   const t = useConversationTurn({
     scenario,
     audioEnabled,
+    resetKey: runId,
     saveTranscript: async (messages) => {
       if (sessionRef.current) await updateSession(sessionRef.current.id, { transcript: messages });
     },
@@ -111,10 +133,37 @@ export function ConversationPage() {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [t.messages.length]);
 
-  // Load push-to-talk preference once on mount.
+  // Load input-mode preferences once on mount.
   useEffect(() => {
+    getPreference('inputMode').then((v) => {
+      if (v === 'hands-free' || v === 'ptt') setInputMode(v);
+    });
     getPreference('pttMode').then((v) => { if (v === 'toggle' || v === 'hold') setPttMode(v); });
   }, []);
+
+  // Hands-free turn-taking: a controller watches the engine phase and the
+  // shared mic amplitude, auto-starting captures when it's the user's turn
+  // and handing the turn over on sustained silence. Paused/complete/modal
+  // states stop it; resuming restarts via the effect.
+  useEffect(() => {
+    if (!t.ready || inputMode !== 'hands-free' || t.sessionComplete || showInfo || showEndModal) return;
+    const controller = new HandsFreeController({
+      phase: () => phaseRef.current,
+      amplitude: t.amplitudeRef,
+      beginListening: () => t.beginListening(),
+      endListening: () => t.endListening(),
+      cancelListening: () => t.cancelListening(),
+    });
+    controller.start();
+    return () => controller.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t.ready, inputMode, t.sessionComplete, showInfo, showEndModal]);
+
+  const switchInputMode = (mode: InputMode) => {
+    setInputMode(mode);
+    void setPreference('inputMode', mode);
+    toast.success(mode === 'hands-free' ? 'Hands-free on — just talk.' : 'Push-to-talk on.', { id: 'input-mode' });
+  };
 
   // Save the transcript on unmount as a safety net (per-turn saves cover the
   // happy path; this catches navigate-away). Audio teardown is handled by the
@@ -143,11 +192,17 @@ export function ConversationPage() {
       if (isTypingTarget(ev.target)) return;
       if (t.phase === 'paused') return;
 
-      // Escape silences whatever is making sound (replay or live AI).
+      // Escape silences whatever is making sound (replay or live AI), or
+      // discards a hands-free capture the user wants to take back.
       if (ev.code === 'Escape') {
         if (t.replayingMessageId || t.phase === 'speaking') {
           ev.preventDefault();
           t.abort();
+          return;
+        }
+        if (inputMode === 'hands-free' && t.phase === 'listening') {
+          ev.preventDefault();
+          t.cancelListening();
         }
         return;
       }
@@ -159,6 +214,14 @@ export function ConversationPage() {
       if (t.phase === 'speaking') {
         ev.preventDefault();
         void t.beginListening();
+        return;
+      }
+
+      // Hands-free: space ends the open utterance early (a manual endpoint),
+      // or starts one immediately, skipping the arm delay.
+      if (inputMode === 'hands-free') {
+        if (t.phase === 'listening') { ev.preventDefault(); void t.endListening(); }
+        else if (t.phase === 'idle') { ev.preventDefault(); void t.beginListening(); }
         return;
       }
 
@@ -177,7 +240,7 @@ export function ConversationPage() {
     const handleKeyUp = (ev: KeyboardEvent) => {
       if (ev.code !== 'Space') return;
       if (isTypingTarget(ev.target)) return;
-      if (pttMode === 'toggle') return;
+      if (tapMode === 'toggle') return;
       if (t.phase !== 'listening') return;
       ev.preventDefault();
       void t.endListening();
@@ -189,7 +252,7 @@ export function ConversationPage() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [t.phase, t.replayingMessageId, t.sessionComplete, showInfo, showEndModal, pttMode, t.abort, t.beginListening, t.endListening]);
+  }, [t.phase, t.replayingMessageId, t.sessionComplete, showInfo, showEndModal, inputMode, pttMode, t.abort, t.beginListening, t.endListening, t.cancelListening]);
 
   const loadScenario = async () => {
     if (!scenarioId) return;
@@ -216,7 +279,7 @@ export function ConversationPage() {
       if (!existing.transcript || existing.transcript.length === 0) {
         if (scenario?.initialMessage && !initialMessageSpokenRef.current) {
           initialMessageSpokenRef.current = true;
-          await t.greet(scenario.initialMessage);
+          await t.greet(greetingFor(scenario));
         } else {
           t.markReady();
         }
@@ -239,7 +302,7 @@ export function ConversationPage() {
       setSession(newSession);
       sessionRef.current = newSession;
       toast.success('Session started! Begin speaking when ready.');
-      if (scenario.initialMessage) await t.greet(scenario.initialMessage);
+      if (scenario.initialMessage) await t.greet(greetingFor(scenario));
       else t.markReady();
     } catch (err) {
       console.error('Failed to start conversation:', err);
@@ -284,14 +347,21 @@ export function ConversationPage() {
       .catch(() => setLastAttempt(null));
   }, [t.sessionComplete, scenarioId]);
 
-  // Fresh Session for the same Scenario. A plain reload would reuse the
-  // ended session's id from the URL and resume a finished session.
+  // Fresh Session for the same Scenario. Bumping runId rebuilds the engine
+  // (fresh transcript, phases, audio caches) and re-arming the resume effect
+  // greets anew — no window reload, no dead session id in the URL.
   const practiceAgain = async () => {
     if (!scenarioId) return;
     try {
       const next = await startStandaloneSession(scenarioId);
-      window.location.hash = `/conversation/${scenarioId}?sessionId=${next.id}`;
-      window.location.reload();
+      setSession(null);
+      sessionRef.current = null;
+      messagesRef.current = [];
+      completeRef.current = false;
+      initialMessageSpokenRef.current = false;
+      setElapsedTime(0);
+      setRunId((n) => n + 1);
+      navigate(`/conversation/${scenarioId}?sessionId=${next.id}`, { replace: true });
     } catch (err) {
       console.error('Failed to start new session:', err);
       toast.error('Could not start a new session.');
@@ -439,9 +509,13 @@ export function ConversationPage() {
     : t.phase === 'paused'
     ? 'Click Resume to continue.'
     : t.phase === 'listening'
-    ? (pttMode === 'toggle' ? 'Tap space (or click below) to send.' : 'Release to stop — or let go of the space bar.')
+    ? (handsFree
+        ? 'Listening — a short pause hands your turn over. Space to send now, Esc to discard.'
+        : tapMode === 'toggle' ? 'Tap space (or click below) to send.' : 'Release to stop — or let go of the space bar.')
     : t.phase === 'idle'
-    ? (pttMode === 'toggle' ? 'Tap space to speak · Esc to silence the AI' : 'Hold space to speak · Esc to silence the AI')
+    ? (handsFree
+        ? 'Your turn — just start talking. Space to begin now · Esc to silence the AI'
+        : tapMode === 'toggle' ? 'Tap space to speak · Esc to silence the AI' : 'Hold space to speak · Esc to silence the AI')
     : t.phase === 'speaking'
     ? 'Esc to silence · space to interrupt and reply'
     : '';
@@ -474,6 +548,18 @@ export function ConversationPage() {
               {formatTime(elapsedTime)}
             </span>
             <button
+              onClick={() => switchInputMode(inputMode === 'hands-free' ? 'ptt' : 'hands-free')}
+              className="p-1 text-ink-muted hover:text-accent transition-colors"
+              aria-label={inputMode === 'hands-free' ? 'Switch to push-to-talk' : 'Switch to hands-free'}
+              title={inputMode === 'hands-free' ? 'Hands-free: just talk. Click for push-to-talk.' : 'Push-to-talk. Click for hands-free.'}
+            >
+              {inputMode === 'hands-free' ? (
+                <AudioLines size={18} strokeWidth={1.5} />
+              ) : (
+                <Hand size={18} strokeWidth={1.5} />
+              )}
+            </button>
+            <button
               onClick={() => setShowInfo(true)}
               className="p-1 text-ink-muted hover:text-accent transition-colors"
               aria-label="Scenario info"
@@ -495,10 +581,12 @@ export function ConversationPage() {
         </div>
       </header>
 
-      {/* Main — live transcript on the left, visualizer + controls on the right. */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8 px-8 py-8 min-h-0 overflow-hidden">
-        {/* Left: live transcript */}
-        <div className="overflow-y-auto pr-4 hidden lg:block">
+      {/* Main — live transcript and controls at every width: side by side on
+          desktop, controls above a scrolling transcript on narrow windows.
+          The big visualizer is desktop-only decoration. */}
+      <div className="flex-1 flex flex-col-reverse lg:grid lg:grid-cols-[1fr_1fr] gap-6 lg:gap-8 px-8 py-6 lg:py-8 min-h-0 overflow-hidden">
+        {/* Transcript */}
+        <div className="overflow-y-auto pr-4 flex-1 min-h-0">
           {t.messages.length === 0 ? (
             <p className="text-ink-quiet font-sans italic text-center mt-12">
               The conversation will appear here as you speak.
@@ -509,6 +597,11 @@ export function ConversationPage() {
                 const isReplaying = t.replayingMessageId === msg.id;
                 const isSynthesizing = t.synthesizingForMsgId === msg.id;
                 const showReplay = msg.role === 'assistant' && msg.content.trim().length > 0;
+                // Multi-persona replies carry a "Name: " transcript label —
+                // surface it as the speaker instead of the generic tutor.
+                const labelled = msg.role === 'assistant' ? splitSpeakerPrefix(msg.content) : null;
+                const speaker = labelled ? labelled.speaker : msg.role === 'user' ? 'you' : 'tutor';
+                const body = labelled ? labelled.text : msg.content;
                 return (
                   <div
                     key={msg.id}
@@ -518,7 +611,7 @@ export function ConversationPage() {
                       <p className={`text-[0.68rem] uppercase tracking-[0.18em] font-sans ${
                         msg.role === 'user' ? 'text-accent' : 'text-ink-quiet'
                       }`}>
-                        {msg.role === 'user' ? 'you' : 'tutor'}
+                        {speaker}
                       </p>
                       {showReplay && (
                         <button
@@ -546,7 +639,7 @@ export function ConversationPage() {
                       )}
                     </div>
                     <p className="text-ink leading-relaxed font-sans text-[0.95rem]">
-                      {msg.content}
+                      {body}
                     </p>
                   </div>
                 );
@@ -556,9 +649,9 @@ export function ConversationPage() {
           )}
         </div>
 
-        {/* Right: visualizer, status, controls */}
-        <div className="flex flex-col items-center justify-start pt-8 lg:pt-12">
-          <div className="mb-10">
+        {/* Visualizer, status, controls */}
+        <div className="flex flex-col items-center justify-start pt-2 lg:pt-12 shrink-0">
+          <div className="mb-10 hidden lg:block">
             <EditorialVoiceVisualizer
               state={visualizerState}
               amplitudeRef={t.amplitudeRef}
@@ -567,7 +660,7 @@ export function ConversationPage() {
           </div>
 
           {/* Status label + hint */}
-          <div className="text-center mb-10 min-h-[4.5rem]">
+          <div className="text-center mb-6 lg:mb-10 min-h-[3.5rem] lg:min-h-[4.5rem]">
             <p className="font-sans italic text-[2rem] text-ink leading-none mb-3 tracking-display">
               {statusLabel}
             </p>
@@ -597,39 +690,43 @@ export function ConversationPage() {
               Begin the session
             </button>
           ) : (
-            <div className="flex flex-col items-center gap-8">
-              <button
-                onMouseDown={pttMode === 'toggle'
-                  ? (t.phase === 'listening' ? () => void t.endListening() : () => void t.beginListening())
-                  : () => void t.beginListening()}
-                onMouseUp={pttMode === 'hold' ? () => void t.endListening() : undefined}
-                onMouseLeave={pttMode === 'hold' ? () => void t.endListening() : undefined}
-                onTouchStart={pttMode === 'toggle'
-                  ? (t.phase === 'listening' ? () => void t.endListening() : () => void t.beginListening())
-                  : () => void t.beginListening()}
-                onTouchEnd={pttMode === 'hold' ? () => void t.endListening() : undefined}
-                disabled={t.phase !== 'idle' && t.phase !== 'listening'}
-                className={`px-10 py-4 text-[1rem] font-sans font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-30 ${
-                  t.phase === 'listening'
-                    ? 'bg-accent text-paper'
-                    : t.phase === 'idle'
-                    ? 'bg-ink text-paper hover:bg-accent'
-                    : 'bg-ink/20 text-ink-muted'
-                }`}
-                style={{ borderRadius: '2px' }}
-              >
-                {t.phase === 'listening'
-                  ? (pttMode === 'toggle' ? 'Tap to send' : 'Release to stop')
-                  : (pttMode === 'toggle' ? 'Tap to speak' : 'Hold to speak')}
-              </button>
-
-              <div className="flex items-center gap-6 text-[0.82rem] font-sans">
+              <div className="flex flex-col items-center gap-8">
                 <button
-                  onClick={() => (t.phase === 'paused' ? t.resume() : t.pause())}
-                  className="text-ink-muted hover:text-ink transition-colors"
+                  onMouseDown={tapMode === 'toggle'
+                    ? (t.phase === 'listening' ? () => void t.endListening() : () => void t.beginListening())
+                    : () => void t.beginListening()}
+                  onMouseUp={tapMode === 'hold' ? () => void t.endListening() : undefined}
+                  onMouseLeave={tapMode === 'hold' ? () => void t.endListening() : undefined}
+                  onTouchStart={tapMode === 'toggle'
+                    ? (t.phase === 'listening' ? () => void t.endListening() : () => void t.beginListening())
+                    : () => void t.beginListening()}
+                  onTouchEnd={tapMode === 'hold' ? () => void t.endListening() : undefined}
+                  disabled={t.phase !== 'idle' && t.phase !== 'listening'}
+                  className={`px-10 py-4 text-[1rem] font-sans font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-30 ${
+                    t.phase === 'listening'
+                      ? 'bg-accent text-paper'
+                      : t.phase === 'idle'
+                      ? 'bg-ink text-paper hover:bg-accent'
+                      : 'bg-ink/20 text-ink-muted'
+                  }`}
+                  style={{ borderRadius: '2px' }}
                 >
-                  {t.phase === 'paused' ? 'Resume' : 'Pause'}
+                  {t.phase === 'listening'
+                    ? (tapMode === 'toggle' ? 'Send now' : 'Release to stop')
+                    : (tapMode === 'toggle' ? 'Speak now' : 'Hold to speak')}
                 </button>
+
+                <div className="flex items-center gap-6 text-[0.82rem] font-sans">
+                  <button
+                    onClick={() => {
+                      if (t.phase === 'paused') { t.resume(); return; }
+                      if (t.phase === 'listening') t.cancelListening(); // never pause with the mic open
+                      t.pause();
+                    }}
+                    className="text-ink-muted hover:text-ink transition-colors"
+                  >
+                    {t.phase === 'paused' ? 'Resume' : 'Pause'}
+                  </button>
                 <span className="text-ink/20" aria-hidden="true">·</span>
                 <button
                   onClick={saveAndExitSession}
@@ -682,12 +779,18 @@ export function ConversationPage() {
                 <dt className="uppercase tracking-[0.12em] text-ink-quiet">Duration</dt>
                 <dd className="text-ink">~{scenario.estimatedMinutes} min</dd>
               </div>
-              {scenario.tags && scenario.tags.length > 0 && (
-                <div className="flex gap-2">
-                  <dt className="uppercase tracking-[0.12em] text-ink-quiet">Tags</dt>
-                  <dd className="text-ink">{scenario.tags.join(', ')}</dd>
-                </div>
-              )}
+            {scenario.personas && scenario.personas.length > 0 && (
+              <div className="flex gap-2">
+                <dt className="uppercase tracking-[0.12em] text-ink-quiet shrink-0">Cast</dt>
+                <dd className="text-ink">{scenario.personas.map((p) => p.name).join(', ')}</dd>
+              </div>
+            )}
+            {scenario.tags && scenario.tags.length > 0 && (
+              <div className="flex gap-2">
+                <dt className="uppercase tracking-[0.12em] text-ink-quiet">Tags</dt>
+                <dd className="text-ink">{scenario.tags.join(', ')}</dd>
+              </div>
+            )}
             </dl>
             <button
               onClick={() => setShowInfo(false)}

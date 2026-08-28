@@ -216,3 +216,38 @@ describe('TurnEngine — mute path and natural ending', () => {
     expect(f.cueFn).not.toHaveBeenCalled();
   });
 });
+
+describe('TurnEngine — cancelListening (hands-free no-speech discard)', () => {
+  it('cancels the capture, returns to idle, and never transcribes', async () => {
+    const cancel = vi.fn();
+    const transcribe = vi.fn(async () => 'hello');
+    const e = makeEngine(makeFakes(), {
+      listening: {
+        startCapture: async () => ({ stop: async () => new Blob(['audio']), cancel }),
+        transcribe,
+      },
+    });
+    await e.beginListening();
+    expect(e.getSnapshot().phase).toBe('listening');
+
+    e.cancelListening();
+    const s = e.getSnapshot();
+    expect(s.phase).toBe('idle');
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(transcribe).not.toHaveBeenCalled();
+    expect(s.messages).toHaveLength(0);
+  });
+
+  it('is a no-op when nothing is being captured', () => {
+    const cancel = vi.fn();
+    const e = makeEngine(makeFakes(), {
+      listening: {
+        startCapture: async () => ({ stop: async () => new Blob(['a']), cancel }),
+        transcribe: async () => 'x',
+      },
+    });
+    e.cancelListening();
+    expect(cancel).not.toHaveBeenCalled();
+    expect(e.getSnapshot().phase).toBe('not-started');
+  });
+});

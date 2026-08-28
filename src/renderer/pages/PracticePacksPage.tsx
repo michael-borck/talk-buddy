@@ -9,18 +9,19 @@ import {
   importFromFile
 } from '../services/sqlite';
 import { PackWithScenarios } from '../types';
-import { 
-  Package, 
-  Plus, 
-  Trash2, 
- 
- 
+import {
+  Package,
+  Plus,
+  Trash2,
+
+
   Clock,
   Target,
   BookOpen,
   Archive,
   Download,
   Upload,
+  Trophy,
   Link as LinkIcon
 } from 'lucide-react';
 
@@ -174,6 +175,20 @@ export function PracticePacksPage() {
     <div className="max-w-6xl mx-auto p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
+          {/* Same Explore switcher as the Scenarios page — one space, two views */}
+          <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden mb-3">
+            <button
+              onClick={() => navigate('/scenarios')}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <Trophy size={16} />
+              Scenarios
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white">
+              <Package size={16} />
+              Practice Packs
+            </button>
+          </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Practice Packs</h1>
           <p className="text-gray-600">Organize scenarios into themed learning collections</p>
         </div>

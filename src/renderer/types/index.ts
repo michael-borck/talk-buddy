@@ -1,3 +1,13 @@
+// One character inside a multi-persona Scenario. The first persona speaks
+// the opening line; each Turn thereafter, the AI Brain picks who would
+// naturally speak next and tags the reply with their name.
+export interface ScenarioPersona {
+  id: string;
+  name: string;
+  systemPrompt: string; // this character's personality, role, and goals
+  voice: 'male' | 'female';
+}
+
 export interface Scenario {
   id: string;
   name: string;
@@ -11,6 +21,7 @@ export interface Scenario {
   isDefault?: boolean;  // true for default scenarios, false/undefined for custom
   isPublic?: boolean;   // for backward compatibility
   voice?: 'male' | 'female';
+  personas?: ScenarioPersona[]; // present → the Scenario is a multi-persona role-play
   archived?: boolean;
   created: string;
   updated: string;

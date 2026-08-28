@@ -6,7 +6,8 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, MutableRefObject } from 'react';
 import { TurnEngine, TurnSnapshot, EndReason } from '../turn/turnEngine';
 import { AudioAnalyser, createAudioAnalyser } from '../turn/audioAnalyser';
-import { createListeningPort, createBrainPort, createVoicePort, createCuePort } from '../turn/turnPorts';
+import { createListeningPort, createBrainPort, createVoicePort, createCuePort, PersonaChannel } from '../turn/turnPorts';
+import { composeSystemPrompt } from '../services/personaPrompt';
 import { Scenario, ConversationMessage } from '../types';
 
 const EMPTY: TurnSnapshot = {
@@ -28,6 +29,7 @@ export interface UseConversationTurn extends TurnSnapshot {
   markReady(): void;
   beginListening(): Promise<void>;
   endListening(): Promise<void>;
+  cancelListening(): void;
   abort(): void;
   replay(messageId: string): Promise<void>;
   pause(): void;
@@ -38,6 +40,9 @@ export interface UseConversationTurn extends TurnSnapshot {
 export interface UseConversationTurnParams {
   scenario: Scenario | null;
   audioEnabled: boolean;
+  // Bump to dispose and rebuild the engine for a fresh Session on the same
+  // Scenario (e.g. "practice again") without reloading the window.
+  resetKey?: number;
   saveTranscript: (messages: ConversationMessage[]) => Promise<void>;
   onComplete: (reason: EndReason) => void;
   onError: (message: string) => void;
@@ -53,19 +58,33 @@ export function useConversationTurn(params: UseConversationTurnParams): UseConve
 
   const [engine, setEngine] = useState<TurnEngine | null>(null);
   const scenarioId = params.scenario?.id ?? null;
+  const resetKey = params.resetKey ?? 0;
 
-  // Build the engine when the scenario is available; dispose on change/unmount.
+  // Build the engine when the scenario is available (or a reset is asked
+  // for); dispose on change/unmount.
   useEffect(() => {
     const scenario = cb.current.scenario;
     const analyser = analyserRef.current;
     if (!scenario || !analyser) return;
+
+    // Multi-persona channel: the Brain port writes the speaking character's
+    // name (stripped from the [[Name]] reply tag); the Voice port reads it to
+    // pick that character's voice and keep names out of speech.
+    const persona: PersonaChannel = { current: null };
+    const cast = scenario.personas ?? [];
+    const resolveVoice = (): 'male' | 'female' | undefined => {
+      if (!persona.current || cast.length === 0) return scenario.voice;
+      const match = cast.find((p) => p.name.toLowerCase() === persona.current!.toLowerCase());
+      return match?.voice ?? scenario.voice;
+    };
+
     const e = new TurnEngine({
       listening: createListeningPort(analyser),
-      brain: createBrainPort(),
-      voice: createVoicePort(analyser, scenario.voice),
+      brain: createBrainPort(persona),
+      voice: createVoicePort(analyser, resolveVoice, persona),
       cue: createCuePort(),
       saveTranscript: (m) => cb.current.saveTranscript(m),
-      systemPrompt: scenario.systemPrompt ?? '',
+      systemPrompt: composeSystemPrompt(scenario.systemPrompt ?? '', scenario.personas),
       audioEnabled: cb.current.audioEnabled,
       onComplete: (r) => cb.current.onComplete(r),
       onError: (m) => cb.current.onError(m),
@@ -75,7 +94,7 @@ export function useConversationTurn(params: UseConversationTurnParams): UseConve
       e.dispose();
       setEngine((cur) => (cur === e ? null : cur));
     };
-  }, [scenarioId]);
+  }, [scenarioId, resetKey]);
 
   // Keep the engine's audio flag in sync with the page's mute toggle.
   useEffect(() => { engine?.setAudioEnabled(params.audioEnabled); }, [engine, params.audioEnabled]);
@@ -96,6 +115,7 @@ export function useConversationTurn(params: UseConversationTurnParams): UseConve
     markReady: useCallback(() => { engine?.markReady(); }, [engine]),
     beginListening: useCallback(() => engine?.beginListening() ?? Promise.resolve(), [engine]),
     endListening: useCallback(() => engine?.endListening() ?? Promise.resolve(), [engine]),
+    cancelListening: useCallback(() => { engine?.cancelListening(); }, [engine]),
     abort: useCallback(() => { engine?.abort(); }, [engine]),
     replay: useCallback((id: string) => engine?.replay(id) ?? Promise.resolve(), [engine]),
     pause: useCallback(() => { engine?.pause(); }, [engine]),

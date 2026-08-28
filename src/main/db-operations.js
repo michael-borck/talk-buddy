@@ -20,6 +20,7 @@ const SCENARIO_UPDATE_COLUMNS = [
   'tags',
   'isPublic',
   'voice',
+  'personas',
   'updated',
 ];
 
@@ -89,8 +90,8 @@ const operations = {
     return db
       .prepare(
         `INSERT INTO scenarios (id, name, description, category, difficulty, estimatedMinutes,
-     systemPrompt, initialMessage, tags, isPublic, voice, created, updated)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     systemPrompt, initialMessage, tags, isPublic, voice, personas, created, updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         params.id,
@@ -104,6 +105,7 @@ const operations = {
         params.tags,
         params.isPublic,
         params.voice,
+        params.personas ?? null,
         params.created,
         params.updated
       );
