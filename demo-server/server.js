@@ -38,7 +38,7 @@ const PORT = parseInt(process.env.PORT || '8787', 10);
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://talkbuddy.borck.education';
 const RATE_LIMIT = parseInt(process.env.RATE_LIMIT_PER_HOUR || '30', 10);
 const TRANSCRIBE_RATE_LIMIT = parseInt(process.env.TRANSCRIBE_RATE_LIMIT_PER_HOUR || '60', 10);
-const THINK = (process.env.THINK || 'false') !== 'true';
+const THINK = (process.env.THINK || 'false') === 'true'; // default: thinking off
 const MAX_MESSAGES = 24;        // hard cap on history length per request
 const MAX_MESSAGE_CHARS = 2000; // per-message cap
 const MAX_AUDIO_BYTES = 12 * 1024 * 1024; // ~10 min of compressed audio
