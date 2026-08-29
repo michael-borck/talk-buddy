@@ -118,6 +118,17 @@ a { color: var(--teal); }
 }
 .btn-primary:hover { background: #000; }
 
+.btn-secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid rgba(15, 15, 14, 0.25);
+  padding: 14px 26px;
+  font-size: 1.05rem;
+}
+.btn-secondary:hover { border-color: #000; background: rgba(15, 15, 14, 0.04); }
+
+.cta-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
 .platform-toggle { display: inline-flex; gap: 6px; margin-left: 14px; vertical-align: middle; }
 
 .platform-btn {
