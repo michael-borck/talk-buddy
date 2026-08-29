@@ -22,3 +22,9 @@ services:
     # No ports published: only the proxy needs it, via the internal network.
     environment:
       - PRELOAD_MODEL=Systran/faster-whisper-small
+    # Persist downloaded model weights across container recreation.
+    volumes:
+      - stt-cache:/root/.cache
+
+volumes:
+  stt-cache:
