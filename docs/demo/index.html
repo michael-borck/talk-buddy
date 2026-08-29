@@ -149,11 +149,11 @@
       </div>
       <div class="demo-note">
         <b>About the demo:</b> speech recognition runs a small Whisper model right here in your
-        browser (~50&nbsp;MB, downloaded once and cached — works in every modern browser, audio
-        never uploaded). Being small, it may mishear strong or fast accents — if a transcription
-        misses, just type your answer below. The demo voices are your browser's built-in ones on
-        purpose: the point is practising a conversation, not voice realism. The desktop app adds
-        studio-quality voices, hands-free listening, transcripts, and analysis.
+        browser (one-time download of ~40–120&nbsp;MB depending on your browser, cached afterwards —
+        audio never uploaded). Being small, it may mishear strong or fast accents — if a
+        transcription misses, just type your answer below. The demo voices are your browser's
+        built-in ones on purpose: the point is practising a conversation, not voice realism. The
+        desktop app adds studio-quality voices, hands-free listening, transcripts, and analysis.
       </div>
     </div>
 
@@ -233,30 +233,102 @@ let recording = false, awaitingReply = false, speaking = false;
 let locked = false;
 
 // --- In-browser speech recognition (transformers.js + whisper-tiny) ----------
-// Audio never leaves the machine. The model (~50 MB) downloads on first use
-// and is cached by the browser afterwards. Float32 PCM at 16 kHz — captured
-// below — goes straight into the pipeline.
-let asr = null, asrLoading = null;
+// Audio never leaves the machine. Inference runs in a module WORKER so the
+// page never freezes, on WebGPU when the browser offers it (Chromium —
+// 10-30x faster) and single-thread WASM otherwise (Safari, Firefox).
+// The model (~120 MB on GPU path / ~40 MB on WASM) downloads on first use
+// and is cached by the browser afterwards.
+const ASR_CDN = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5';
+const WORKER_SRC = `
+import { pipeline } from '${ASR_CDN}';
+let asr = null, device = null;
 
-async function ensureModel() {
+async function load() {
   if (asr) return asr;
-  if (!asrLoading) {
-    asrLoading = (async () => {
-      const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5');
-      asr = await pipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny.en', {
-        dtype: 'q8',
-        device: 'wasm',
-        progress_callback: (p) => {
-          if (p.status === 'progress' && p.total) {
-            const pct = Math.round((p.loaded / p.total) * 100);
-            setStatus(`One-time download: loading the speech model… ${pct}%`);
-          }
-        },
-      });
-      return asr;
-    })();
+  const attempts = [];
+  if (navigator.gpu) {
+    attempts.push({ device: 'webgpu', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' } });
   }
-  return asrLoading;
+  attempts.push({ device: 'wasm', dtype: 'q8' });
+
+  let lastErr = null;
+  for (const cfg of attempts) {
+    try {
+      asr = await pipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny.en', {
+        ...cfg,
+        progress_callback: (p) => self.postMessage({ type: 'progress', p }),
+      });
+      device = cfg.device;
+      self.postMessage({ type: 'device', device });
+      return asr;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('no usable backend');
+}
+
+self.onmessage = async (e) => {
+  const { type } = e.data || {};
+  if (type === 'load') {
+    try { await load(); self.postMessage({ type: 'ready', device }); }
+    catch (err) { self.postMessage({ type: 'load-error', message: String(err && err.message || err) }); }
+  } else if (type === 'transcribe') {
+    try {
+      await load();
+      const out = await asr(e.data.samples);
+      self.postMessage({ type: 'result', text: (out && out.text ? out.text : '').trim() });
+    } catch (err) {
+      self.postMessage({ type: 'asr-error', message: String(err && err.message || err) });
+    }
+  }
+};
+`;
+const asrWorker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })), { type: 'module' });
+
+let deviceLabel = '';
+let loadPromise = null, loadSettle = null;
+let transcribeSettle = null;
+
+asrWorker.onmessage = (e) => {
+  const d = e.data || {};
+  if (d.type === 'progress' && d.p && d.p.status === 'progress' && d.p.total) {
+    const pct = Math.round((d.p.loaded / d.p.total) * 100);
+    setStatus(`One-time download: loading the speech model… ${pct}%`);
+  } else if (d.type === 'device') {
+    deviceLabel = d.device === 'webgpu' ? ' · GPU' : '';
+  } else if (d.type === 'ready') {
+    if (loadSettle) { loadSettle.resolve(); loadSettle = null; }
+  } else if (d.type === 'load-error') {
+    if (loadSettle) { loadSettle.reject(new Error(d.message)); loadSettle = null; }
+    loadPromise = null; // allow a retry on the next Speak press
+  } else if (d.type === 'result') {
+    if (transcribeSettle) { transcribeSettle.resolve(d.text); transcribeSettle = null; }
+  } else if (d.type === 'asr-error') {
+    if (transcribeSettle) { transcribeSettle.reject(new Error(d.message)); transcribeSettle = null; }
+  }
+};
+asrWorker.onerror = (e) => {
+  if (loadSettle) { loadSettle.reject(new Error(e.message || 'worker failed')); loadSettle = null; }
+  loadPromise = null;
+};
+
+function ensureModel() {
+  if (!loadPromise) {
+    setStatus('Preparing the speech model…');
+    loadPromise = new Promise((resolve, reject) => {
+      loadSettle = { resolve, reject };
+      asrWorker.postMessage({ type: 'load' });
+    });
+  }
+  return loadPromise;
+}
+
+function transcribeInWorker(samples) {
+  return new Promise((resolve, reject) => {
+    transcribeSettle = { resolve, reject };
+    asrWorker.postMessage({ type: 'transcribe', samples }, [samples.buffer]);
+  });
 }
 
 // --- Audio capture (PCM only — no codecs, no uploads) -------------------------
@@ -351,17 +423,23 @@ function finishRecording() {
 async function transcribeAndSend(samples) {
   awaitingReply = true;
   micBtn.disabled = true;
-  setStatus('Transcribing…');
+  const t0 = Date.now();
+  const tick = setInterval(() => {
+    setStatus(`Transcribing… ${Math.round((Date.now() - t0) / 1000)}s${deviceLabel}`);
+  }, 500);
+  setStatus(`Transcribing… 0s${deviceLabel}`);
 
   try {
-    const out = await asr(samples);
-    const text = (out && out.text ? out.text : '').trim();
+    await ensureModel();
+    const text = (await transcribeInWorker(samples)).trim();
+    clearInterval(tick);
     if (!text) {
       setStatus("I couldn't make out any speech — try again a little closer to the mic, or type below.");
       return;
     }
     await sendTurn(text);
   } catch (err) {
+    clearInterval(tick);
     console.error('ASR failed:', err);
     setStatus('');
     showNotice('Something went wrong while transcribing. You can still practise by typing below.');
