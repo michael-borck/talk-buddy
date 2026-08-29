@@ -346,8 +346,12 @@ async function transcribe(req, res) {
     send(res, 200, { text });
   } catch (err) {
     const aborted = err && err.name === 'AbortError';
-    console.log(`transcribe ip=${ip} status=${aborted ? 'timeout' : 'error'} ms=${Date.now() - started}`);
-    send(res, aborted ? 504 : 502, { error: 'Speech recognition did not answer in time.' });
+    console.log(`transcribe ip=${ip} status=${aborted ? 'timeout' : 'error'} detail=${String(err && err.message || err).slice(0, 120)} ms=${Date.now() - started}`);
+    send(res, aborted ? 504 : 502, {
+      error: aborted
+        ? 'Speech recognition did not answer in time.'
+        : 'Speech recognition server could not be reached.',
+    });
   } finally {
     clearTimeout(timer);
   }

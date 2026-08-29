@@ -3,6 +3,8 @@ services:
     build: .
     image: talkbuddy-demo-proxy
     restart: unless-stopped
+    depends_on:
+      - stt
     # Published on all interfaces so containerised Caddy can reach it via
     # host.docker.internal (host-gateway); loopback-only would refuse.
     # Caddy on the same host is the public front door.
@@ -13,10 +15,10 @@ services:
   # Speech-to-text for the demo page: standard OpenAI-compatible API served
   # locally — no auth, no cross-network hop. faster-whisper-small on CPU
   # transcribes a short answer in ~1-3s. Weights download on first start.
+  # The proxy reaches it as http://stt:8000 on the compose network.
   stt:
     image: ghcr.io/speaches-ai/speaches:latest-cpu
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:9000:8000"
+    # No ports published: only the proxy needs it, via the internal network.
     environment:
       - PRELOAD_MODEL=Systran/faster-whisper-small
