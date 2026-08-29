@@ -21,7 +21,8 @@ services:
     restart: unless-stopped
     # No ports published: only the proxy needs it, via the internal network.
     environment:
-      - PRELOAD_MODEL=Systran/faster-whisper-small
+      # Downloads the model at startup (list is JSON per pydantic-settings).
+      - PRELOAD_MODELS=["Systran/faster-whisper-small"]
     # Persist downloaded model weights across container recreation.
     volumes:
       - stt-cache:/root/.cache
