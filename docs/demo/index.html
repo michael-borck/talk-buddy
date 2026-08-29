@@ -209,7 +209,9 @@ const transcriptEl = $('transcript'), statusEl = $('status'), micBtn = $('mic'),
       fallbackWrap = $('text-fallback'), textInput = $('text-input'),
       textSend = $('text-send'), upgradeEl = $('upgrade'), upgradeBtn = $('upgrade-btn');
 
-const proxyReady = !PROXY_BASE.includes('YOUR-VPS-DOMAIN');
+// Kill switch: flip to false to take the demo offline without touching
+// anything else — the page shows a friendly notice instead of network errors.
+const proxyReady = true;
 
 // --- State -------------------------------------------------------------------
 const history = [];          // {role: 'user'|'assistant', content} — no system prompt (lives server-side)
