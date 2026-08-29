@@ -277,16 +277,13 @@ async function transcribe(req, res) {
 
   let upstreamPath, multipart;
   if (SPEECH_DIALECT === 'voicebox') {
-    // Voicebox builds differ: the README documents audio=@file, some
-    // deployments accept file=@file. Send both — backends pick their own
-    // and ignore the other.
+    // Field name is `file` here — verified against a live voicebox
+    // deployment (jamiepine/voicebox's README says `audio`, but builds in
+    // the wild differ, and the extra field makes some builds 500).
     upstreamPath = '/transcribe';
     multipart = buildMultipart(
       [{ name: 'model', value: SPEECH_MODEL }],
-      [
-        { name: 'audio', filename, mimeType },
-        { name: 'file', filename, mimeType },
-      ],
+      [{ name: 'file', filename, mimeType }],
       audio
     );
   } else {
