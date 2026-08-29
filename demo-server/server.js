@@ -15,9 +15,10 @@
 //   OLLAMA_URL           required  e.g. http://127.0.0.1:11434
 //   OLLAMA_KEY           optional  sent as "Authorization: Bearer …"
 //   OLLAMA_MODEL         default   gemma4
-//   SPEECH_URL           required  OpenAI-compatible STT (e.g. Speaches)
+//   SPEECH_URL           required  STT server (Speaches, voicebox, …)
 //   SPEECH_KEY           optional  sent as "Authorization: Bearer …"
-//   SPEECH_MODEL         default   Systran/faster-whisper-small
+//   SPEECH_DIALECT       default   openai    ("voicebox" for jamiepine/voicebox)
+//   SPEECH_MODEL         default   per dialect — see below
 //   PORT                 default   8787
 //   ALLOWED_ORIGIN       default   https://talkbuddy.borck.education
 //   RATE_LIMIT_PER_HOUR  default   30          (chat turns per IP)
@@ -33,7 +34,18 @@ const OLLAMA_KEY = process.env.OLLAMA_KEY || '';
 const MODEL = process.env.OLLAMA_MODEL || 'gemma4';
 const SPEECH_URL = process.env.SPEECH_URL || '';
 const SPEECH_KEY = process.env.SPEECH_KEY || '';
-const SPEECH_MODEL = process.env.SPEECH_MODEL || 'Systran/faster-whisper-small';
+// Two STT dialects are supported:
+//   openai   POST {base}/v1/audio/transcriptions, fields: file + model
+//            (Speaches, whisper-fastapi, any OpenAI-compatible server)
+//   voicebox POST {base}/transcribe, fields: audio + model
+//            (jamiepine/voicebox — Whisper STT with TTS and cloning)
+const SPEECH_DIALECT = (process.env.SPEECH_DIALECT || 'openai').toLowerCase();
+if (!['openai', 'voicebox'].includes(SPEECH_DIALECT)) {
+  console.error(`SPEECH_DIALECT must be "openai" or "voicebox", got: ${SPEECH_DIALECT}`);
+  process.exit(1);
+}
+const DEFAULT_STT_MODEL = SPEECH_DIALECT === 'voicebox' ? 'whisper-turbo' : 'Systran/faster-whisper-small';
+const SPEECH_MODEL = process.env.SPEECH_MODEL || DEFAULT_STT_MODEL;
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://talkbuddy.borck.education';
 const RATE_LIMIT = parseInt(process.env.RATE_LIMIT_PER_HOUR || '30', 10);
@@ -203,9 +215,39 @@ async function chat(req, res) {
   }
 }
 
-// ---- Speech → text (forward to an OpenAI-compatible STT server) ----------------
-// Builds the multipart body by hand — no dependencies. The audio bytes pass
-// straight through to the STT server; nothing is written to disk or logged.
+// Builds a multipart/form-data body by hand — no dependencies.
+function buildMultipart(fields, fileField, filename, mimeType, audio) {
+  const boundary = '----tbdemo' + Date.now().toString(36);
+  const parts = [];
+  for (const [name, value] of Object.entries(fields)) {
+    parts.push(Buffer.from(
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`
+    ));
+  }
+  parts.push(
+    Buffer.from(
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="${fileField}"; filename="${filename}"\r\n` +
+      `Content-Type: ${mimeType}\r\n\r\n`
+    ),
+    audio,
+    Buffer.from(`\r\n--${boundary}--\r\n`)
+  );
+  return { body: Buffer.concat(parts), contentType: `multipart/form-data; boundary=${boundary}` };
+}
+
+// Voicebox (and possibly others) don't use the OpenAI response shape.
+function pickTranscript(data) {
+  if (!data || typeof data !== 'object') return '';
+  if (typeof data.text === 'string') return data.text;
+  if (typeof data.transcript === 'string') return data.transcript;
+  if (data.data && typeof data.data.text === 'string') return data.data.text;
+  return '';
+}
+
+// ---- Speech → text (forward to the configured STT server) ----------------------
+// The audio bytes pass straight through; nothing is written to disk or logged.
 async function transcribe(req, res) {
   const ip = ipOf(req);
   if (transcribeLimited(ip, TRANSCRIBE_RATE_LIMIT)) {
@@ -221,31 +263,28 @@ async function transcribe(req, res) {
 
   const mimeType = (req.headers['content-type'] || 'audio/webm').split(';')[0].trim();
   const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
-  const boundary = '----tbdemo' + Date.now().toString(36);
+  const filename = `recording.${ext}`;
 
-  const body = Buffer.concat([
-    Buffer.from(
-      `--${boundary}\r\n` +
-      `Content-Disposition: form-data; name="model"\r\n\r\n${SPEECH_MODEL}\r\n` +
-      `--${boundary}\r\n` +
-      `Content-Disposition: form-data; name="file"; filename="recording.${ext}"\r\n` +
-      `Content-Type: ${mimeType}\r\n\r\n`
-    ),
-    audio,
-    Buffer.from(`\r\n--${boundary}--\r\n`),
-  ]);
+  let upstreamPath, multipart;
+  if (SPEECH_DIALECT === 'voicebox') {
+    upstreamPath = '/transcribe';
+    multipart = buildMultipart({ model: SPEECH_MODEL }, 'audio', filename, mimeType, audio);
+  } else {
+    upstreamPath = '/v1/audio/transcriptions';
+    multipart = buildMultipart({ model: SPEECH_MODEL }, 'file', filename, mimeType, audio);
+  }
 
   const started = Date.now();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TRANSCRIBE_TIMEOUT_MS);
   try {
-    const upstream = await fetch(SPEECH_URL.replace(/\/$/, '') + '/v1/audio/transcriptions', {
+    const upstream = await fetch(SPEECH_URL.replace(/\/$/, '') + upstreamPath, {
       method: 'POST',
       headers: {
-        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Type': multipart.contentType,
         ...(SPEECH_KEY ? { Authorization: `Bearer ${SPEECH_KEY}` } : {}),
       },
-      body,
+      body: multipart.body,
       signal: ctrl.signal,
     });
     if (!upstream.ok) {
@@ -254,7 +293,7 @@ async function transcribe(req, res) {
       return;
     }
     const data = await upstream.json();
-    const text = data && typeof data.text === 'string' ? data.text : '';
+    const text = pickTranscript(data);
     console.log(`transcribe ip=${ip} status=ok chars=${text.length} bytes=${audio.length} ms=${Date.now() - started}`);
     send(res, 200, { text });
   } catch (err) {
@@ -295,6 +334,6 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`talk-buddy demo proxy on :${PORT}`);
   console.log(`  LLM: ${OLLAMA_URL} (model: ${MODEL}, think: ${THINK ? 'on' : 'off'})`);
-  console.log(`  STT: ${SPEECH_URL} (model: ${SPEECH_MODEL})`);
+  console.log(`  STT: ${SPEECH_URL} (dialect: ${SPEECH_DIALECT}, model: ${SPEECH_MODEL})`);
   console.log(`  CORS origin: ${ALLOWED_ORIGIN} · limits: ${RATE_LIMIT} chats/h, ${TRANSCRIBE_RATE_LIMIT} transcribes/h per IP`);
 });

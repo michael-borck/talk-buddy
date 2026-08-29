@@ -11,6 +11,18 @@ browser-native speech recognition only really works in Chrome (Firefox never
 shipped it, Safari's is unreliable, Brave blocks it outright) — a small
 server-side Whisper model works in every browser with a microphone.
 
+### STT dialects
+
+The proxy speaks two STT APIs, selected with `SPEECH_DIALECT`:
+
+| Dialect    | Endpoint called                        | Multipart fields | Typical server            |
+|------------|----------------------------------------|------------------|---------------------------|
+| `openai`   | `POST {SPEECH_URL}/v1/audio/transcriptions` | `file`, `model` | Speaches, whisper-fastapi |
+| `voicebox` | `POST {SPEECH_URL}/transcribe`          | `audio`, `model` | [jamiepine/voicebox](https://github.com/jamiepine/voicebox) |
+
+Transcript responses are parsed flexibly (`text`, `transcript`, or
+`data.text`) so minor shape differences don't break the demo.
+
 ## What it does
 
 | Route             | Purpose                                                                    |
@@ -115,9 +127,10 @@ Commit and push — GitHub Pages redeploys the site automatically.
 | `OLLAMA_URL`          | — (required)                     | Your Ollama, or a reverse-proxied URL    |
 | `OLLAMA_KEY`          | — (optional)                     | Sent as `Authorization: Bearer …`        |
 | `OLLAMA_MODEL`        | `gemma4`                         | Must match `ollama list`                 |
-| `SPEECH_URL`          | — (required)                     | OpenAI-compatible STT, e.g. your Speaches |
+| `SPEECH_URL`          | — (required)                     | STT server (Speaches, voicebox, …)       |
 | `SPEECH_KEY`          | — (optional)                     | Sent as `Authorization: Bearer …`        |
-| `SPEECH_MODEL`        | `Systran/faster-whisper-small`   | A small Whisper model is plenty          |
+| `SPEECH_DIALECT`      | `openai`                         | `openai` or `voicebox` (see below)       |
+| `SPEECH_MODEL`        | per dialect                      | openai: `Systran/faster-whisper-small` · voicebox: `whisper-turbo` |
 | `THINK`               | `false`                          | `true` enables gemma's thinking mode     |
 | `RATE_LIMIT_PER_HOUR` | `30`                             | Chat turns per IP per rolling hour       |
 | `TRANSCRIBE_RATE_LIMIT_PER_HOUR` | `60`                  | Voice recordings per IP per rolling hour |
