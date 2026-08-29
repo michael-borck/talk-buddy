@@ -20,53 +20,46 @@ Hard limits: per-IP rate limit (default 30 chats/hour), message count and
 length caps, 64 KB body cap, 90 s upstream timeout. **Transcripts are never
 logged or stored** — logs carry counts, IPs, statuses, and timings only.
 
-## Run it on the VPS
+## Run it on the VPS (Docker)
+
+The proxy ships as a tiny container (no dependencies beyond Node in the
+image; nothing sensitive baked in — the key arrives via `.env`).
 
 ```bash
-# 1. Copy server.js to the VPS, e.g. /opt/talkbuddy-demo/server.js
+# 1. Clone / pull on the VPS
+git pull   # from the repo root; demo-server/ holds everything
 
-# 2. Smoke-test by hand (adjust model name to match `ollama list`):
-OLLAMA_URL=http://127.0.0.1:11434 \
-OLLAMA_KEY=your-bearer-key \
-OLLAMA_MODEL=gemma4 \
-PORT=8787 \
-node server.js
+# 2. Configure (one-time)
+cd demo-server
+cp .env.example .env
+nano .env            # OLLAMA_URL, OLLAMA_KEY, OLLAMA_MODEL
 
-# 3. Try it:
+# 3. Build + run
+docker compose up -d --build
+
+# 4. Verify
 curl -s http://localhost:8787/api/health
 curl -s -X POST http://localhost:8787/api/chat \
   -H 'Content-Type: application/json' \
   -d '{"messages":[{"role":"user","content":"Hello, I am ready for my interview."}]}'
 ```
 
-### Keep it running (systemd)
-
-`/etc/systemd/system/talkbuddy-demo.service`:
-
-```ini
-[Unit]
-Description=Talk Buddy demo proxy
-After=network.target
-
-[Service]
-ExecStart=/usr/bin/node /opt/talkbuddy-demo/server.js
-Environment=OLLAMA_URL=http://127.0.0.1:11434
-Environment=OLLAMA_KEY=CHANGE_ME
-Environment=OLLAMA_MODEL=gemma4
-Environment=ALLOWED_ORIGIN=https://talkbuddy.borck.education
-Environment=PORT=8787
-Restart=always
-User=nobody
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-
-[Install]
-WantedBy=multi-user.target
-```
+Later updates are exactly:
 
 ```bash
-sudo systemctl daemon-reload && sudo systemctl enable --now talkbuddy-demo
+git pull && cd demo-server && docker compose up -d --build
+```
+
+The container binds to `127.0.0.1:8787` only — Caddy on the same host is the
+public front door (see TLS below).
+
+### Keep it running
+
+`compose.yaml` sets `restart: unless-stopped`, so the container survives
+reboots. Logs (counts only, never transcripts):
+
+```bash
+docker compose logs -f demo-proxy
 ```
 
 ### TLS in front (required — the page is HTTPS)
@@ -86,6 +79,9 @@ nginx equivalent: a TLS server block for the same hostname with
 `proxy_pass http://127.0.0.1:8787;` and
 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`
 (the rate limiter keys off that header).
+
+DNS: an `A` record `demo.talkbuddy.borck.education → 31.97.67.189` already
+exists in Cloudflare (unproxied, matching the other VPS apps).
 
 ## Point the page at it
 
@@ -110,6 +106,7 @@ Commit and push — GitHub Pages redeploys the site automatically.
 
 ## Checking the funnel
 
-`journalctl -u talkbuddy-demo | grep -E 'chat |go '` gives two numbers:
-`total=` chats served and `total=` download clicks. Chats → clicks is your
-teaser conversion rate. No transcript content appears in logs, by design.
+`docker compose logs --since 24h demo-proxy | grep -E 'chat |go '` gives two
+numbers: `total=` chats served and `total=` download clicks. Chats → clicks
+is your teaser conversion rate. No transcript content appears in logs, by
+design.

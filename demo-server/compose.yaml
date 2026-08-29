@@ -1,0 +1,10 @@
+services:
+  demo-proxy:
+    build: .
+    image: talkbuddy-demo-proxy
+    restart: unless-stopped
+    # Bound to loopback only — Caddy (or nginx) on the same host is the
+    # public front door; the proxy itself is never exposed directly.
+    ports:
+      - "127.0.0.1:8787:8787"
+    env_file: .env
