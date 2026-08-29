@@ -378,6 +378,9 @@ async function transcribeAndSend(blob, mimeType) {
     micBtn.disabled = false;
     return;
   }
+  // Hand turn control over: sendTurn owns the awaitingReply flag from here
+  // (its guard treats an in-flight reply as "don't start another turn").
+  awaitingReply = false;
   await sendTurn(text);
   awaitingReply = false;
   micBtn.disabled = false;
