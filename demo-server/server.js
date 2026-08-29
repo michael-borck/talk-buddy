@@ -216,24 +216,30 @@ async function chat(req, res) {
 }
 
 // Builds a multipart/form-data body by hand — no dependencies.
-function buildMultipart(fields, fileField, filename, mimeType, audio) {
+// `fields` are name/value text parts; `files` is [{name, filename, mimeType}]
+// and every entry receives the same bytes (handy for servers that accept
+// either of two field names).
+function buildMultipart(fields, files, audio) {
   const boundary = '----tbdemo' + Date.now().toString(36);
   const parts = [];
-  for (const [name, value] of Object.entries(fields)) {
+  for (const { name, value } of fields) {
     parts.push(Buffer.from(
       `--${boundary}\r\n` +
       `Content-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`
     ));
   }
-  parts.push(
-    Buffer.from(
-      `--${boundary}\r\n` +
-      `Content-Disposition: form-data; name="${fileField}"; filename="${filename}"\r\n` +
-      `Content-Type: ${mimeType}\r\n\r\n`
-    ),
-    audio,
-    Buffer.from(`\r\n--${boundary}--\r\n`)
-  );
+  for (const { name, filename, mimeType } of files) {
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="${name}"; filename="${filename}"\r\n` +
+        `Content-Type: ${mimeType}\r\n\r\n`
+      ),
+      audio,
+      Buffer.from(`\r\n`)
+    );
+  }
+  parts.push(Buffer.from(`--${boundary}--\r\n`));
   return { body: Buffer.concat(parts), contentType: `multipart/form-data; boundary=${boundary}` };
 }
 
@@ -267,11 +273,25 @@ async function transcribe(req, res) {
 
   let upstreamPath, multipart;
   if (SPEECH_DIALECT === 'voicebox') {
+    // Voicebox builds differ: the README documents audio=@file, some
+    // deployments accept file=@file. Send both — backends pick their own
+    // and ignore the other.
     upstreamPath = '/transcribe';
-    multipart = buildMultipart({ model: SPEECH_MODEL }, 'audio', filename, mimeType, audio);
+    multipart = buildMultipart(
+      [{ name: 'model', value: SPEECH_MODEL }],
+      [
+        { name: 'audio', filename, mimeType },
+        { name: 'file', filename, mimeType },
+      ],
+      audio
+    );
   } else {
     upstreamPath = '/v1/audio/transcriptions';
-    multipart = buildMultipart({ model: SPEECH_MODEL }, 'file', filename, mimeType, audio);
+    multipart = buildMultipart(
+      [{ name: 'model', value: SPEECH_MODEL }],
+      [{ name: 'file', filename, mimeType }],
+      audio
+    );
   }
 
   const started = Date.now();
