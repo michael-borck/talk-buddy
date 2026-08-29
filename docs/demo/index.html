@@ -230,12 +230,33 @@ let userTurns = 0;
 let recording = false, awaitingReply = false, speaking = false;
 let locked = false;
 
-// --- Audio capture (works in every modern browser) ----------------------------
-// One path for all browsers: MediaRecorder → server-side transcription.
-// (Browser-native SpeechRecognition was abandoned deliberately: Firefox never
-// shipped it, Safari's is unreliable, and Brave blocks it silently.)
-let mediaStream = null, recorder = null, chunks = [], recordStart = 0, recordTimer = null;
+// --- Audio capture (recorded as WAV in-browser) ---------------------------------
+// One path for all browsers: capture PCM and encode a 16 kHz WAV, then upload.
+// WAV is chosen deliberately — every Whisper server eats it, and browser
+// MediaRecorder containers (webm/opus, ogg, mp4) are a codec roulette that
+// cost a full debugging session. Fallback to MediaRecorder only if the
+// AudioContext path throws.
+let mediaStream = null, audioCtx = null, processor = null, source = null, sink = null;
+let pcmChunks = null, recordStart = 0, recordTimer = null;
+let recorder = null, chunks = []; // MediaRecorder fallback (no AudioContext)
 let spaceHeld = false;
+
+function encodeWav(samples, sampleRate) {
+  const buf = new ArrayBuffer(44 + samples.length * 2);
+  const v = new DataView(buf);
+  const wstr = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  wstr(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); wstr(8, 'WAVE');
+  wstr(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  wstr(36, 'data'); v.setUint32(40, samples.length * 2, true);
+  let off = 44;
+  for (let i = 0; i < samples.length; i++, off += 2) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
 
 async function startRecording() {
   if (recording || awaitingReply || speaking || locked) return;
@@ -245,20 +266,37 @@ async function startRecording() {
     setStatus('Microphone access was blocked. Allow it in the browser address bar, or type below.');
     return;
   }
-  chunks = [];
-  try {
-    recorder = new MediaRecorder(mediaStream);
-  } catch {
-    setStatus('This browser cannot record audio — please type your answer below.');
-    mediaStream.getTracks().forEach((t) => t.stop());
-    return;
-  }
-  recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-  recorder.onstop = onRecordingStopped;
-  recorder.start();
-  recordStart = Date.now();
-  recordTimer = setTimeout(() => finishRecording(), MAX_RECORD_MS);
 
+  pcmChunks = [];
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    source = audioCtx.createMediaStreamSource(mediaStream);
+    processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    processor.onaudioprocess = (e) => { if (pcmChunks) pcmChunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+    source.connect(processor);
+    // ScriptProcessors need a destination connection to pump; a muted gain
+    // node keeps it alive without feeding the recording back out the speakers.
+    sink = audioCtx.createGain();
+    sink.gain.value = 0;
+    processor.connect(sink);
+    sink.connect(audioCtx.destination);
+  } catch (err) {
+    // No AudioContext — fall back to MediaRecorder (codec roulette, but audio).
+    pcmChunks = null;
+    try {
+      recorder = new MediaRecorder(mediaStream);
+    } catch {
+      setStatus('This browser cannot record audio — please type your answer below.');
+      mediaStream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    recorder.onstop = onRecordingStopped;
+    recorder.start();
+  }
+  recordTimer = setTimeout(() => finishRecording(), MAX_RECORD_MS);
+  recordStart = Date.now();
   recording = true;
   micBtn.classList.add('recording');
   micBtn.textContent = 'Send';
@@ -271,6 +309,42 @@ function finishRecording() {
   clearTimeout(recordTimer);
   micBtn.classList.remove('recording');
   micBtn.textContent = 'Speak';
+
+  if (pcmChunks) {
+    // WAV path.
+    const rate = audioCtx.sampleRate;
+    try { processor.disconnect(); source.disconnect(); sink.disconnect(); } catch { /* already gone */ }
+    try { audioCtx.close(); } catch { /* already closed */ }
+    mediaStream.getTracks().forEach((t) => t.stop());
+
+    const chunks = pcmChunks; pcmChunks = null;
+    const total = chunks.reduce((a, c) => a + c.length, 0);
+    const merged = new Float32Array(total);
+    let off = 0;
+    for (const c of chunks) { merged.set(c, off); off += c.length; }
+
+    // Downsample to 16 kHz — plenty for Whisper and ~10x smaller uploads.
+    const ratio = rate / 16000;
+    let samples, outRate;
+    if (ratio > 1) {
+      outRate = 16000;
+      samples = new Float32Array(Math.floor(total / ratio));
+      for (let i = 0; i < samples.length; i++) samples[i] = merged[Math.floor(i * ratio)];
+    } else {
+      outRate = rate;
+      samples = merged;
+    }
+
+    const blob = encodeWav(samples, outRate);
+    if (blob.size < 2000 || Date.now() - recordStart < 600) {
+      setStatus("That was too short to hear — press Speak and answer when you're ready.");
+      return;
+    }
+    void transcribeAndSend(blob, 'audio/wav');
+    return;
+  }
+
+  // MediaRecorder fallback path.
   try { recorder.stop(); } catch { /* already stopped */ }
 }
 

@@ -268,7 +268,11 @@ async function transcribe(req, res) {
   if (audio.length === 0) { send(res, 400, { error: 'No audio received.' }); return; }
 
   const mimeType = (req.headers['content-type'] || 'audio/webm').split(';')[0].trim();
-  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+  const ext = mimeType.includes('mp4') ? 'mp4'
+    : mimeType.includes('ogg') ? 'ogg'
+    : mimeType.includes('wav') ? 'wav'
+    : mimeType.includes('mpeg') ? 'mp3'
+    : 'webm';
   const filename = `recording.${ext}`;
 
   let upstreamPath, multipart;
