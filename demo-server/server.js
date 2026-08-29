@@ -252,6 +252,32 @@ function pickTranscript(data) {
   return '';
 }
 
+// Rough audio sanity stats for the upload log — numbers only, never content.
+// A RIFF header confirms a real WAV; RMS≈0 means the mic captured silence.
+function audioStats(buf) {
+  const head = buf.subarray(0, 4).toString('latin1');
+  let rms = null;
+  if (head === 'RIFF') {
+    // Walk chunks to the data chunk and RMS the PCM16 samples.
+    let off = 12;
+    while (off + 8 <= buf.length) {
+      const id = buf.subarray(off, off + 4).toString('latin1');
+      const size = buf.readUInt32LE(off + 4);
+      if (id === 'data') {
+        let sum = 0, n = 0;
+        for (let i = off + 8; i + 1 < buf.length && n < 50000; i += 2, n++) {
+          const s = buf.readInt16LE(i) / 32768;
+          sum += s * s;
+        }
+        rms = n ? Math.sqrt(sum / n) : 0;
+        break;
+      }
+      off += 8 + size + (size % 2);
+    }
+  }
+  return `${head === 'RIFF' ? 'RIFF' : head || 'empty'} rms=${rms === null ? '?' : rms.toFixed(4)}`;
+}
+
 // ---- Speech → text (forward to the configured STT server) ----------------------
 // The audio bytes pass straight through; nothing is written to disk or logged.
 async function transcribe(req, res) {
@@ -309,13 +335,14 @@ async function transcribe(req, res) {
       signal: ctrl.signal,
     });
     if (!upstream.ok) {
-      console.log(`transcribe ip=${ip} status=upstream_${upstream.status} bytes=${audio.length} ms=${Date.now() - started}`);
+      const errBody = (await upstream.text().catch(() => '')).slice(0, 150);
+      console.log(`transcribe ip=${ip} status=upstream_${upstream.status} ${audioStats(audio)} bytes=${audio.length} detail=${errBody} ms=${Date.now() - started}`);
       send(res, 502, { error: 'Speech recognition is unavailable right now.' });
       return;
     }
     const data = await upstream.json();
     const text = pickTranscript(data);
-    console.log(`transcribe ip=${ip} status=ok chars=${text.length} bytes=${audio.length} ms=${Date.now() - started}`);
+    console.log(`transcribe ip=${ip} status=ok ${audioStats(audio)} chars=${text.length} bytes=${audio.length} ms=${Date.now() - started}`);
     send(res, 200, { text });
   } catch (err) {
     const aborted = err && err.name === 'AbortError';
