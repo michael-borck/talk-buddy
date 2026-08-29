@@ -71,16 +71,20 @@ sudo systemctl daemon-reload && sudo systemctl enable --now talkbuddy-demo
 
 ### TLS in front (required — the page is HTTPS)
 
-Caddy, one line in the Caddyfile (pick whatever hostname serves the VPS):
+The demo page calls `https://demo.talkbuddy.borck.education`, so the subdomain
+needs TLS. Caddy does it automatically — first add a DNS `A` record for
+`demo.talkbuddy.borck.education` pointing at the VPS, then one block in the
+Caddyfile:
 
 ```
-demo.YOUR-DOMAIN {
+demo.talkbuddy.borck.education {
     reverse_proxy 127.0.0.1:8787
 }
 ```
 
-nginx equivalent: `proxy_pass http://127.0.0.1:8787;` inside a TLS server
-block, with `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`
+nginx equivalent: a TLS server block for the same hostname with
+`proxy_pass http://127.0.0.1:8787;` and
+`proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`
 (the rate limiter keys off that header).
 
 ## Point the page at it
