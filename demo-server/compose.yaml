@@ -14,7 +14,7 @@ services:
   # locally — no auth, no cross-network hop. faster-whisper-small on CPU
   # transcribes a short answer in ~1-3s. Weights download on first start.
   stt:
-    image: ghcr.io/speaches-ai/speaches:latest
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
     restart: unless-stopped
     ports:
       - "127.0.0.1:9000:8000"
