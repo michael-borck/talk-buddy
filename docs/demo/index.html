@@ -122,9 +122,8 @@
 
   <div class="banner">
     <div class="wrap">
-      <span><strong>Demo:</strong> your voice is transcribed <strong>inside this browser</strong> by a small
-      Whisper model — audio never leaves your machine. Only the text travels, to generate the reply.
-      Nothing is stored.</span>
+      <span><strong>Demo:</strong> your voice goes to our demo server, where a small Whisper
+      model transcribes it and an AI drafts the reply. Nothing is stored.</span>
       <span>The <a href="https://github.com/michael-borck/talk-buddy/releases/latest">desktop app</a>
       goes further: everything local, offline, with studio-quality voices.</span>
     </div>
@@ -148,9 +147,8 @@
         <span><b>Dr. Chen</b> · senior faculty · precise, probes method</span>
       </div>
       <div class="demo-note">
-        <b>About the demo:</b> speech recognition runs a small Whisper model right here in your
-        browser (one-time download of ~40–120&nbsp;MB depending on your browser, cached afterwards —
-        audio never uploaded). Being small, it may mishear strong or fast accents — if a
+        <b>About the demo:</b> speech recognition uses a small Whisper model on our server, so it
+        works in every browser — being small, it may mishear strong or fast accents; if a
         transcription misses, just type your answer below. The demo voices are your browser's
         built-in ones on purpose: the point is practising a conversation, not voice realism. The
         desktop app adds studio-quality voices, hands-free listening, transcripts, and analysis.
@@ -232,103 +230,24 @@ let userTurns = 0;
 let recording = false, awaitingReply = false, speaking = false;
 let locked = false;
 
-// --- In-browser speech recognition (transformers.js + whisper-tiny) ----------
-// Audio never leaves the machine. Inference runs in a module WORKER so the
-// page never freezes, on WebGPU when the browser offers it (Chromium —
-// 10-30x faster) and single-thread WASM otherwise (Safari, Firefox).
-// The model (~120 MB on GPU path / ~40 MB on WASM) downloads on first use
-// and is cached by the browser afterwards.
-const ASR_CDN = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5';
-const WORKER_SRC = `
-import { pipeline } from '${ASR_CDN}';
-let asr = null, device = null;
-
-async function load() {
-  if (asr) return asr;
-  const attempts = [];
-  if (navigator.gpu) {
-    attempts.push({ device: 'webgpu', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' } });
+// --- Speech upload (server-side Whisper — one boring path for every browser) --
+// The page captures PCM and encodes a 16 kHz WAV locally; the demo proxy
+// (same host as this file's config) forwards it to a local faster-whisper.
+async function transcribeUpload(blob) {
+  const fd = new FormData();
+  fd.append('file', blob, 'recording.wav');
+  const res = await fetch(PROXY_BASE + '/api/transcribe', { method: 'POST', body: fd });
+  if (res.status === 429) throw Object.assign(new Error('limit'), {
+    friendly: 'The demo is very busy right now — please try again in a little while.' });
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json()).error || ''; } catch { /* non-JSON error */ }
+    throw Object.assign(new Error('transcribe HTTP ' + res.status), {
+      friendly: `Transcription failed (HTTP ${res.status})${detail ? ' — ' + detail : ''}` +
+        (res.status === 404 ? '. The demo server looks outdated.' : '') });
   }
-  attempts.push({ device: 'wasm', dtype: 'q8' });
-
-  let lastErr = null;
-  for (const cfg of attempts) {
-    try {
-      asr = await pipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny.en', {
-        ...cfg,
-        progress_callback: (p) => self.postMessage({ type: 'progress', p }),
-      });
-      device = cfg.device;
-      self.postMessage({ type: 'device', device });
-      return asr;
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr || new Error('no usable backend');
-}
-
-self.onmessage = async (e) => {
-  const { type } = e.data || {};
-  if (type === 'load') {
-    try { await load(); self.postMessage({ type: 'ready', device }); }
-    catch (err) { self.postMessage({ type: 'load-error', message: String(err && err.message || err) }); }
-  } else if (type === 'transcribe') {
-    try {
-      await load();
-      const out = await asr(e.data.samples);
-      self.postMessage({ type: 'result', text: (out && out.text ? out.text : '').trim() });
-    } catch (err) {
-      self.postMessage({ type: 'asr-error', message: String(err && err.message || err) });
-    }
-  }
-};
-`;
-const asrWorker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })), { type: 'module' });
-
-let deviceLabel = '';
-let loadPromise = null, loadSettle = null;
-let transcribeSettle = null;
-
-asrWorker.onmessage = (e) => {
-  const d = e.data || {};
-  if (d.type === 'progress' && d.p && d.p.status === 'progress' && d.p.total) {
-    const pct = Math.round((d.p.loaded / d.p.total) * 100);
-    setStatus(`One-time download: loading the speech model… ${pct}%`);
-  } else if (d.type === 'device') {
-    deviceLabel = d.device === 'webgpu' ? ' · GPU' : '';
-  } else if (d.type === 'ready') {
-    if (loadSettle) { loadSettle.resolve(); loadSettle = null; }
-  } else if (d.type === 'load-error') {
-    if (loadSettle) { loadSettle.reject(new Error(d.message)); loadSettle = null; }
-    loadPromise = null; // allow a retry on the next Speak press
-  } else if (d.type === 'result') {
-    if (transcribeSettle) { transcribeSettle.resolve(d.text); transcribeSettle = null; }
-  } else if (d.type === 'asr-error') {
-    if (transcribeSettle) { transcribeSettle.reject(new Error(d.message)); transcribeSettle = null; }
-  }
-};
-asrWorker.onerror = (e) => {
-  if (loadSettle) { loadSettle.reject(new Error(e.message || 'worker failed')); loadSettle = null; }
-  loadPromise = null;
-};
-
-function ensureModel() {
-  if (!loadPromise) {
-    setStatus('Preparing the speech model…');
-    loadPromise = new Promise((resolve, reject) => {
-      loadSettle = { resolve, reject };
-      asrWorker.postMessage({ type: 'load' });
-    });
-  }
-  return loadPromise;
-}
-
-function transcribeInWorker(samples) {
-  return new Promise((resolve, reject) => {
-    transcribeSettle = { resolve, reject };
-    asrWorker.postMessage({ type: 'transcribe', samples }, [samples.buffer]);
-  });
+  const { text } = await res.json();
+  return text;
 }
 
 // --- Audio capture (PCM only — no codecs, no uploads) -------------------------
@@ -338,17 +257,6 @@ let spaceHeld = false;
 
 async function startRecording() {
   if (recording || awaitingReply || speaking || locked) return;
-
-  setStatus('Preparing the speech model…');
-  try {
-    await ensureModel();
-  } catch (err) {
-    console.error('Model load failed:', err);
-    setStatus('');
-    showNotice('The speech model could not be downloaded (network or CDN blocked). ' +
-               'You can still practise by typing below.');
-    return;
-  }
 
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -416,37 +324,40 @@ function finishRecording() {
     setStatus("That was too short to hear — press Speak and answer when you're ready.");
     return;
   }
-  void transcribeAndSend(samples);
+  const blob = encodeWav(samples, 16000);
+  void transcribeAndSend(blob, 'audio/wav');
 }
 
 // --- The turn --------------------------------------------------------------------
-async function transcribeAndSend(samples) {
+async function transcribeAndSend(blob, mimeType) {
   awaitingReply = true;
   micBtn.disabled = true;
   const t0 = Date.now();
-  const tick = setInterval(() => {
-    setStatus(`Transcribing… ${Math.round((Date.now() - t0) / 1000)}s${deviceLabel}`);
-  }, 500);
-  setStatus(`Transcribing… 0s${deviceLabel}`);
+  const tick = setInterval(() => setStatus(`Transcribing… ${Math.round((Date.now() - t0) / 1000)}s`), 500);
+  setStatus('Transcribing…');
 
+  let text;
   try {
-    await ensureModel();
-    const text = (await transcribeInWorker(samples)).trim();
-    clearInterval(tick);
-    if (!text) {
-      setStatus("I couldn't make out any speech — try again a little closer to the mic, or type below.");
-      return;
-    }
-    await sendTurn(text);
+    text = (await transcribeUpload(blob, mimeType)).trim();
   } catch (err) {
     clearInterval(tick);
-    console.error('ASR failed:', err);
     setStatus('');
-    showNotice('Something went wrong while transcribing. You can still practise by typing below.');
-  } finally {
+    showNotice(err.friendly || 'The demo server did not answer. It may be down — the desktop app runs without any server at all.');
     awaitingReply = false;
     micBtn.disabled = false;
+    return;
   }
+  clearInterval(tick);
+
+  if (!text) {
+    setStatus("I couldn't make out any speech — try again a little closer to the mic, or type below.");
+    awaitingReply = false;
+    micBtn.disabled = false;
+    return;
+  }
+  await sendTurn(text);
+  awaitingReply = false;
+  micBtn.disabled = false;
 }
 
 async function sendTurn(text) {
