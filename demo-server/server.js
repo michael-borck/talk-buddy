@@ -1,22 +1,26 @@
 #!/usr/bin/env node
 // Talk Buddy demo proxy — a single-file, zero-dependency Node 18+ server.
 //
-// The browser demo page (docs/demo/index.html) POSTs the conversation here;
-// this server prepends the scenario's director prompt, forwards the turn to
-// a local Ollama with thinking disabled, and returns one reply. It holds the
-// only secret (the Ollama bearer key) and rate-limits per IP so the demo
-// can't be abused.
+// The browser demo page (docs/demo/index.html) records the user's voice and
+// POSTs it here; this server transcribes it (small Whisper model via any
+// OpenAI-compatible speech server — e.g. Speaches), prepends the scenario's
+// director prompt, forwards the turn to a local Ollama with thinking
+// disabled, and returns one reply. It holds the only secrets and rate-limits
+// per IP so the demo can't be abused.
 //
-// Privacy posture: transcripts are NEVER logged or stored. Request logs carry
-// counts, status codes, and timings only. Everything lives in memory until
-// restart.
+// Privacy posture: audio and transcripts are NEVER logged or stored. Request
+// logs carry counts, status codes, and timings only. Everything lives in
+// memory until restart.
 //
 //   OLLAMA_URL           required  e.g. http://127.0.0.1:11434
 //   OLLAMA_KEY           optional  sent as "Authorization: Bearer …"
 //   OLLAMA_MODEL         default   gemma4
+//   SPEECH_URL           required  OpenAI-compatible STT (e.g. Speaches)
+//   SPEECH_KEY           optional  sent as "Authorization: Bearer …"
+//   SPEECH_MODEL         default   Systran/faster-whisper-small
 //   PORT                 default   8787
 //   ALLOWED_ORIGIN       default   https://talkbuddy.borck.education
-//   RATE_LIMIT_PER_HOUR  default   30
+//   RATE_LIMIT_PER_HOUR  default   30          (chat turns per IP)
 //   THINK                default   false ("off" disables gemma's thinking mode)
 
 'use strict';
@@ -27,17 +31,27 @@ const http = require('http');
 const OLLAMA_URL = process.env.OLLAMA_URL || '';
 const OLLAMA_KEY = process.env.OLLAMA_KEY || '';
 const MODEL = process.env.OLLAMA_MODEL || 'gemma4';
+const SPEECH_URL = process.env.SPEECH_URL || '';
+const SPEECH_KEY = process.env.SPEECH_KEY || '';
+const SPEECH_MODEL = process.env.SPEECH_MODEL || 'Systran/faster-whisper-small';
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://talkbuddy.borck.education';
 const RATE_LIMIT = parseInt(process.env.RATE_LIMIT_PER_HOUR || '30', 10);
+const TRANSCRIBE_RATE_LIMIT = parseInt(process.env.TRANSCRIBE_RATE_LIMIT_PER_HOUR || '60', 10);
 const THINK = (process.env.THINK || 'false') !== 'true';
 const MAX_MESSAGES = 24;        // hard cap on history length per request
 const MAX_MESSAGE_CHARS = 2000; // per-message cap
+const MAX_AUDIO_BYTES = 12 * 1024 * 1024; // ~10 min of compressed audio
 const OLLAMA_TIMEOUT_MS = 90_000;
+const TRANSCRIBE_TIMEOUT_MS = 30_000;
 const RELEASES_URL = 'https://github.com/michael-borck/talk-buddy/releases/latest?utm_source=browser-demo';
 
 if (!OLLAMA_URL) {
   console.error('OLLAMA_URL is required, e.g. OLLAMA_URL=http://127.0.0.1:11434 node server.js');
+  process.exit(1);
+}
+if (!SPEECH_URL) {
+  console.error('SPEECH_URL is required — an OpenAI-compatible STT endpoint (e.g. https://speaches.example.com)');
   process.exit(1);
 }
 
@@ -64,22 +78,30 @@ You voice all of the following characters:
 - The known characters are: Ms. Alvarez, Dr. Chen. The user plays themselves.`;
 
 // ---- Rate limiting (per IP, in-memory) ----------------------------------------
-const hits = new Map(); // ip -> { count, resetAt }
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, v] of hits) if (v.resetAt < now) hits.delete(ip);
-}, 10 * 60_000).unref();
-
-function rateLimited(ip) {
-  const now = Date.now();
-  let v = hits.get(ip);
-  if (!v || v.resetAt < now) {
-    v = { count: 0, resetAt: now + 3_600_000 };
-    hits.set(ip, v);
-  }
-  v.count += 1;
-  return v.count > RATE_LIMIT;
+function makeLimiter() {
+  const hits = new Map(); // ip -> { count, resetAt }
+  const limited = (ip, maxPerHour) => {
+    const now = Date.now();
+    let v = hits.get(ip);
+    if (!v || v.resetAt < now) {
+      v = { count: 0, resetAt: now + 3_600_000 };
+      hits.set(ip, v);
+    }
+    v.count += 1;
+    return v.count > maxPerHour;
+  };
+  limited.sweep = () => {
+    const now = Date.now();
+    for (const [ip, v] of hits) if (v.resetAt < now) hits.delete(ip);
+  };
+  return limited;
 }
+const chatLimited = makeLimiter();
+const transcribeLimited = makeLimiter();
+setInterval(() => {
+  chatLimited.sweep();
+  transcribeLimited.sweep();
+}, 10 * 60_000).unref();
 
 let chatCount = 0;
 let goClicks = 0;
@@ -113,7 +135,7 @@ function readBody(req, limit = 64 * 1024) {
       if (size > limit) { reject(new Error('body too large')); req.destroy(); return; }
       chunks.push(c);
     });
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
 }
@@ -121,7 +143,7 @@ function readBody(req, limit = 64 * 1024) {
 // ---- The turn ---------------------------------------------------------------------
 async function chat(req, res) {
   const ip = ipOf(req);
-  if (rateLimited(ip)) {
+  if (chatLimited(ip, RATE_LIMIT)) {
     send(res, 429, { error: 'Demo limit reached. Try again later.' },
       { 'Retry-After': '600' });
     return;
@@ -181,6 +203,69 @@ async function chat(req, res) {
   }
 }
 
+// ---- Speech → text (forward to an OpenAI-compatible STT server) ----------------
+// Builds the multipart body by hand — no dependencies. The audio bytes pass
+// straight through to the STT server; nothing is written to disk or logged.
+async function transcribe(req, res) {
+  const ip = ipOf(req);
+  if (transcribeLimited(ip, TRANSCRIBE_RATE_LIMIT)) {
+    send(res, 429, { error: 'Demo limit reached. Try again later.' },
+      { 'Retry-After': '600' });
+    return;
+  }
+
+  let audio;
+  try { audio = await readBody(req, MAX_AUDIO_BYTES); }
+  catch { send(res, 413, { error: 'Recording too large.' }); return; }
+  if (audio.length === 0) { send(res, 400, { error: 'No audio received.' }); return; }
+
+  const mimeType = (req.headers['content-type'] || 'audio/webm').split(';')[0].trim();
+  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+  const boundary = '----tbdemo' + Date.now().toString(36);
+
+  const body = Buffer.concat([
+    Buffer.from(
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="model"\r\n\r\n${SPEECH_MODEL}\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="file"; filename="recording.${ext}"\r\n` +
+      `Content-Type: ${mimeType}\r\n\r\n`
+    ),
+    audio,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+
+  const started = Date.now();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TRANSCRIBE_TIMEOUT_MS);
+  try {
+    const upstream = await fetch(SPEECH_URL.replace(/\/$/, '') + '/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        ...(SPEECH_KEY ? { Authorization: `Bearer ${SPEECH_KEY}` } : {}),
+      },
+      body,
+      signal: ctrl.signal,
+    });
+    if (!upstream.ok) {
+      console.log(`transcribe ip=${ip} status=upstream_${upstream.status} bytes=${audio.length} ms=${Date.now() - started}`);
+      send(res, 502, { error: 'Speech recognition is unavailable right now.' });
+      return;
+    }
+    const data = await upstream.json();
+    const text = data && typeof data.text === 'string' ? data.text : '';
+    console.log(`transcribe ip=${ip} status=ok chars=${text.length} bytes=${audio.length} ms=${Date.now() - started}`);
+    send(res, 200, { text });
+  } catch (err) {
+    const aborted = err && err.name === 'AbortError';
+    console.log(`transcribe ip=${ip} status=${aborted ? 'timeout' : 'error'} ms=${Date.now() - started}`);
+    send(res, aborted ? 504 : 502, { error: 'Speech recognition did not answer in time.' });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ---- Server -------------------------------------------------------------------------
 const server = http.createServer(async (req, res) => {
   const path = (req.url || '/').split('?')[0];
@@ -189,11 +274,12 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
   if (req.method === 'GET' && path === '/api/health') {
-    send(res, 200, { ok: true, model: MODEL });
+    send(res, 200, { ok: true, model: MODEL, stt: Boolean(SPEECH_URL) });
     return;
   }
 
   if (req.method === 'POST' && path === '/api/chat') { await chat(req, res); return; }
+  if (req.method === 'POST' && path === '/api/transcribe') { await transcribe(req, res); return; }
 
   if (req.method === 'GET' && path === '/go') {
     goClicks += 1;
@@ -207,6 +293,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`talk-buddy demo proxy on :${PORT} → ${OLLAMA_URL} (model: ${MODEL}, think: ${THINK ? 'on' : 'off'})`);
-  console.log(`CORS origin: ${ALLOWED_ORIGIN} · rate limit: ${RATE_LIMIT}/h per IP`);
+  console.log(`talk-buddy demo proxy on :${PORT}`);
+  console.log(`  LLM: ${OLLAMA_URL} (model: ${MODEL}, think: ${THINK ? 'on' : 'off'})`);
+  console.log(`  STT: ${SPEECH_URL} (model: ${SPEECH_MODEL})`);
+  console.log(`  CORS origin: ${ALLOWED_ORIGIN} · limits: ${RATE_LIMIT} chats/h, ${TRANSCRIBE_RATE_LIMIT} transcribes/h per IP`);
 });

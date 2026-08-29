@@ -57,13 +57,14 @@
     .cast { display: flex; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
     .cast span { font-size: 0.78rem; color: var(--ink-quiet); }
     .cast b { color: var(--ink); font-weight: 600; }
+    .demo-note { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 0.78rem; color: var(--ink-quiet); }
+    .demo-note b { color: var(--ink-muted); font-weight: 600; }
 
     /* Transcript */
     .transcript { flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 8px 0 24px; min-height: 240px; }
     .msg .who { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--ink-quiet); margin-bottom: 3px; }
     .msg.user .who { color: var(--accent); }
     .msg .text { font-size: 0.96rem; color: var(--ink); white-space: pre-wrap; }
-    .msg .interim { color: var(--ink-quiet); font-style: italic; }
     .msg.pending .text { color: var(--ink-quiet); font-style: italic; }
 
     /* Controls */
@@ -77,14 +78,14 @@
       transition: background 0.15s ease;
     }
     button.mic:hover { background: var(--accent); }
-    button.mic.listening { background: var(--vermilion); }
+    button.mic.recording { background: var(--vermilion); }
     button.mic:disabled { background: rgba(15,15,14,0.2); color: var(--ink-muted); cursor: not-allowed; }
     button.stop {
       font: inherit; font-size: 0.85rem; background: none; border: none;
       color: var(--ink-muted); cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
     }
     button.stop:hover { color: var(--ink); }
-    .text-fallback { display: flex; gap: 10px; width: 100%; }
+    .text-fallback { display: flex; gap: 10px; width: 100%; margin-top: 10px; }
     .text-fallback input {
       flex: 1; font: inherit; font-size: 0.92rem; padding: 11px 14px;
       border: 1px solid var(--line); background: #fff; border-radius: 2px; color: var(--ink);
@@ -120,8 +121,8 @@
 
   <div class="banner">
     <div class="wrap">
-      <span><strong>Demo:</strong> your voice is transcribed in this browser and text is sent to our
-      demo server to generate a reply. Nothing is stored.</span>
+      <span><strong>Demo:</strong> your voice goes to our server, where a small speech model
+      transcribes it and an AI drafts the reply. Nothing is stored.</span>
       <span>The <a href="https://github.com/michael-borck/talk-buddy/releases/latest">desktop app</a>
       runs everything on your machine — offline, private, better voices.</span>
     </div>
@@ -143,6 +144,13 @@
       <div class="cast">
         <span><b>Ms. Alvarez</b> · program director · warm, probes motivation</span>
         <span><b>Dr. Chen</b> · senior faculty · precise, probes method</span>
+      </div>
+      <div class="demo-note">
+        <b>About the demo:</b> the voices here are your browser's built-in ones on purpose —
+        the point is practising a conversation, not voice realism. The desktop app adds
+        studio-quality voices, hands-free listening, your own scenarios, transcripts, and
+        analysis. Speech recognition uses a small model, so it may mishear strong or fast
+        accents — if a transcription misses, just type your answer below instead.
       </div>
     </div>
 
@@ -167,11 +175,13 @@
         <button class="mic" id="mic">Speak</button>
         <button class="stop" id="stop" hidden>Stop the reply</button>
       </div>
-      <div class="text-fallback" id="text-fallback" hidden>
-        <input id="text-input" type="text" placeholder="Type your answer instead…" maxlength="1000" />
+      <div class="text-fallback">
+        <input id="text-input" type="text" placeholder="Or type your answer…" maxlength="1000" />
         <button id="text-send">Send</button>
       </div>
-      <p class="hint" id="hint"></p>
+      <p class="hint" id="hint"><b>Click Speak</b> (or hold the <b>space bar</b>), answer out loud,
+         then click again — or release — to send. It works in any modern browser; allow the
+         microphone when asked.</p>
     </div>
   </div>
 
@@ -187,11 +197,11 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// CONFIG — set this to the domain where demo-server/server.js runs.
-// Until it points at a real server the page shows a friendly notice.
+// CONFIG — the proxy (demo-server/server.js) that holds the LLM and STT keys.
 // ---------------------------------------------------------------------------
 const PROXY_BASE = 'https://demo.talkbuddy.borck.education';
 const MAX_USER_TURNS = 10;
+const MAX_RECORD_MS = 60_000; // safety stop for a runaway recording
 
 // Panel interview — mirrors the desktop app's seeded scenario and the
 // [[Name]] speaker-tag convention parsed by turn/personaStream.
@@ -206,8 +216,8 @@ const SCENARIO_INTRO = {
 const $ = (id) => document.getElementById(id);
 const transcriptEl = $('transcript'), statusEl = $('status'), micBtn = $('mic'),
       stopBtn = $('stop'), hintEl = $('hint'), noticeEl = $('notice'),
-      fallbackWrap = $('text-fallback'), textInput = $('text-input'),
-      textSend = $('text-send'), upgradeEl = $('upgrade'), upgradeBtn = $('upgrade-btn');
+      textInput = $('text-input'), textSend = $('text-send'),
+      upgradeEl = $('upgrade'), upgradeBtn = $('upgrade-btn');
 
 // Kill switch: flip to false to take the demo offline without touching
 // anything else — the page shows a friendly notice instead of network errors.
@@ -216,117 +226,98 @@ const proxyReady = true;
 // --- State -------------------------------------------------------------------
 const history = [];          // {role: 'user'|'assistant', content} — no system prompt (lives server-side)
 let userTurns = 0;
-let listening = false, awaitingReply = false, speaking = false;
+let recording = false, awaitingReply = false, speaking = false;
 let locked = false;
 
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recog = null;
-if (SR) {
-  recog = new SR();
-  recog.lang = navigator.language || 'en-US';
-  recog.interimResults = true;
-  recog.maxAlternatives = 1;
-  recog.continuous = false;
+// --- Audio capture (works in every modern browser) ----------------------------
+// One path for all browsers: MediaRecorder → server-side transcription.
+// (Browser-native SpeechRecognition was abandoned deliberately: Firefox never
+// shipped it, Safari's is unreliable, and Brave blocks it silently.)
+let mediaStream = null, recorder = null, chunks = [], recordStart = 0, recordTimer = null;
+let spaceHeld = false;
 
-  recog.onresult = (e) => {
-    let interim = '', final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) final += t; else interim += t;
+async function startRecording() {
+  if (recording || awaitingReply || speaking || locked) return;
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    setStatus('Microphone access was blocked. Allow it in the browser address bar, or type below.');
+    return;
+  }
+  chunks = [];
+  try {
+    recorder = new MediaRecorder(mediaStream);
+  } catch {
+    setStatus('This browser cannot record audio — please type your answer below.');
+    mediaStream.getTracks().forEach((t) => t.stop());
+    return;
+  }
+  recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop = onRecordingStopped;
+  recorder.start();
+  recordStart = Date.now();
+  recordTimer = setTimeout(() => finishRecording(), MAX_RECORD_MS);
+
+  recording = true;
+  micBtn.classList.add('recording');
+  micBtn.textContent = 'Send';
+  setStatus('Listening… answer out loud, then click Send (or release the space bar).');
+}
+
+function finishRecording() {
+  if (!recording) return;
+  recording = false;
+  clearTimeout(recordTimer);
+  micBtn.classList.remove('recording');
+  micBtn.textContent = 'Speak';
+  try { recorder.stop(); } catch { /* already stopped */ }
+}
+
+async function onRecordingStopped() {
+  mediaStream.getTracks().forEach((t) => t.stop());
+  const type = recorder && recorder.mimeType ? recorder.mimeType : 'audio/webm';
+  const blob = new Blob(chunks, { type });
+  chunks = [];
+  if (blob.size < 2000 || Date.now() - recordStart < 600) {
+    setStatus("That was too short to hear — press Speak and answer when you're ready.");
+    return;
+  }
+  await transcribeAndSend(blob, type);
+}
+
+// --- The turn --------------------------------------------------------------------
+async function transcribeAndSend(blob, mimeType) {
+  awaitingReply = true;
+  micBtn.disabled = true;
+  setStatus('Transcribing…');
+
+  try {
+    // 1. Speech → text on the server (small Whisper model).
+    const fd = new FormData();
+    fd.append('file', blob, 'audio.' + (mimeType.includes('mp4') ? 'mp4' : 'webm'));
+    const tr = await fetch(PROXY_BASE + '/api/transcribe', { method: 'POST', body: fd });
+    if (tr.status === 429) throw Object.assign(new Error('limit'), {
+      friendly: 'The demo is very busy right now — please try again in a little while.' });
+    if (!tr.ok) throw new Error('transcribe HTTP ' + tr.status);
+    const { text } = await tr.json();
+
+    if (!text || !text.trim()) {
+      setStatus("I couldn't make out any speech — try again a little closer to the mic, or type below.");
+      return;
     }
-    if (interim) showInterim(interim);
-    if (final) {
-      stopListening();
-      sendTurn(final.trim());
-    }
-  };
-  recog.onend = () => { if (listening) setListening(false); };
-  recog.onerror = (e) => {
-    setListening(false);
-    if (e.error === 'not-allowed') setStatus('Microphone access was blocked. Allow it in the browser, or type below.');
-    else if (e.error === 'no-speech') setStatus("I didn't catch that — press Speak and try again.");
-  };
+    await sendTurn(text.trim());
+  } catch (err) {
+    setStatus('');
+    showNotice(err.friendly ||
+      'The demo server did not answer. It may be down — the desktop app runs without any server at all.');
+  } finally {
+    awaitingReply = false;
+    micBtn.disabled = false;
+  }
 }
 
-// --- Voices -------------------------------------------------------------------
-let voices = [];
-function loadVoices() { voices = speechSynthesis.getVoices(); }
-loadVoices();
-if (speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices;
-
-function pickVoice(wantFemale) {
-  if (!voices.length) loadVoices();
-  const english = voices.filter((v) => /^en/i.test(v.lang));
-  const pool = english.length ? english : voices;
-  const byName = (re) => pool.find((v) => re.test(v.name));
-  const hit = wantFemale
-    ? byName(/samantha|victoria|karen|moira|tessa|serena|fiona|zira|susan|female/i)
-    : byName(/daniel|alex|fred|thomas|rishi|aaron|male/i);
-  return hit || pool[0] || null;
-}
-
-// --- Render helpers -----------------------------------------------------------
-function addMsg(speaker, text, cls) {
-  const div = document.createElement('div');
-  div.className = 'msg ' + (cls || '');
-  const who = document.createElement('p'); who.className = 'who'; who.textContent = speaker;
-  const body = document.createElement('p'); body.className = 'text'; body.textContent = text;
-  div.append(who, body);
-  transcriptEl.appendChild(div);
-  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-  return body;
-}
-function setStatus(t) { statusEl.textContent = t; }
-function showInterim(t) {
-  let el = document.getElementById('interim');
-  if (!el) el = addMsg('You', '', 'user');
-  el.id = 'interim';
-  el.innerHTML = '<span class="interim"></span>';
-  el.firstChild.textContent = t + ' …';
-}
-function showNotice(t) { noticeEl.textContent = t; noticeEl.classList.add('show'); }
-
-// --- Speech out ----------------------------------------------------------------
-function speak(text, wantFemale, onDone) {
-  if (!('speechSynthesis' in window) || !text) { if (onDone) onDone(); return; }
-  const u = new SpeechSynthesisUtterance(text);
-  const v = pickVoice(wantFemale);
-  if (v) u.voice = v;
-  u.rate = 1.02;
-  u.onstart = () => { speaking = true; stopBtn.hidden = false; setStatus('Listening while they speak…'); };
-  u.onend = u.onerror = () => {
-    speaking = false; stopBtn.hidden = true;
-    if (onDone) onDone();
-  };
-  speechSynthesis.cancel();
-  speechSynthesis.speak(u);
-}
-stopBtn.addEventListener('click', () => { speechSynthesis.cancel(); });
-
-// --- Mic in ---------------------------------------------------------------------
-function setListening(on) {
-  listening = on;
-  micBtn.classList.toggle('listening', on);
-  micBtn.textContent = on ? 'Send when done' : 'Speak';
-}
-function startListening() {
-  if (!recog || locked || awaitingReply || speaking) return;
-  try { recog.start(); setListening(true); setStatus('Listening… answer out loud.'); }
-  catch { /* already started */ }
-}
-function stopListening() { if (listening) { try { recog.stop(); } catch {} } setListening(false); }
-
-micBtn.addEventListener('click', () => {
-  if (!proxyReady) return;
-  if (listening) { stopListening(); return; }
-  if (speaking) { speechSynthesis.cancel(); return; }
-  startListening();
-});
-
-// --- The turn ----------------------------------------------------------------------
 async function sendTurn(text) {
   if (!text || locked || awaitingReply) return;
-  document.getElementById('interim')?.remove();
 
   history.push({ role: 'user', content: text });
   userTurns += 1;
@@ -358,7 +349,7 @@ async function sendTurn(text) {
     history.push({ role: 'assistant', content: speaker + ': ' + content });
     addMsg(speaker, content);
     const wantFemale = !/\bchen\b/i.test(speaker); // Alvarez → female voice
-    speak(content, wantFemale, () => afterTurn(content));
+    speak(content, wantFemale);
   } catch (err) {
     pendingBody.parentElement.remove();
     history.pop(); userTurns -= 1;
@@ -379,16 +370,88 @@ function afterTurn() {
     setStatus('Demo complete — thanks for practising with us.');
   } else {
     const left = MAX_USER_TURNS - userTurns;
-    setStatus(speaking ? '' : `Your turn — ${left} exchange${left === 1 ? '' : 's'} left in the demo.`);
-    if (speaking) setStatus('Listening while they speak…');
+    setStatus(`Your turn — ${left} exchange${left === 1 ? '' : 's'} left in the demo.`);
   }
 }
 
-// --- Text fallback (Firefox / Safari / blocked mic) ---------------------------------
-if (!SR) {
-  fallbackWrap.hidden = false;
-  hintEl.innerHTML = '<b>Voice input needs Chrome or Edge.</b> Type below instead — the replies are still spoken aloud.';
+// --- Render helpers -----------------------------------------------------------
+function addMsg(speaker, text, cls) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (cls || '');
+  const who = document.createElement('p'); who.className = 'who'; who.textContent = speaker;
+  const body = document.createElement('p'); body.className = 'text'; body.textContent = text;
+  div.append(who, body);
+  transcriptEl.appendChild(div);
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  return body;
 }
+function setStatus(t) { statusEl.textContent = t; }
+function showNotice(t) { noticeEl.textContent = t; noticeEl.classList.add('show'); }
+
+// --- Speech out ----------------------------------------------------------------
+let voices = [];
+function loadVoices() { voices = speechSynthesis.getVoices ? speechSynthesis.getVoices() : []; }
+loadVoices();
+if ('speechSynthesis' in window && speechSynthesis.onvoiceschanged !== undefined) {
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function pickVoice(wantFemale) {
+  if (!voices.length) loadVoices();
+  const english = voices.filter((v) => /^en/i.test(v.lang));
+  const pool = english.length ? english : voices;
+  const byName = (re) => pool.find((v) => re.test(v.name));
+  const hit = wantFemale
+    ? byName(/samantha|victoria|karen|moira|tessa|serena|fiona|zira|susan|female/i)
+    : byName(/daniel|alex|fred|thomas|rishi|aaron|male/i);
+  return hit || pool[0] || null;
+}
+
+function speak(text, wantFemale) {
+  if (!('speechSynthesis' in window) || !text) { afterTurn(); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  const v = pickVoice(wantFemale);
+  if (v) u.voice = v;
+  u.rate = 1.02;
+  u.onstart = () => { speaking = true; stopBtn.hidden = false; setStatus('Listening while they speak…'); };
+  u.onend = u.onerror = () => {
+    speaking = false; stopBtn.hidden = true;
+    afterTurn();
+  };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+stopBtn.addEventListener('click', () => { speechSynthesis.cancel(); });
+
+// --- Mic controls -----------------------------------------------------------------
+micBtn.addEventListener('click', () => {
+  if (!proxyReady || locked) return;
+  if (speaking) { speechSynthesis.cancel(); return; }
+  if (recording) { finishRecording(); return; }
+  startRecording();
+});
+
+// Hold the space bar to talk — the same gesture as the desktop app.
+window.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' || e.repeat) return;
+  const el = e.target;
+  if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+  if (!proxyReady || locked || awaitingReply) return;
+  e.preventDefault();
+  if (speaking) { speechSynthesis.cancel(); return; }
+  if (!spaceHeld && !recording) { spaceHeld = true; startRecording(); }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code !== 'Space') return;
+  const el = e.target;
+  if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+  if (!spaceHeld) return;
+  spaceHeld = false;
+  e.preventDefault();
+  if (recording) finishRecording();
+});
+
+// --- Text fallback -----------------------------------------------------------------
 textSend.addEventListener('click', () => {
   const v = textInput.value.trim();
   if (v) { textInput.value = ''; sendTurn(v); }
@@ -396,9 +459,6 @@ textSend.addEventListener('click', () => {
 textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') textSend.click(); });
 
 // --- Tracked download ---------------------------------------------------------------
-upgradeBtn.addEventListener('click', () => {
-  // Fire-and-forget click count; the /go endpoint 302s to the release.
-});
 upgradeBtn.href = proxyReady ? PROXY_BASE + '/go' : 'https://github.com/michael-borck/talk-buddy/releases/latest';
 
 // --- Boot -----------------------------------------------------------------------------
@@ -406,11 +466,15 @@ if (!proxyReady) {
   micBtn.disabled = true;
   showNotice('The demo server is not configured yet. The full desktop app needs no server at all — download it and practise offline.');
   setStatus('');
+} else if (!('MediaRecorder' in window) || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  micBtn.hidden = true;
+  hintEl.innerHTML = '<b>Voice needs a modern browser with microphone access.</b> Type below instead — the replies are still spoken aloud.';
+  history.push({ role: 'assistant', content: SCENARIO_INTRO.name + ': ' + SCENARIO_INTRO.text });
+  addMsg(SCENARIO_INTRO.name, SCENARIO_INTRO.text);
 } else {
   history.push({ role: 'assistant', content: SCENARIO_INTRO.name + ': ' + SCENARIO_INTRO.text });
   addMsg(SCENARIO_INTRO.name, SCENARIO_INTRO.text);
-  const wantFemale = true; // opening line is Ms. Alvarez
-  speak(SCENARIO_INTRO.text, wantFemale, afterTurn);
+  speak(SCENARIO_INTRO.text, true);
 }
 </script>
 </body>
