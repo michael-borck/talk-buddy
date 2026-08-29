@@ -233,10 +233,14 @@ let locked = false;
 // --- Speech upload (server-side Whisper — one boring path for every browser) --
 // The page captures PCM and encodes a 16 kHz WAV locally; the demo proxy
 // (same host as this file's config) forwards it to a local faster-whisper.
-async function transcribeUpload(blob) {
-  const fd = new FormData();
-  fd.append('file', blob, 'recording.wav');
-  const res = await fetch(PROXY_BASE + '/api/transcribe', { method: 'POST', body: fd });
+// The WAV blob goes as the RAW body — the proxy treats the request body as
+// pure audio bytes, so no multipart wrapper here.
+async function transcribeUpload(blob, mimeType) {
+  const res = await fetch(PROXY_BASE + '/api/transcribe', {
+    method: 'POST',
+    headers: { 'Content-Type': mimeType },
+    body: blob,
+  });
   if (res.status === 429) throw Object.assign(new Error('limit'), {
     friendly: 'The demo is very busy right now — please try again in a little while.' });
   if (!res.ok) {
