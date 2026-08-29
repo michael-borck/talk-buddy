@@ -299,7 +299,14 @@ async function transcribeAndSend(blob, mimeType) {
     const tr = await fetch(PROXY_BASE + '/api/transcribe', { method: 'POST', body: fd });
     if (tr.status === 429) throw Object.assign(new Error('limit'), {
       friendly: 'The demo is very busy right now — please try again in a little while.' });
-    if (!tr.ok) throw new Error('transcribe HTTP ' + tr.status);
+    if (!tr.ok) {
+      let detail = '';
+      try { detail = (await tr.json()).error || ''; } catch { /* non-JSON error */ }
+      throw Object.assign(new Error('transcribe HTTP ' + tr.status), {
+        // Name the layer so the next debugging session starts in the right place.
+        friendly: `Transcription failed (HTTP ${tr.status})${detail ? ' — ' + detail : ''}` +
+          (tr.status === 404 ? '. The demo server looks outdated.' : '') });
+    }
     const { text } = await tr.json();
 
     if (!text || !text.trim()) {
@@ -337,7 +344,13 @@ async function sendTurn(text) {
     if (res.status === 429) {
       throw Object.assign(new Error('limit'), { friendly: 'The demo is very busy right now — please try again in a little while, or download the app below.' });
     }
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json()).error || ''; } catch { /* non-JSON error */ }
+      throw Object.assign(new Error('chat HTTP ' + res.status), {
+        friendly: `The AI could not reply (HTTP ${res.status})${detail ? ' — ' + detail : ''}` +
+          (res.status === 404 ? '. The demo server looks outdated.' : '') });
+    }
     const data = await res.json();
 
     // Same [[Name]] convention as the desktop app (turn/personaStream).
