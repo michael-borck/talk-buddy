@@ -3,8 +3,9 @@ services:
     build: .
     image: talkbuddy-demo-proxy
     restart: unless-stopped
-    # Bound to loopback only — Caddy (or nginx) on the same host is the
-    # public front door; the proxy itself is never exposed directly.
+    # Bound to all interfaces so containerised Caddy can reach it via
+    # host.docker.internal (host-gateway); loopback-only would refuse.
+    # Caddy on the same host is the public front door.
     ports:
-      - "127.0.0.1:8787:8787"
+      - "8787:8787"
     env_file: .env

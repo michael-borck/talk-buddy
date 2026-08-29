@@ -50,8 +50,10 @@ Later updates are exactly:
 git pull && cd demo-server && docker compose up -d --build
 ```
 
-The container binds to `127.0.0.1:8787` only — Caddy on the same host is the
-public front door (see TLS below).
+The container publishes port 8787 on all host interfaces so containerised
+Caddy on the same host can reach it via `host.docker.internal`
+(host-gateway); a loopback-only bind would refuse. Caddy remains the public
+front door (see TLS below).
 
 ### Keep it running
 
@@ -71,9 +73,18 @@ Caddyfile:
 
 ```
 demo.talkbuddy.borck.education {
-    reverse_proxy 127.0.0.1:8787
+    reverse_proxy host.docker.internal:8787
+    tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    }
 }
 ```
+
+Caddy runs in Docker here, so the upstream is `host.docker.internal`, not
+`127.0.0.1`. The `tls` block uses DNS-01 (the convention for every host in
+the Caddyfile) — required anyway because the name is two labels deep, which
+Cloudflare Universal SSL can't cover; the A record stays unproxied, as with
+`app.slidestream.borck.education`.
 
 nginx equivalent: a TLS server block for the same hostname with
 `proxy_pass http://127.0.0.1:8787;` and
