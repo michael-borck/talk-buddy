@@ -333,7 +333,7 @@ export function DocumentationPage(): JSX.Element {
           </div>
 
           {/* Content */}
-          <div className="max-w-4xl">
+          <div className="max-w-[var(--measure)]">
             {breadcrumbs.length > 0 && renderBreadcrumbs()}
             
             {currentContent ? (

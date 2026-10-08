@@ -24,6 +24,11 @@ const tabs = [
   { id: 'diag', name: 'Diagnostics', Icon: Activity }
 ];
 
+/** A requested tab only counts if it is one we actually have. */
+function requestedTab(value: string | null): string | null {
+  return value && tabs.some((t) => t.id === value) ? value : null;
+}
+
 export function SettingsPage() {
   const navigate = useNavigate();
   const [preferences, setPreferences] = useState<SettingsPreferences>({
@@ -60,11 +65,21 @@ export function SettingsPage() {
   const [message, setMessage] = useState('');
   // ?tab= lets the setup check (and anywhere else) send someone straight to
   // the tab that fixes their problem.
-  const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => {
-    const requested = searchParams.get('tab');
-    return tabs.some((t) => t.id === requested) ? (requested as string) : 'stt';
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => requestedTab(searchParams.get('tab')));
+  const selectTab = (id: string) => {
+    setActiveTab(id);
+    // Keep the address bar honest so the tab is shareable and Back works.
+    // `replace` so switching tabs does not fill the history with each one.
+    setSearchParams({ tab: id }, { replace: true });
+  };
+  // The initialiser above only runs on mount, so a change of ?tab= while this
+  // page is already showing — browser Back, or a remedy link opened from
+  // within Settings — would otherwise be ignored.
+  useEffect(() => {
+    const requested = requestedTab(searchParams.get('tab'));
+    if (requested) setActiveTab(requested);
+  }, [searchParams]);
   const [testing, setTesting] = useState({
     stt: false,
     tts: false,
@@ -631,7 +646,7 @@ export function SettingsPage() {
 
 
   return (
-    <div className="max-w-4xl mx-auto px-12 lg:px-16 py-14">
+    <div className="page page-measure py-14">
       <div className="flex items-center mb-4">
         <span className="editorial-rule" aria-hidden="true" />
         <span className="text-[0.7rem] uppercase tracking-[0.22em] text-ink-muted font-sans">
@@ -660,7 +675,7 @@ export function SettingsPage() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => selectTab(tab.id)}
                   className={`py-3 px-1 border-b-2 text-[0.9rem] font-sans flex items-center gap-2 transition-colors ${
                     isActive
                       ? 'border-accent text-ink font-medium'

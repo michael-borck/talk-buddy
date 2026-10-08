@@ -283,7 +283,7 @@ export function ScenariosPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-8">
+    <div className="page page-canvas p-8">
       {/* Header — one Explore space: a Scenarios/Packs switcher up front, all
           management actions tucked into the overflow menu. */}
       <div className="mb-8 flex items-center justify-between">

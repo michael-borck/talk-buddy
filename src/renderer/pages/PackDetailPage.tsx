@@ -130,7 +130,7 @@ export function PackDetailPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
+    <div className="page page-canvas p-8">
       {/* Header */}
       <div className="mb-8">
         <button

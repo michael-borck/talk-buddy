@@ -183,7 +183,7 @@ export function HomePage() {
 
   return (
     <div className="min-h-full animate-fade-in">
-      <div className="max-w-[640px] mx-auto px-8 pt-12 pb-16">
+      <div className="page page-measure pt-12 pb-16">
         {/* Wordmark + date */}
         <div className="flex items-baseline justify-between mb-8">
           <span className="font-sans text-[1.1rem] leading-none text-ink font-medium tracking-display">

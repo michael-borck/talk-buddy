@@ -167,7 +167,7 @@ export function PracticePacksPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
+    <div className="page page-canvas p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
           {/* Same Explore switcher as the Scenarios page — one space, two views */}

@@ -189,7 +189,7 @@ export function ArchivePage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
+    <div className="page page-canvas p-8">
       <PageHeader
         title="Archive"
         icon={<Archive size={32} className="text-gray-600" />}

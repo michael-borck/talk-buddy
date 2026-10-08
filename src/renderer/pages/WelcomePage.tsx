@@ -41,7 +41,7 @@ export function WelcomePage({ onComplete }: WelcomePageProps) {
 
   return (
     <div className="h-screen overflow-y-auto animate-fade-in">
-      <div className="max-w-[720px] mx-auto px-8 py-16">
+      <div className="page page-measure py-16">
         <div className="flex items-center mb-6">
           <span className="editorial-rule" aria-hidden="true" />
           <span className="text-[0.7rem] uppercase tracking-[0.22em] text-ink-muted font-medium">

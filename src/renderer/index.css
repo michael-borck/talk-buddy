@@ -21,6 +21,17 @@
   --ink-muted:          #5C564C;
   --ink-quiet:          #8A8377;
 
+  /* Layout width rule
+     Two widths, and only two. Measured at a 1680px window the app had four:
+     640, 896, 1152 and 1280, with no logic behind which page got which, so
+     moving between pages silently resized the text under the reader.
+     `measure` is for reading and configuring — one comfortable column.
+     `canvas` is for browsing a collection — cards, lists and grids.
+     The gutter is uniform so nothing ever runs to the window edge. */
+  --measure:           640px;
+  --canvas:            1152px;
+  --gutter:            2rem;
+
   /* Channel form of the text and status colours. Tailwind's ink and error
      scales resolve from these, so `text-ink` follows the theme and
      `border-ink/10` still carries an alpha — which a plain var() cannot. */
@@ -170,6 +181,14 @@ html[data-theme='dark'] .border-green-200 { border-color: var(--hairline-strong)
 /* --------------------------------------------------------------------------
    Base
    -------------------------------------------------------------------------- */
+
+/* ---- Layout widths ---- */
+.page {
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+.page-measure { max-width: var(--measure); }
+.page-canvas { max-width: var(--canvas); }
 
 html, body {
   background: var(--paper);

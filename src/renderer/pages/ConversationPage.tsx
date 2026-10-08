@@ -542,7 +542,7 @@ export function ConversationPage() {
     <div className="flex flex-col h-full bg-paper">
       {/* Header — hairline, editorial */}
       <header className="border-b border-ink/10 px-8 py-5">
-        <div className="flex items-center justify-between max-w-6xl mx-auto">
+        <div className="page page-canvas flex items-center justify-between">
           <div className="flex items-center gap-5">
             <button
               onClick={() => navigate('/scenarios')}

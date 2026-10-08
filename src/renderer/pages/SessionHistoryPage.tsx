@@ -223,7 +223,7 @@ export function SessionHistoryPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
+    <div className="page page-canvas p-8">
       <PageHeader
         title="Session History"
         subtitle="Review your conversation practice sessions and track progress"

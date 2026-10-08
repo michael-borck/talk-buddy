@@ -273,7 +273,7 @@ export function SetupCheckPage() {
 
   return (
     <div className="min-h-full animate-fade-in">
-      <div className="max-w-[640px] mx-auto px-8 pt-12 pb-20">
+      <div className="page page-measure pt-12 pb-20">
         <button
           onClick={() => navigate('/')}
           className="text-[0.82rem] text-ink-muted hover:text-accent transition-colors font-sans mb-8"

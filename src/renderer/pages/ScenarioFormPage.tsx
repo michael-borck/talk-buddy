@@ -204,7 +204,7 @@ export function ScenarioFormPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
+    <div className="page page-measure p-8">
       <PageHeader
         title={isEditing ? 'Edit Scenario' : 'Create New Scenario'}
         subtitle="Design a conversation scenario for practice"

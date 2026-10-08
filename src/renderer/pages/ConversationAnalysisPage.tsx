@@ -94,7 +94,7 @@ export function ConversationAnalysisPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="page page-canvas p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button

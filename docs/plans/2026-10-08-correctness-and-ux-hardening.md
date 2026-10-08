@@ -67,7 +67,9 @@ Asked whether `sttUrl`/`ttsUrl` were really used — they are, and always were; 
 
 ## Phase 3 — Layout
 
-- [ ] **Unify column widths.** Today/Explore/Journal/Settings grow toward ~880–960px on wide windows, matching the Conversation's existing `lg` treatment. Keep 640px below `lg`. One width rule everywhere — no layout jump when leaving a conversation.
+- [x] **Unify column widths.** The plan estimated ~880–960px; measuring at a 1680px window found four unrelated widths — 640, 896, 1152 and 1280 — with no logic behind which page got which, plus gutters varying from 32px to 64px. At an 820px window the grid pages ran edge-to-edge while prose stayed at 640.
+
+  Now two widths and one gutter, declared once as `--measure` (640px), `--canvas` (1152px) and `--gutter` (2rem), applied via `.page` / `.page-measure` / `.page-canvas` so the rule is greppable rather than scattered across fifteen `max-w-*` values. Reading and configuring get the measure; browsing a collection gets the canvas. Conversation keeps its own two-column split — its transcript column lands near 544px, a fine measure in its own right.
 - [ ] **Put the empty rail to work on `xl`.** A left column carrying persistent context (current scenario, last session, streak) turns dead space into the reassurance Studio Calm is built for.
 - [ ] **Bottom tab bar → left rail at ≥1024px**, keeping the bottom bar for narrow windows. Most opinionated change in this plan; do it only after the width unification lands and only if the rail doesn't crowd the reading column.
 
