@@ -36,8 +36,8 @@
 
 ## Phase 2 — Structure (after Phase 1 is stable)
 
-- [ ] **Split `SettingsPage.tsx` (1,865 lines)** into `settings/SttTab.tsx`, `settings/TtsTab.tsx`, `settings/ChatTab.tsx`, `settings/StyleTab.tsx`, `settings/DataTab.tsx`, `settings/DiagnosticsTab.tsx` sharing one preferences hook. The file being 1,865 lines is why the phase-5 Provider edits were surgical.
-- [ ] **Extract the preferences hook** (`useSettingsPage`) so tabs read one source instead of each page re-implementing load/save.
+- [x] **Split `SettingsPage.tsx` (1,865 lines)** into `settings/SttTab.tsx`, `settings/TtsTab.tsx`, `settings/ChatTab.tsx`, `settings/StyleTab.tsx`, `settings/DataTab.tsx` sharing one preferences source. Diagnostics already had its own `DiagnosticsPanel`. The page is now 730 lines of state, handlers, and layout; the tab JSX moved verbatim. The file being 1,865 lines is why the phase-5 Provider edits were surgical.
+- [x] **Extract the shared settings state** (`settings/SettingsContext.tsx`) so tabs read one typed source. `SettingsPreferences` also pins the shape the `useState` literal never declared — `sttUrl` and `ttsUrl` were always in state but no tab ever read or wrote them, since both tabs fall back to `speachesUrl`. Left in place as the likely intent; flagged here rather than silently deleted.
 - [ ] **`chat.ts` (1,082 lines)** — review for a per-provider split behind the existing interface. Only if it stays under pressure after the Settings split.
 - [ ] **Page scaffolding** — the header/loading/empty-state block is re-implemented per page; extract the common shape.
 
