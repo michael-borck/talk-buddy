@@ -150,6 +150,7 @@ export function ConversationPage() {
     const controller = new HandsFreeController({
       phase: () => phaseRef.current,
       amplitude: t.amplitudeRef,
+      speechProbability: () => t.speechProbability(),
       beginListening: () => t.beginListening(),
       endListening: () => t.endListening(),
       cancelListening: () => t.cancelListening(),

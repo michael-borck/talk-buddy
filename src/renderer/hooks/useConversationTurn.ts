@@ -8,6 +8,7 @@ import { TurnEngine, TurnSnapshot, EndReason } from '../turn/turnEngine';
 import { AudioAnalyser, createAudioAnalyser } from '../turn/audioAnalyser';
 import { createListeningPort, createBrainPort, createVoicePort, createCuePort, PersonaChannel } from '../turn/turnPorts';
 import { composeSystemPrompt } from '../services/personaPrompt';
+import { createSileroVad, Vad } from '../turn/vad';
 import { Scenario, ConversationMessage } from '../types';
 
 const EMPTY: TurnSnapshot = {
@@ -21,9 +22,15 @@ const EMPTY: TurnSnapshot = {
   error: null,
 };
 
+// VAD probability older than this is treated as absent — endpointing falls
+// back to amplitude. Covers a stalled feed or a slow first inference.
+const VAD_STALE_MS = 400;
+
 export interface UseConversationTurn extends TurnSnapshot {
   ready: boolean;
   amplitudeRef: MutableRefObject<number>;
+  /** Fresh Silero VAD probability, or null when unavailable/stale. */
+  speechProbability(): number | null;
   greet(text: string): Promise<void>;
   seed(messages: ConversationMessage[]): void;
   markReady(): void;
@@ -56,6 +63,32 @@ export function useConversationTurn(params: UseConversationTurnParams): UseConve
   const analyserRef = useRef<AudioAnalyser | null>(null);
   if (!analyserRef.current) analyserRef.current = createAudioAnalyser();
 
+  // Silero VAD: created lazily (onnxruntime-web is a code-split dynamic
+  // import), attached to the shared analyser, and optional — failure keeps
+  // hands-free working on amplitude thresholds. One instance for the page's
+  // lifetime; model load starts immediately so it's warm by the first turn.
+  const vadRef = useRef<Vad | null>(null);
+  useEffect(() => {
+    const analyser = analyserRef.current;
+    if (!analyser) return;
+    let cancelled = false;
+    createSileroVad()
+      .then((vad) => {
+        if (cancelled) { vad.dispose(); return; }
+        vadRef.current = vad;
+        analyser.attachVad(vad);
+      })
+      .catch((err) => console.warn('Silero VAD unavailable — using amplitude endpointing:', err));
+    return () => {
+      cancelled = true;
+      if (vadRef.current) {
+        analyser.detachVad();
+        vadRef.current.dispose();
+        vadRef.current = null;
+      }
+    };
+  }, []);
+
   const [engine, setEngine] = useState<TurnEngine | null>(null);
   const scenarioId = params.scenario?.id ?? null;
   const resetKey = params.resetKey ?? 0;
@@ -79,7 +112,7 @@ export function useConversationTurn(params: UseConversationTurnParams): UseConve
     };
 
     const e = new TurnEngine({
-      listening: createListeningPort(analyser),
+      listening: createListeningPort(analyser, () => scenario.vocabulary),
       brain: createBrainPort(persona),
       voice: createVoicePort(analyser, resolveVoice, persona),
       cue: createCuePort(),
@@ -110,6 +143,12 @@ export function useConversationTurn(params: UseConversationTurnParams): UseConve
     ...snapshot,
     ready: engine !== null,
     amplitudeRef: (analyserRef.current?.amplitude ?? { current: 0 }) as MutableRefObject<number>,
+    speechProbability: useCallback(() => {
+      const vad = vadRef.current;
+      if (!vad) return null;
+      if (Date.now() - vad.lastFedAt.current > VAD_STALE_MS) return null;
+      return analyserRef.current?.speechProbability.current ?? null;
+    }, []),
     greet: useCallback((text: string) => engine?.greet(text) ?? Promise.resolve(), [engine]),
     seed: useCallback((m: ConversationMessage[]) => { engine?.seed(m); }, [engine]),
     markReady: useCallback(() => { engine?.markReady(); }, [engine]),

@@ -9,7 +9,7 @@ describe('HandsFreeController', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
-  function setup(initialPhase: HandsFreePhase = 'idle') {
+  function setup(initialPhase: HandsFreePhase = 'idle', opts: { speechProbability?: () => number | null } = {}) {
     let phase = initialPhase;
     const amplitude = { current: 0 };
     const beginListening = vi.fn(async () => { phase = 'listening'; });
@@ -18,6 +18,7 @@ describe('HandsFreeController', () => {
     const c = new HandsFreeController({
       phase: () => phase,
       amplitude,
+      speechProbability: opts.speechProbability,
       beginListening,
       endListening,
       cancelListening,
@@ -134,5 +135,93 @@ describe('HandsFreeController', () => {
     await advance(5000);
     expect(beginListening).not.toHaveBeenCalled();
     expect(endListening).not.toHaveBeenCalled();
+  });
+
+  // ---- VAD path: Silero probability drives endpointing when fresh ----------
+
+  it('uses VAD probability to arm and hand over when it reports fresh values', async () => {
+    let prob: number | null = null;
+    const { c, advance, endListening } = setup('listening', { speechProbability: () => prob });
+    c.start();
+
+    prob = 0.9; // clear speech per Silero
+    await advance(300);
+    expect(endListening).not.toHaveBeenCalled();
+
+    prob = 0.1; // silence per Silero
+    await advance(1600);
+    expect(endListening).toHaveBeenCalledTimes(1);
+    c.stop();
+  });
+
+  it('does not arm on loud noise the VAD rejects — the amplitude fallback is not consulted', async () => {
+    let prob: number | null = null;
+    const { c, advance, amplitude, cancelListening, endListening } = setup('listening', {
+      speechProbability: () => prob,
+    });
+    c.start();
+
+    amplitude.current = 0.4; // keyboard clatter — loud, but Silero says not speech
+    prob = 0.05;
+    await advance(3000);
+    expect(endListening).not.toHaveBeenCalled();
+
+    amplitude.current = 0.0;
+    await advance(5500); // total passes the no-speech window
+    expect(cancelListening).toHaveBeenCalledTimes(1);
+    c.stop();
+  });
+
+  it('falls back to amplitude thresholds when the VAD source is null (failed/stale)', async () => {
+    const { c, advance, amplitude, endListening } = setup('listening', {
+      speechProbability: () => null,
+    });
+    c.start();
+
+    amplitude.current = 0.2;
+    await advance(300);
+    expect(endListening).not.toHaveBeenCalled();
+
+    amplitude.current = 0.001;
+    await advance(1600);
+    expect(endListening).toHaveBeenCalledTimes(1);
+    c.stop();
+  });
+
+  it('keeps endpointing working when the VAD degrades to null mid-turn', async () => {
+    let prob: number | null = null;
+    const { c, advance, amplitude, endListening } = setup('listening', {
+      speechProbability: () => prob,
+    });
+    c.start();
+
+    prob = 0.9; // VAD armed the utterance
+    await advance(300);
+
+    prob = null; // feed stalls (stale) — amplitude takes over seamlessly
+    amplitude.current = 0.001;
+    await advance(1700);
+    expect(endListening).toHaveBeenCalledTimes(1);
+    c.stop();
+  });
+
+  it('arms via a quiet VAD speech signal that the amplitude path would ignore', async () => {
+    // Quiet close speech: Silero confident (0.8) but the smoothed
+    // frequency-mean stays under the legacy amplitude onset (0.055).
+    let prob: number | null = null;
+    const { c, advance, amplitude, endListening } = setup('listening', {
+      speechProbability: () => prob,
+    });
+    c.start();
+
+    amplitude.current = 0.02;
+    prob = 0.8;
+    await advance(300);
+    expect(endListening).not.toHaveBeenCalled();
+
+    prob = 0.05; // Silero sees the utterance finish
+    await advance(1600);
+    expect(endListening).toHaveBeenCalledTimes(1);
+    c.stop();
   });
 });

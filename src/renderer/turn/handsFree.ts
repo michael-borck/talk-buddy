@@ -1,14 +1,20 @@
 // HandsFreeController — voice-activity turn-taking for hands-free practice.
 //
 // The TurnEngine owns the Turn lifecycle; this controller decides WHEN turns
-// begin and end by watching the shared mic amplitude (already computed by the
-// AudioAnalyser rAF loop) while the engine sits in the `listening` phase:
+// begin and end by watching a speech signal while the engine sits in the
+// `listening` phase:
 //
 //   idle     → auto-start capture after a short arm delay (lets the turn cue land)
 //   listening→ speech onset (sustained above threshold) arms the endpoint;
 //              sustained silence below the hysteresis threshold hands the turn over
 //   listening→ no speech at all within the no-speech window → discard the capture
 //   listening→ hard utterance cap, as a runaway-recording guard
+//
+// Speech signal, best available first: Silero VAD probability (neural —
+// distinguishes speech from breathing, keyboard, and background noise) when a
+// speechProbability() source reports fresh values; otherwise the legacy
+// smoothed mic amplitude. Fallback is automatic per-tick, so a failed model
+// load or stalled feed degrades to exactly the old behaviour.
 //
 // React-free and timer-injectable for deterministic tests. Barge-in during AI
 // speech stays a deliberate space press — automatic barge-in on speaker bleed
@@ -20,6 +26,9 @@ export type HandsFreePhase =
 export interface HandsFreeDeps {
   phase(): HandsFreePhase;
   amplitude: { current: number }; // AudioAnalyser.amplitude, 0..1 smoothed
+  /** Silero VAD speech probability 0..1, or null when unavailable/stale.
+   *  Optional — omitted or always-null deps run on amplitude thresholds. */
+  speechProbability?(): number | null;
   beginListening(): Promise<void>;
   endListening(): Promise<void>;
   cancelListening(): void;
@@ -29,6 +38,8 @@ export interface HandsFreeDeps {
 // 0.005–0.03 for a quiet room and well above 0.06 for close speech.
 const ONSET_THRESHOLD = 0.055;       // amplitude that counts as speech starting
 const RELEASE_THRESHOLD = 0.04;      // hysteresis floor: below this = silence
+const VAD_ONSET_THRESHOLD = 0.5;     // Silero probability that counts as speech
+const VAD_RELEASE_THRESHOLD = 0.35;  // hysteresis floor for the neural signal
 const ONSET_SUSTAIN_MS = 150;        // above-onset time before speech is "real"
 const SILENCE_TIMEOUT_MS = 1400;     // silence after speech that ends the turn
 const NO_SPEECH_TIMEOUT_MS = 8000;   // no speech at all → discard the capture
@@ -100,14 +111,19 @@ export class HandsFreeController {
       this.listeningSince = now;
       this.lastLoudAt = now;
     }
-    const amp = this.d.amplitude.current;
+    // Signal selection: fresh VAD probability wins; amplitude is the fallback.
+    const p = this.d.speechProbability ? this.d.speechProbability() : null;
+    const useVad = p !== null;
+    const level = useVad ? (p as number) : this.d.amplitude.current;
+    const onset = useVad ? VAD_ONSET_THRESHOLD : ONSET_THRESHOLD;
+    const release = useVad ? VAD_RELEASE_THRESHOLD : RELEASE_THRESHOLD;
     const held = now - this.listeningSince;
 
     // Hard cap: never record forever.
     if (held >= MAX_UTTERANCE_MS) { void this.d.endListening(); return; }
 
     // Speech onset — must sustain above threshold so clicks/coughs don't arm.
-    if (amp >= ONSET_THRESHOLD) {
+    if (level >= onset) {
       if (this.speechStartedAt === null) this.speechStartedAt = now;
       if (this.speechArmedAt === null && now - this.speechStartedAt >= ONSET_SUSTAIN_MS) {
         this.speechArmedAt = now;
@@ -126,7 +142,7 @@ export class HandsFreeController {
     // Armed + sustained silence below the release threshold → hand over.
     // The grace period starts from the last above-release sample, so brief
     // dips mid-sentence don't chop the utterance.
-    if (amp >= RELEASE_THRESHOLD) this.lastLoudAt = now;
+    if (level >= release) this.lastLoudAt = now;
     else if (now - this.lastLoudAt >= SILENCE_TIMEOUT_MS) void this.d.endListening();
   }
 }

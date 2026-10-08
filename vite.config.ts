@@ -23,6 +23,11 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src/renderer'),
     },
+    // onnxruntime-web: prefer the "extern wasm" build, which never references
+    // the 14MB .wasm from JS — the runtime fetches it from public/ort/ via
+    // ort.env.wasm.wasmPaths instead. Prevents a duplicate hashed copy of the
+    // binary being emitted into dist/assets.
+    conditions: ['onnxruntime-web-use-extern-wasm'],
   },
   build: {
     outDir: 'dist',
