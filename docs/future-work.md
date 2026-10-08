@@ -8,6 +8,14 @@ Grouped roughly by size: **architecture decisions** (multi-day, design-heavy), *
 
 ## Architecture decisions
 
+### Replace the Python embedded server with a native speech sidecar
+
+**Idea:** Kill the Python venv (~500MB download, setup step, AV false-positive surface on Windows, interpreter drift) by bundling a small native sidecar that does Whisper STT + Piper TTS in-process — the Handy approach (whisper.cpp GGML with Metal/Vulkan GPU acceleration; possibly Parakeet V3 for CPU-optimised, auto-language-detecting STT, a good fit for ESL learners).
+
+**Why parked:** a multi-week build touching the release pipeline per platform (compiling whisper.cpp/piper for mac/win/linux in CI, GPU discovery, model download/manager flow). The current Python server works, ships, and its OpenAI-compatible endpoints are already abstracted behind the Listening/Voice Provider seam — so this can land without any renderer changes when the time comes. Note the VAD work (Oct 2026) already moved the *turn-taking* intelligence into the renderer via onnxruntime-web; a native sidecar would follow that same "runtime in the bundle" pattern.
+
+**When to revive:** if Windows install friction (AV flagging the PyInstaller bundle, ffmpeg/PATH issues) or the 500MB setup step shows up as a top support theme in Diagnostics reports.
+
 ### Tauri migration
 
 **Idea:** Port from Electron 28 to Tauri 2 (Rust + WebView). Smaller binaries (~5MB vs ~150MB), better native integration, modern stack.

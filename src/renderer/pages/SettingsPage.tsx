@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllPreferences, setPreference, resetDatabase } from '../services/sqlite';
-import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server, Mic, Volume2, MessageSquare, PenLine, Database } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server, Mic, Volume2, MessageSquare, PenLine, Database, Activity } from 'lucide-react';
+import { DiagnosticsPanel } from '../components/DiagnosticsPanel';
 import * as embeddedService from '../services/embedded';
 import * as speechProvider from '../services/speechProvider';
 import { EmbeddedInstallModal } from '../components/settings/EmbeddedInstallModal';
@@ -965,7 +966,8 @@ export function SettingsPage() {
     { id: 'tts', name: 'Voice', Icon: Volume2 },
     { id: 'chat', name: 'AI Brain', Icon: MessageSquare },
     { id: 'prompts', name: 'Conversation Style', Icon: PenLine },
-    { id: 'data', name: 'Your Data', Icon: Database }
+    { id: 'data', name: 'Your Data', Icon: Database },
+    { id: 'diag', name: 'Diagnostics', Icon: Activity }
   ];
 
   return (
@@ -1944,6 +1946,8 @@ export function SettingsPage() {
         )}
 
         {/* Data Management & Documentation Tab */}
+        {activeTab === 'diag' && <DiagnosticsPanel />}
+
         {activeTab === 'data' && (
           <div className="space-y-8">
             {/* Data Management */}

@@ -52,6 +52,7 @@ export const documentationStructure = {
     items: {
       'connection-issues': 'Connection Issues',
       'common-errors': 'Common Errors',
+      'microphone-and-hands-free': 'Microphone & Hands-free',
       'performance-tips': 'Performance Tips'
     }
   },
