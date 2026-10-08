@@ -2,7 +2,7 @@
 // Commercial-grade TypeScript interfaces for type safety
 
 export type STTProvider = 'embedded' | 'speaches' | 'wasm';
-export type TTSProvider = 'embedded' | 'speaches';
+export type TTSProvider = 'embedded' | 'speaches' | 'piper';
 export type ChatProvider = 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom';
 export type PromptBehavior = 'enhance' | 'override' | 'scenario-only';
 

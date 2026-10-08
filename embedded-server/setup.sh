@@ -68,7 +68,9 @@ pip install -r requirements.txt
 # release workflow does in .github/workflows/build.yml. Without these,
 # /health reports services.tts=false even though the server is "running."
 mkdir -p models
-PIPER_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en"
+# The HF repo restructured (v1.0.0 tag + /en/GB/... paths are gone); the
+# pins below still match the files at the new locations.
+PIPER_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/main/en"
 
 # Downloads are verified against pinned SHA-256s (same pins as
 # server.py) so a compromised upstream can't hand us a poisoned model.

@@ -23,6 +23,12 @@ interface ElectronAPI {
     restoreDefaults: () => Promise<{ success: boolean; restoredCount?: number; error?: string }>;
   };
   platform: string;
+  piper: {
+    status: () => Promise<{ installed: boolean; piperInstalled: boolean; voices: { male: boolean; female: boolean }; dir: string }>;
+    ensure: () => Promise<{ success: boolean; dir?: string; error?: string }>;
+    speak: (params: { text: string; voice: 'male' | 'female'; speed?: number }) => Promise<{ ok: boolean; wav?: Uint8Array; sampleRate?: number; error?: string }>;
+    onProgress: (cb: (p: { stage: string; file: string; pct: number }) => void) => () => void;
+  };
   wasmStt: {
     status: () => Promise<{ installed: boolean; dir: string; missing: string[]; totalBytes: number }>;
     ensureModels: () => Promise<{ success: boolean; dir?: string; error?: string }>;

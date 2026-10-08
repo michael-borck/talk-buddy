@@ -67,3 +67,5 @@ async function main() {
 void main().catch((err) => {
   console.log(`__VERIFY_STT__ ${JSON.stringify({ ok: false, error: err instanceof Error ? err.stack : String(err) })}`);
 });
+
+export {};

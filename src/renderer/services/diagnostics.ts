@@ -140,6 +140,13 @@ export async function collectDiagnostics(): Promise<DiagnosticsReport> {
         ? `models installed at ${s.dir}`
         : `not installed (~${(s.totalBytes / 1e6).toFixed(0)}MB download)`;
     }),
+    await check('In-app TTS (piper)', async () => {
+      const { piperStatus } = await import('./piperTts');
+      const s = await piperStatus();
+      return s.installed
+        ? `engine + voices installed at ${s.dir}`
+        : `not installed (engine: ${s.piperInstalled ? '✓' : 'missing'}, voices: ${s.voices.male ? 'male ✓' : 'male ✗'}/${s.voices.female ? 'female ✓' : 'female ✗'})`;
+    }),
     await check('Hands-free VAD runtime', vadRuntime),
   ];
 

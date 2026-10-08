@@ -117,7 +117,10 @@ export interface SpeachesTTS {
   male:   { model: string; voice: string };
   female: { model: string; voice: string };
 }
-export type TTSConfig = EmbeddedTTS | SpeachesTTS;
+// In-app piper (phase 4 of the sidecar retirement): standalone binary +
+// alan/amy voices in userData, no settings at all.
+export interface PiperTTS { provider: 'piper'; }
+export type TTSConfig = EmbeddedTTS | SpeachesTTS | PiperTTS;
 
 export interface ChatConfig {
   provider: ChatProvider;
@@ -174,6 +177,9 @@ export function resolveTTS(
       male:   { model: p.maleTTSModel || DEFAULTS.tts.male.model,   voice: p.maleVoice   || DEFAULTS.tts.male.voice },
       female: { model: p.femaleTTSModel || DEFAULTS.tts.female.model, voice: p.femaleVoice || DEFAULTS.tts.female.voice },
     };
+  }
+  if (provider === 'piper') {
+    return { provider: 'piper' };
   }
   return { provider: 'embedded', voice, speed };
 }

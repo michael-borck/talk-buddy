@@ -4,6 +4,7 @@ import { getAllPreferences, setPreference, resetDatabase } from '../services/sql
 import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server, Mic, Volume2, MessageSquare, PenLine, Database, Activity, Cpu } from 'lucide-react';
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel';
 import { WasmSttPanel } from '../components/WasmSttPanel';
+import { PiperPanel } from '../components/PiperPanel';
 import * as embeddedService from '../services/embedded';
 import * as speechProvider from '../services/speechProvider';
 import { EmbeddedInstallModal } from '../components/settings/EmbeddedInstallModal';
@@ -271,7 +272,7 @@ export function SettingsPage() {
     sttUrl: 'https://speaches.locopuente.org',
     ttsUrl: 'https://speaches.locopuente.org',
     sttProvider: 'embedded' as 'embedded' | 'speaches' | 'wasm',
-    ttsProvider: 'embedded' as 'embedded' | 'speaches',
+    ttsProvider: 'embedded' as 'embedded' | 'speaches' | 'piper',
     chatProvider: 'ollama' as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom',
     embeddedSttUrl: 'http://127.0.0.1:8765',
     embeddedTtsUrl: 'http://127.0.0.1:8765',
@@ -381,7 +382,7 @@ export function SettingsPage() {
   // (TTS never passes 'wasm' — only STT has the in-app provider.)
   const handleProviderChange = (
     field: 'sttProvider' | 'ttsProvider',
-    newValue: 'embedded' | 'speaches' | 'wasm'
+    newValue: 'embedded' | 'speaches' | 'wasm' | 'piper'
   ) => {
     if (newValue === 'embedded' && embeddedInstalled === false) {
       setPendingProviderSwitch(field === 'sttProvider' ? 'stt' : 'tts');
@@ -1244,20 +1245,38 @@ export function SettingsPage() {
                       type="radio"
                       value="speaches"
                       checked={preferences.ttsProvider === 'speaches'}
-                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'embedded' | 'speaches')}
+                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'embedded' | 'speaches' | 'piper')}
                       className="mr-2"
                     />
                     <ExternalLink size={16} className="mr-1" />
                     <span>Cloud server</span>
                   </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="piper"
+                      checked={preferences.ttsProvider === 'piper'}
+                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'embedded' | 'speaches' | 'piper')}
+                      className="mr-2"
+                    />
+                    <Cpu size={16} className="mr-1" />
+                    <span>In-app (beta — no setup)</span>
+                  </label>
                 </div>
                 <p className="text-sm text-gray-600">
                   {preferences.ttsProvider === 'embedded'
                     ? 'Speaks using voices built into this computer (Alan & Amy) — no internet needed'
+                    : preferences.ttsProvider === 'piper'
+                    ? 'Speaks with the same Alan & Amy voices, run by a small engine inside the app — no internet, no server, one download'
                     : 'Sends text to a cloud server which speaks it back — needs internet'
                   }
                 </p>
               </div>
+
+              {/* In-app (piper) model management */}
+              {preferences.ttsProvider === 'piper' && (
+                <PiperPanel />
+              )}
 
               {/* Embedded TTS Configuration */}
               {preferences.ttsProvider === 'embedded' && (

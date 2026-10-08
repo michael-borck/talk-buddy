@@ -53,6 +53,12 @@ describe('resolveSTT', () => {
   });
 });
 
+describe('resolveTTS additions', () => {
+  it('resolves the in-app piper Provider with no settings at all', () => {
+    expect(resolveTTS({ ttsProvider: 'piper' })).toEqual({ provider: 'piper' });
+  });
+});
+
 describe('resolveTTS', () => {
   it('defaults to embedded with the default voice and speed', () => {
     expect(resolveTTS({})).toEqual({ provider: 'embedded', voice: 'female', speed: 1.2 });

@@ -10,6 +10,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { autoUpdater } = require('electron-updater');
 const { runOperation } = require('./db-operations');
 const { registerSchemes: registerWasmSttSchemes, registerWasmSttBridge } = require('./wasm-stt-ipc');
+const { registerPiperBridge } = require('./piper-ipc');
 
 // In-app STT models are served to the renderer/worker over the privileged
 // tb-models:// scheme — the scheme must be registered before app ready.
@@ -748,6 +749,8 @@ function createWindow() {
 app.whenReady().then(() => {
   // Serve the in-app STT models + ORT runtime to the renderer and worker.
   registerWasmSttBridge();
+  // In-app (piper) TTS handlers.
+  registerPiperBridge();
 
   // Initialize SQLite database
   const dbPath = path.join(app.getPath('userData'), 'talkbuddy.db');

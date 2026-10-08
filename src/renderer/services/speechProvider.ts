@@ -9,7 +9,7 @@ import { loadPreferences, resolveSTT, resolveTTS, STTConfig, TTSConfig } from '.
 
 // Types for provider selection
 export type STTProvider = 'embedded' | 'speaches' | 'wasm';
-export type TTSProvider = 'embedded' | 'speaches';
+export type TTSProvider = 'embedded' | 'speaches' | 'piper';
 
 // Get current STT provider from preferences
 async function getSTTProvider(): Promise<STTProvider> {
@@ -76,22 +76,33 @@ export async function generateSpeech(options: SpeechGenerationOptions): Promise<
   try {
     return await callTTS(options, cfg);
   } catch (error) {
-    const fallback = cfg.provider === 'embedded' ? 'speaches' : 'embedded';
-    console.error(`TTS failed with ${cfg.provider} provider:`, error);
-    console.log(`Attempting fallback to ${fallback} provider...`);
-    try {
-      return await callTTS(options, resolveTTS(prefs, fallback));
-    } catch (fallbackError) {
-      console.error('Fallback TTS also failed:', fallbackError);
-      throw error; // surface the original error
+    const fallbacks: Record<string, Array<'embedded' | 'piper' | 'speaches'>> = {
+      piper: ['embedded', 'speaches'],
+      embedded: ['piper', 'speaches'],
+      speaches: ['piper', 'embedded'],
+    };
+    for (const fallback of fallbacks[cfg.provider] ?? []) {
+      console.error(`TTS failed with ${cfg.provider} provider:`, error);
+      console.log(`Attempting fallback to ${fallback} provider...`);
+      try {
+        return await callTTS(options, resolveTTS(prefs, fallback));
+      } catch (fallbackError) {
+        console.error(`Fallback TTS (${fallback}) also failed:`, fallbackError);
+      }
     }
+    throw error; // surface the original error
   }
 }
 
 async function callTTS(options: SpeechGenerationOptions, cfg: TTSConfig): Promise<Blob> {
-  return cfg.provider === 'embedded'
-    ? embeddedService.generateSpeech(options, cfg)
-    : speachesService.generateSpeech(options, cfg);
+  switch (cfg.provider) {
+    case 'piper':
+      return (await import('./piperTts')).generateSpeech(options, cfg);
+    case 'speaches':
+      return speachesService.generateSpeech(options, cfg);
+    default:
+      return embeddedService.generateSpeech(options, cfg);
+  }
 }
 
 // Check STT connection based on current provider

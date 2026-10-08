@@ -73,6 +73,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
   },
 
+  // In-app (piper) TTS — binary/voice download + synthesis.
+  piper: {
+    status: () => ipcRenderer.invoke('piper:status'),
+    ensure: () => ipcRenderer.invoke('piper:ensure'),
+    speak: (params) => ipcRenderer.invoke('piper:speak', params),
+    onProgress: (callback) => {
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('piper:progress', listener);
+      return () => ipcRenderer.removeListener('piper:progress', listener);
+    },
+  },
+
   // Embedded server setup flow — used by the Settings "Set up now" modal.
   embeddedInstall: {
     check: () => ipcRenderer.invoke('embedded-server:check-install'),
