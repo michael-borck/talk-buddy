@@ -48,8 +48,9 @@ function stripTrailingSlash(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
-// Speech-to-Text using Speaches API (via main-process proxy)
-export async function transcribeAudio(audioBlob: Blob, cfg: SpeachesSTT): Promise<TranscriptionResult> {
+// Speech-to-Text using Speaches API (via main-process proxy). `prompt` is the
+// Scenario's vocabulary hint, forwarded as the OpenAI-compatible form field.
+export async function transcribeAudio(audioBlob: Blob, cfg: SpeachesSTT, prompt?: string): Promise<TranscriptionResult> {
   const baseUrl = stripTrailingSlash(cfg.url);
   const sttModel = cfg.model;
   const apiKey = await resolveApiKey(cfg.apiKey);
@@ -64,6 +65,7 @@ export async function transcribeAudio(audioBlob: Blob, cfg: SpeachesSTT): Promis
     audioBuffer,
     model: sttModel,
     filename: 'audio.webm',
+    prompt,
   });
 
   if (!result.ok) {

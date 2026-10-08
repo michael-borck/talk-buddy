@@ -18,6 +18,9 @@ export interface Scenario {
   systemPrompt: string;
   initialMessage: string;
   tags: string[];
+  /** Vocabulary hints (comma/newline-separated terms) passed to the Listening
+   *  Provider so Whisper spells domain jargon and names correctly. */
+  vocabulary?: string;
   isDefault?: boolean;  // true for default scenarios, false/undefined for custom
   isPublic?: boolean;   // for backward compatibility
   voice?: 'male' | 'female';

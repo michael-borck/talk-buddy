@@ -36,6 +36,7 @@ interface ElectronAPI {
       audioBuffer: Uint8Array;
       model: string;
       filename?: string;
+      prompt?: string;
     }) => Promise<{
       ok: boolean;
       status: number;
@@ -133,6 +134,7 @@ export async function createScenario(scenario: Omit<Scenario, 'id' | 'created' |
     systemPrompt: scenario.systemPrompt,
     initialMessage: scenario.initialMessage,
     tags: JSON.stringify(scenario.tags || []),
+    vocabulary: scenario.vocabulary ?? null,
     isPublic: scenario.isPublic ? 1 : 0,
     voice: scenario.voice,
     personas: scenario.personas ? JSON.stringify(scenario.personas) : null,
@@ -173,6 +175,7 @@ export async function updateScenario(id: string, updates: Partial<Scenario>): Pr
       systemPrompt: updatedScenario.systemPrompt,
       initialMessage: updatedScenario.initialMessage,
       tags: JSON.stringify(updatedScenario.tags || []),
+      vocabulary: updatedScenario.vocabulary ?? null,
       isPublic: updatedScenario.isPublic ? 1 : 0,
       voice: updatedScenario.voice,
       personas: updatedScenario.personas ? JSON.stringify(updatedScenario.personas) : null,

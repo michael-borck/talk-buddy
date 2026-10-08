@@ -757,6 +757,11 @@ app.whenReady().then(() => {
   } catch (e) {
     // Column already exists, ignore error
   }
+  try {
+    db.exec('ALTER TABLE scenarios ADD COLUMN vocabulary TEXT');
+  } catch (e) {
+    // Column already exists, ignore error
+  }
 
   // Create tables if they don't exist
   db.exec(`
@@ -770,6 +775,7 @@ app.whenReady().then(() => {
       systemPrompt TEXT,
       initialMessage TEXT,
       tags TEXT,
+      vocabulary TEXT,
       isPublic BOOLEAN DEFAULT 1,
       isDefault BOOLEAN DEFAULT 0,
       voice TEXT,
@@ -1056,7 +1062,7 @@ ipcMain.handle('app:getEnvVar', (event, name) => {
 // IPC). We rebuild FormData here where global fetch handles it natively.
 // Main process has no CORS enforcement, so this bypasses the browser
 // preflight that blocks direct renderer fetches to speaches.locopuente.org.
-ipcMain.handle('speaches:transcribe', async (event, { url, apiKey, audioBuffer, model, filename }) => {
+ipcMain.handle('speaches:transcribe', async (event, { url, apiKey, audioBuffer, model, filename, prompt }) => {
   if (!isAllowedProxyUrl(url)) {
     return { ok: false, status: 0, statusText: 'blocked', error: 'URL is not a configured endpoint' };
   }
@@ -1067,6 +1073,7 @@ ipcMain.handle('speaches:transcribe', async (event, { url, apiKey, audioBuffer, 
     formData.append('file', blob, filename || 'audio.webm');
     formData.append('model', model);
     formData.append('response_format', 'json');
+    if (prompt) formData.append('prompt', prompt);
 
     const headers = {};
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;

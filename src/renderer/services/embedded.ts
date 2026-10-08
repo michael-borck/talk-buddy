@@ -35,20 +35,22 @@ async function getEmbeddedTTSUrl(): Promise<string> {
   return status.url;
 }
 
-// Speech-to-Text using embedded server
-export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionResult> {
+// Speech-to-Text using embedded server. `prompt` (the Scenario's vocabulary
+// hint) is forwarded as the OpenAI-compatible `prompt` form field.
+export async function transcribeAudio(audioBlob: Blob, prompt?: string): Promise<TranscriptionResult> {
   const baseUrl = await getEmbeddedSTTUrl();
-  
+
   console.log('transcribeAudio called with:', {
     blobSize: audioBlob.size,
     blobType: audioBlob.type,
     baseUrl
   });
-  
+
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
   // Try without model parameter - let server use default
   formData.append('response_format', 'json');
+  if (prompt) formData.append('prompt', prompt);
 
   try {
     console.log('Sending transcription request to:', `${baseUrl}/v1/audio/transcriptions`);

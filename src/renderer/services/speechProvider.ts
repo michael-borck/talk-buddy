@@ -25,19 +25,24 @@ async function getTTSProvider(): Promise<TTSProvider> {
 
 // Universal Speech-to-Text function. Resolves the active Listening config from
 // one preference snapshot, then dispatches; on failure, resolves the OTHER
-// Provider from the same snapshot and retries once.
-export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionResult> {
+// Provider from the same snapshot and retries once. `prompt` is an optional
+// Whisper bias (the Scenario's vocabulary) — Providers that don't support one
+// ignore it.
+export async function transcribeAudio(
+  audioBlob: Blob,
+  opts?: { prompt?: string }
+): Promise<TranscriptionResult> {
   const prefs = await loadPreferences();
   const cfg = resolveSTT(prefs);
 
   try {
-    return await callSTT(audioBlob, cfg);
+    return await callSTT(audioBlob, cfg, opts?.prompt);
   } catch (error) {
     const fallback = cfg.provider === 'embedded' ? 'speaches' : 'embedded';
     console.error(`STT failed with ${cfg.provider} provider:`, error);
     console.log(`Attempting fallback to ${fallback} provider...`);
     try {
-      return await callSTT(audioBlob, resolveSTT(prefs, fallback));
+      return await callSTT(audioBlob, resolveSTT(prefs, fallback), opts?.prompt);
     } catch (fallbackError) {
       console.error('Fallback STT also failed:', fallbackError);
       throw error; // surface the original error
@@ -45,10 +50,10 @@ export async function transcribeAudio(audioBlob: Blob): Promise<TranscriptionRes
   }
 }
 
-async function callSTT(audioBlob: Blob, cfg: STTConfig): Promise<TranscriptionResult> {
+async function callSTT(audioBlob: Blob, cfg: STTConfig, prompt?: string): Promise<TranscriptionResult> {
   return cfg.provider === 'embedded'
-    ? embeddedService.transcribeAudio(audioBlob)
-    : speachesService.transcribeAudio(audioBlob, cfg);
+    ? embeddedService.transcribeAudio(audioBlob, prompt)
+    : speachesService.transcribeAudio(audioBlob, cfg, prompt);
 }
 
 // Universal Text-to-Speech function. Same resolve-then-dispatch shape as STT.

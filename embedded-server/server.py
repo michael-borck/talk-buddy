@@ -279,10 +279,10 @@ def text_to_speech(text: str, voice_type: str = "female", voice_id: int = None, 
         logger.error(f"Piper TTS conversion failed: {e}")
         return None
 
-def speech_to_text(audio_data: bytes) -> Optional[dict]:
+def speech_to_text(audio_data: bytes, prompt: str = None) -> Optional[dict]:
     """Convert speech to text using Whisper"""
     global whisper_model
-    
+
     if not whisper_model:
         logger.error("Whisper model not initialized")
         return None
@@ -316,9 +316,14 @@ def speech_to_text(audio_data: bytes) -> Optional[dict]:
             
             logger.info(f"Converted audio to 16kHz WAV: {output_path}")
             
-            # Transcribe audio using pywhispercpp
+            # Transcribe audio using pywhispercpp. An optional prompt (the
+            # Scenario's vocabulary hint) biases decoding toward those terms —
+            # pywhispercpp forwards it as whisper.cpp's initial_prompt.
             logger.info("Starting Whisper transcription...")
-            segments = whisper_model.transcribe(output_path)
+            if prompt:
+                segments = whisper_model.transcribe(output_path, initial_prompt=prompt)
+            else:
+                segments = whisper_model.transcribe(output_path)
             
             # pywhispercpp returns list of segments
             if segments:
@@ -514,9 +519,12 @@ def create_transcription():
         # Read audio data
         audio_data = audio_file.read()
         logger.info(f"Read {len(audio_data)} bytes of audio data")
-        
+
+        # Optional vocabulary hint (OpenAI-compatible `prompt` form field)
+        prompt = request.form.get('prompt')
+
         # Transcribe audio
-        result = speech_to_text(audio_data)
+        result = speech_to_text(audio_data, prompt=prompt)
         if result is None:
             logger.error("Speech-to-text function returned None")
             return jsonify({"error": "Failed to transcribe audio"}), 500

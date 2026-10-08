@@ -10,6 +10,7 @@ import { getPreference } from '../services/sqlite';
 import { ListeningPort, BrainPort, VoicePort, CuePort, CaptureHandle } from './turnEngine';
 import { AudioAnalyser } from './audioAnalyser';
 import { withPersonaTag, withSpokenText, parsePersonaTag, splitSpeakerPrefix } from './personaStream';
+import { vocabularyPrompt } from './sttPrompt';
 
 // Shared per-Turn speaker state. The Brain side writes the `[[Name]]` tag it
 // strips; the Voice side reads it to pick the character's voice and to strip
@@ -18,7 +19,10 @@ export interface PersonaChannel {
   current: string | null;
 }
 
-export function createListeningPort(analyser: AudioAnalyser): ListeningPort {
+export function createListeningPort(
+  analyser: AudioAnalyser,
+  getVocabulary?: () => string | undefined
+): ListeningPort {
   return {
     async startCapture(): Promise<CaptureHandle> {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -44,7 +48,8 @@ export function createListeningPort(analyser: AudioAnalyser): ListeningPort {
         },
       };
     },
-    transcribe: async (audio) => (await transcribeAudio(audio)).text,
+    transcribe: async (audio) =>
+      (await transcribeAudio(audio, { prompt: vocabularyPrompt(getVocabulary?.()) })).text,
   };
 }
 
