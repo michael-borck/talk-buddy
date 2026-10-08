@@ -23,6 +23,12 @@ interface ElectronAPI {
     restoreDefaults: () => Promise<{ success: boolean; restoredCount?: number; error?: string }>;
   };
   platform: string;
+  wasmStt: {
+    status: () => Promise<{ installed: boolean; dir: string; missing: string[]; totalBytes: number }>;
+    ensureModels: () => Promise<{ success: boolean; dir?: string; error?: string }>;
+    assetBase: () => Promise<string>;
+    onProgress: (cb: (p: { file: string; received: number; total: number; pct: number }) => void) => () => void;
+  };
   secrets: {
     get: (key: string) => Promise<string>;
     set: (key: string, value: string) => Promise<{ success: boolean; error?: string }>;

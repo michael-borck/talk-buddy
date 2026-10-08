@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage } = require('ele
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const { net } = require('electron');
 const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'production' && require('electron-is-dev'));
 // node:sqlite ships inside Electron's bundled Node — no native compile,
 // no node-gyp/electron-rebuild, and it tracks Electron's V8 automatically.
@@ -10,6 +9,11 @@ const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'produ
 const { DatabaseSync } = require('node:sqlite');
 const { autoUpdater } = require('electron-updater');
 const { runOperation } = require('./db-operations');
+const { registerSchemes: registerWasmSttSchemes, registerWasmSttBridge } = require('./wasm-stt-ipc');
+
+// In-app STT models are served to the renderer/worker over the privileged
+// tb-models:// scheme — the scheme must be registered before app ready.
+registerWasmSttSchemes();
 
 // Disable sandbox on Linux only in development or when explicitly requested
 if (process.platform === 'linux' && (isDev || process.argv.includes('--no-sandbox'))) {
@@ -742,6 +746,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Serve the in-app STT models + ORT runtime to the renderer and worker.
+  registerWasmSttBridge();
+
   // Initialize SQLite database
   const dbPath = path.join(app.getPath('userData'), 'talkbuddy.db');
   db = new DatabaseSync(dbPath);

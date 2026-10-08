@@ -47,6 +47,10 @@ describe('resolveSTT', () => {
     const p: PrefMap = { sttProvider: 'embedded', sttModel: 'm' };
     expect(resolveSTT(p, 'speaches')).toMatchObject({ provider: 'speaches', model: 'm' });
   });
+
+  it('resolves the in-app wasm Provider with no settings at all', () => {
+    expect(resolveSTT({ sttProvider: 'wasm' })).toEqual({ provider: 'wasm' });
+  });
 });
 
 describe('resolveTTS', () => {

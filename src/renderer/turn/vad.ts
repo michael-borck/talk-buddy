@@ -54,19 +54,25 @@ interface SileroVadOptions {
 
 export async function createSileroVad(options: SileroVadOptions = {}): Promise<Vad> {
   const now = options.now ?? Date.now;
+  // Packaged builds load over file://, which Chromium forbids fetching from —
+  // route through the privileged tb-models:// scheme in that case. Dev runs
+  // over http, where document-relative public/ assets resolve normally.
+  const fileProto = location.protocol === 'file:';
   const modelUrl =
-    options.modelUrl ?? new URL('models/silero_vad_v4.onnx', document.baseURI).href;
+    options.modelUrl ??
+    (fileProto
+      ? 'tb-models://app-models/silero_vad_v4.onnx'
+      : new URL('models/silero_vad_v4.onnx', document.baseURI).href);
 
-  // document.baseURI resolves against index.html in both dev (http://localhost:3307/)
-  // and the packaged app (file://…/dist/index.html), where public/ assets land
-  // at the root — so both model and WASM come from the app bundle, never a CDN.
+  // document.baseURI resolves against index.html in dev (http://localhost:3307/)
+  // so both model and WASM come from the app bundle, never a CDN.
   const createSession =
     options.createSession ?? (async (): Promise<OrtSessionLike> => {
       // The ./wasm entry is the wasm-only bundle — no WebGPU/jsep runtime,
       // so the only external files are the two copied to public/ort/ by
       // scripts/copy-ort.mjs (matches ORT's expected filenames exactly).
       const ort = await import('onnxruntime-web/wasm');
-      ort.env.wasm.wasmPaths = new URL('ort/', document.baseURI).href;
+      ort.env.wasm.wasmPaths = fileProto ? 'tb-models://ort/' : new URL('ort/', document.baseURI).href;
       // Single-threaded: avoids the SharedArrayBuffer/cross-origin-isolation
       // requirement, which file:// can't satisfy. The model is tiny — one
       // thread handles a 32ms chunk in well under a millisecond.

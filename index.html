@@ -7,10 +7,13 @@
     <!-- Fonts are bundled (public/fonts/) — the app makes no request to
          Google on launch and typography works fully offline. script-src
          deliberately has no 'unsafe-inline'/'unsafe-eval'; the dev-mode
-         relaxation for Vite's React-refresh preamble lives in vite.config.ts. -->
+         relaxation for Vite's React-refresh preamble lives in vite.config.ts.
+         http://127.0.0.1:* in script-src serves the in-app STT model
+         runtime's ESM loader (module imports can't use custom schemes) from
+         a token-guarded loopback server run by the main process. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* https://speaches.locopuente.org https://ollama.serveur.au https://api.anthropic.com https://api.openai.com https://api.groq.com https://generativelanguage.googleapis.com"
+      content="default-src 'self'; script-src 'self' http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* https://speaches.locopuente.org https://ollama.serveur.au https://api.anthropic.com https://api.openai.com https://api.groq.com https://generativelanguage.googleapis.com"
     />
     <link href="/fonts/fonts.css" rel="stylesheet" />
     <title>Talk Buddy</title>

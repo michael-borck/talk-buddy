@@ -8,7 +8,7 @@ import * as embeddedService from './embedded';
 import { loadPreferences, resolveSTT, resolveTTS, STTConfig, TTSConfig } from './config';
 
 // Types for provider selection
-export type STTProvider = 'embedded' | 'speaches';
+export type STTProvider = 'embedded' | 'speaches' | 'wasm';
 export type TTSProvider = 'embedded' | 'speaches';
 
 // Get current STT provider from preferences
@@ -38,22 +38,34 @@ export async function transcribeAudio(
   try {
     return await callSTT(audioBlob, cfg, opts?.prompt);
   } catch (error) {
-    const fallback = cfg.provider === 'embedded' ? 'speaches' : 'embedded';
-    console.error(`STT failed with ${cfg.provider} provider:`, error);
-    console.log(`Attempting fallback to ${fallback} provider...`);
-    try {
-      return await callSTT(audioBlob, resolveSTT(prefs, fallback), opts?.prompt);
-    } catch (fallbackError) {
-      console.error('Fallback STT also failed:', fallbackError);
-      throw error; // surface the original error
+    // Fallback chain: the other local Provider first, then the cloud one.
+    const fallbacks: Record<string, Array<'embedded' | 'wasm' | 'speaches'>> = {
+      wasm: ['embedded', 'speaches'],
+      embedded: ['wasm', 'speaches'],
+      speaches: ['wasm', 'embedded'],
+    };
+    for (const fallback of fallbacks[cfg.provider] ?? []) {
+      console.error(`STT failed with ${cfg.provider} provider:`, error);
+      console.log(`Attempting fallback to ${fallback} provider...`);
+      try {
+        return await callSTT(audioBlob, resolveSTT(prefs, fallback), opts?.prompt);
+      } catch (fallbackError) {
+        console.error(`Fallback STT (${fallback}) also failed:`, fallbackError);
+      }
     }
+    throw error; // surface the original error
   }
 }
 
 async function callSTT(audioBlob: Blob, cfg: STTConfig, prompt?: string): Promise<TranscriptionResult> {
-  return cfg.provider === 'embedded'
-    ? embeddedService.transcribeAudio(audioBlob, prompt)
-    : speachesService.transcribeAudio(audioBlob, cfg, prompt);
+  switch (cfg.provider) {
+    case 'wasm':
+      return (await import('./wasmStt')).transcribeAudio(audioBlob, prompt);
+    case 'speaches':
+      return speachesService.transcribeAudio(audioBlob, cfg, prompt);
+    default:
+      return embeddedService.transcribeAudio(audioBlob, prompt);
+  }
 }
 
 // Universal Text-to-Speech function. Same resolve-then-dispatch shape as STT.

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllPreferences, setPreference, resetDatabase } from '../services/sqlite';
-import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server, Mic, Volume2, MessageSquare, PenLine, Database, Activity } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server, Mic, Volume2, MessageSquare, PenLine, Database, Activity, Cpu } from 'lucide-react';
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel';
+import { WasmSttPanel } from '../components/WasmSttPanel';
 import * as embeddedService from '../services/embedded';
 import * as speechProvider from '../services/speechProvider';
 import { EmbeddedInstallModal } from '../components/settings/EmbeddedInstallModal';
@@ -269,7 +270,7 @@ export function SettingsPage() {
     speachesUrl: 'https://speaches.locopuente.org',
     sttUrl: 'https://speaches.locopuente.org',
     ttsUrl: 'https://speaches.locopuente.org',
-    sttProvider: 'embedded' as 'embedded' | 'speaches',
+    sttProvider: 'embedded' as 'embedded' | 'speaches' | 'wasm',
     ttsProvider: 'embedded' as 'embedded' | 'speaches',
     chatProvider: 'ollama' as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom',
     embeddedSttUrl: 'http://127.0.0.1:8765',
@@ -377,9 +378,10 @@ export function SettingsPage() {
   // Intercepts attempts to switch to the embedded provider. If the server
   // isn't installed yet, opens the install modal instead of silently
   // flipping to a broken state. Called from both STT and TTS radio groups.
+  // (TTS never passes 'wasm' — only STT has the in-app provider.)
   const handleProviderChange = (
     field: 'sttProvider' | 'ttsProvider',
-    newValue: 'embedded' | 'speaches'
+    newValue: 'embedded' | 'speaches' | 'wasm'
   ) => {
     if (newValue === 'embedded' && embeddedInstalled === false) {
       setPendingProviderSwitch(field === 'sttProvider' ? 'stt' : 'tts');
@@ -1033,7 +1035,7 @@ export function SettingsPage() {
                       type="radio"
                       value="embedded"
                       checked={preferences.sttProvider === 'embedded'}
-                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches')}
+                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches' | 'wasm')}
                       className="mr-2"
                     />
                     <Server size={16} className="mr-1" />
@@ -1061,20 +1063,38 @@ export function SettingsPage() {
                       type="radio"
                       value="speaches"
                       checked={preferences.sttProvider === 'speaches'}
-                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches')}
+                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches' | 'wasm')}
                       className="mr-2"
                     />
                     <ExternalLink size={16} className="mr-1" />
                     <span>Cloud server</span>
                   </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="wasm"
+                      checked={preferences.sttProvider === 'wasm'}
+                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches' | 'wasm')}
+                      className="mr-2"
+                    />
+                    <Cpu size={16} className="mr-1" />
+                    <span>In-app (beta — no setup)</span>
+                  </label>
                 </div>
                 <p className="text-sm text-gray-600">
                   {preferences.sttProvider === 'embedded'
                     ? 'Understands your speech right on this computer — no internet needed'
+                    : preferences.sttProvider === 'wasm'
+                    ? 'Runs a compact speech model inside the app — no internet, no server, one small download'
                     : 'Sends your speech to a cloud server for processing — needs internet'
                   }
                 </p>
               </div>
+
+              {/* In-app (wasm) model management */}
+              {preferences.sttProvider === 'wasm' && (
+                <WasmSttPanel />
+              )}
 
               {/* URL Configuration - show based on provider */}
               {preferences.sttProvider === 'speaches' && (

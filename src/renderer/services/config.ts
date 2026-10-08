@@ -102,7 +102,10 @@ export const DEPRECATED_PREFERENCE_KEYS = [
 
 export interface EmbeddedSTT { provider: 'embedded'; }
 export interface SpeachesSTT { provider: 'speaches'; url: string; model: string; apiKey: string; }
-export type STTConfig = EmbeddedSTT | SpeachesSTT;
+// In-app WASM inference (phase 3 of the sidecar retirement): no settings at
+// all — models live in userData, managed by the main process.
+export interface WasmSTT { provider: 'wasm'; }
+export type STTConfig = EmbeddedSTT | SpeachesSTT | WasmSTT;
 
 export interface EmbeddedTTS { provider: 'embedded'; voice: Voice; speed: number; }
 export interface SpeachesTTS {
@@ -146,6 +149,9 @@ export function resolveSTT(
       model: p.sttModel || DEFAULTS.stt.speachesModel,
       apiKey: p.sttApiKey || '',
     };
+  }
+  if (provider === 'wasm') {
+    return { provider: 'wasm' };
   }
   return { provider: 'embedded' };
 }

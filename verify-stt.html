@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Talk Buddy — Wasm STT verify (dev only)</title>
+    <style>
+      body { font-family: ui-monospace, monospace; background: #111; color: #ddd; padding: 2rem; line-height: 1.5; }
+      h1 { font-size: 1.1rem; color: #9f9; }
+      .stage { margin: 0.5rem 0; color: #89f; }
+      .ok { color: #9f9; } .err { color: #f99; } .dim { color: #777; }
+    </style>
+  </head>
+  <body>
+    <h1>Wasm STT end-to-end verify — production service path</h1>
+    <div id="log"></div>
+    <script type="module" src="/src/bench/verifyStt.ts"></script>
+  </body>
+</html>

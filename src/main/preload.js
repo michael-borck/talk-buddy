@@ -61,6 +61,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   embeddedServerStop: () => ipcRenderer.invoke('embedded-server:stop'),
   embeddedServerRestart: () => ipcRenderer.invoke('embedded-server:restart'),
 
+  // In-app (wasm) STT — model download/status; progress events while ensuring.
+  wasmStt: {
+    status: () => ipcRenderer.invoke('wasm-stt:status'),
+    ensureModels: () => ipcRenderer.invoke('wasm-stt:ensure-models'),
+    assetBase: () => ipcRenderer.invoke('wasm-stt:asset-base'),
+    onProgress: (callback) => {
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('wasm-stt:progress', listener);
+      return () => ipcRenderer.removeListener('wasm-stt:progress', listener);
+    },
+  },
+
   // Embedded server setup flow — used by the Settings "Set up now" modal.
   embeddedInstall: {
     check: () => ipcRenderer.invoke('embedded-server:check-install'),

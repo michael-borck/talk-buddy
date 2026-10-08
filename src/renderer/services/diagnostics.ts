@@ -133,6 +133,13 @@ export async function collectDiagnostics(): Promise<DiagnosticsReport> {
     }),
     await check('AI Brain', async () =>
       `provider: ${chatCfg.provider}, model: ${chatCfg.model}, url: ${chatCfg.url || '(hosted)'}`),
+    await check('In-app STT (wasm)', async () => {
+      const { wasmSttStatus } = await import('./wasmStt');
+      const s = await wasmSttStatus();
+      return s.installed
+        ? `models installed at ${s.dir}`
+        : `not installed (~${(s.totalBytes / 1e6).toFixed(0)}MB download)`;
+    }),
     await check('Hands-free VAD runtime', vadRuntime),
   ];
 
