@@ -57,7 +57,14 @@ Asked whether `sttUrl`/`ttsUrl` were really used — they are, and always were; 
 
 ## Phase 4 — UX features (each needs its own session + screenshot review)
 
-- [ ] **Pre-flight mic check** (highest value for this audience). Before the first session: speak a phrase → live level meter + the transcript you just produced → one line of voice played back. Catches permission denial, wrong input device, and a quiet mic *before* the student invests emotionally in a scenario. Today all three surface as mysterious mid-conversation failures.
+- [x] **Pre-flight setup check** (highest value for this audience). `/setup-check`: speak a phrase → live level meter → the transcript you just produced → one line of voice played back. Catches permission denial, wrong input device, a quiet mic, and an unready Provider *before* the student invests emotionally in a Scenario. Offered on Home until it has passed once. Walks the real Turn ports, so a pass means a Turn will work.
+
+  Three decisions worth keeping:
+  - **A silent mic is reported as a microphone problem, not a transcription failure.** A peak is tracked across the whole take, and an empty transcript is routed to volume advice only when something was actually audible.
+  - **A dead microphone does not stop the Voice check.** One pass reports everything that needs fixing. Skipped steps say so and are excluded from the failure count, so a mic problem is never reported as two.
+  - **Only a pass is recorded.** A stack that later breaks — server moved, model deleted — starts offering the check again rather than trusting a stale pass.
+
+  Failure → remedy mapping lives in `services/setupCheck.ts` (21 tests) rather than in the page, because "which fix applies" is the part worth being sure about. Settings now honours `?tab=`, so each remedy links to the tab that fixes it.
 - [ ] **Explain the suggestion.** Home picks "most recently updated" scenario. Show the reason ("not practised in 6 days") and rotate toward least-recently-practised — a fixed "Today" that never changes trains nothing.
 - [ ] **Provider readiness on the Today card.** If in-app models aren't downloaded, say "Offline speech isn't set up yet — one click" instead of failing on first use.
 - [ ] **Journal entries invite re-reading.** Show a two-line transcript excerpt instead of "3 min · 240 words". The journal is a learning artefact; it currently reads as a log.

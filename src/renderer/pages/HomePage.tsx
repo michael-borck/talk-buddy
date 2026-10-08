@@ -8,6 +8,7 @@ import { listScenarios, listSessions, startStandaloneSession } from '../services
 import { loadPreferences, resolveChat } from '../services/config';
 import { Scenario, Session } from '../types';
 import { OllamaSetupCard } from '../components/OllamaSetupCard';
+import { hasPassedSetupCheck } from '../services/setupCheck';
 import { Flame, NotebookPen, Sun, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -92,6 +93,14 @@ export function HomePage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [starting, setStarting] = useState(false);
   const [chatConfigured, setChatConfigured] = useState(true);
+  // Until the stack has been checked once, offer it before the first Session
+  // rather than letting a blocked microphone surface mid-conversation.
+  const [setupChecked, setSetupChecked] = useState(true);
+
+  useEffect(() => {
+    // A failed read is treated as 'not yet checked' so the check stays offered.
+    hasPassedSetupCheck().then(setSetupChecked).catch(() => setSetupChecked(false));
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -193,6 +202,25 @@ export function HomePage() {
             one. The card detects a local Ollama, guides install, and can
             download a model in-app. */}
         {!chatConfigured && <OllamaSetupCard onConnected={() => setChatConfigured(true)} />}
+
+        {/* Untested stack: check it before investing in a Scenario */}
+        {!setupChecked && (
+          <div className="glass-card rounded-soft px-7 py-5 mb-8 border-l-2 border-l-accent">
+            <p className="font-sans text-[0.95rem] text-ink font-medium mb-1">
+              Has your setup ever been checked?
+            </p>
+            <p className="font-sans text-[0.9rem] text-ink-muted leading-relaxed mb-4">
+              A blocked microphone or an unready Provider only shows up mid-conversation.
+              Ninety seconds now saves that.
+            </p>
+            <button
+              onClick={() => navigate('/setup-check')}
+              className="btn-gradient px-6 py-2.5 text-[0.88rem]"
+            >
+              Check my setup
+            </button>
+          </div>
+        )}
 
         {/* Today's session — the one big affordance */}
         {suggested ? (

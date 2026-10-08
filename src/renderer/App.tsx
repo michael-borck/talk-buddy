@@ -5,6 +5,7 @@ import { ScenariosPage } from './pages/ScenariosPage';
 import { ScenarioFormPage } from './pages/ScenarioFormPage';
 import { SessionHistoryPage } from './pages/SessionHistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SetupCheckPage } from './pages/SetupCheckPage';
 import { ConversationAnalysisPage } from './pages/ConversationAnalysisPage';
 import { PracticePacksPage } from './pages/PracticePacksPage';
 import { PackDetailPage } from './pages/PackDetailPage';
@@ -153,6 +154,7 @@ function AppContent() {
             <Route path="/conversation/:scenarioId" element={<ConversationPage />} />
             <Route path="/analysis/:sessionId" element={<ConversationAnalysisPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/setup-check" element={<SetupCheckPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/license" element={<LicensePage />} />
             <Route path="/help" element={<HelpPage />} />

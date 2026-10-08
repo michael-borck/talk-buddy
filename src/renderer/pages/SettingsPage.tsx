@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getAllPreferences, setPreference, resetDatabase } from '../services/sqlite';
 import { Save, Mic, Volume2, MessageSquare, PenLine, Database, Activity } from 'lucide-react';
 import { SettingsContext, SettingsPreferences } from '../components/settings/SettingsContext';
@@ -12,6 +12,17 @@ import { DiagnosticsPanel } from '../components/DiagnosticsPanel';
 import * as speechProvider from '../services/speechProvider';
 import { CHAT_PROVIDER_URLS, resolveApiKey } from '../services/chat';
 import { DEFAULTS } from '../services/config';
+
+// Module scope so the ?tab= lookup can validate a deep link against the real
+// tab list before any state exists.
+const tabs = [
+  { id: 'stt', name: 'Listening', Icon: Mic },
+  { id: 'tts', name: 'Voice', Icon: Volume2 },
+  { id: 'chat', name: 'AI Brain', Icon: MessageSquare },
+  { id: 'prompts', name: 'Conversation Style', Icon: PenLine },
+  { id: 'data', name: 'Your Data', Icon: Database },
+  { id: 'diag', name: 'Diagnostics', Icon: Activity }
+];
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -47,7 +58,13 @@ export function SettingsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [activeTab, setActiveTab] = useState('stt');
+  // ?tab= lets the setup check (and anywhere else) send someone straight to
+  // the tab that fixes their problem.
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    const requested = searchParams.get('tab');
+    return tabs.some((t) => t.id === requested) ? (requested as string) : 'stt';
+  });
   const [testing, setTesting] = useState({
     stt: false,
     tts: false,
@@ -612,14 +629,6 @@ export function SettingsPage() {
     }
   };
 
-  const tabs = [
-    { id: 'stt', name: 'Listening', Icon: Mic },
-    { id: 'tts', name: 'Voice', Icon: Volume2 },
-    { id: 'chat', name: 'AI Brain', Icon: MessageSquare },
-    { id: 'prompts', name: 'Conversation Style', Icon: PenLine },
-    { id: 'data', name: 'Your Data', Icon: Database },
-    { id: 'diag', name: 'Diagnostics', Icon: Activity }
-  ];
 
   return (
     <div className="max-w-4xl mx-auto px-12 lg:px-16 py-14">
