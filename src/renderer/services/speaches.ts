@@ -6,43 +6,9 @@
 // OpenAI-compatible deployments don't set Access-Control-Allow-Origin, so
 // direct renderer fetches get blocked at the preflight stage. Main-process
 // fetch has no CORS layer and works against any reachable server.
-import { getPreference } from './sqlite';
 import { TranscriptionResult, SpeechGenerationOptions } from '../types';
 import { resolveApiKey } from './chat';
 import { SpeachesSTT, SpeachesTTS } from './config';
-
-// Get the STT server URL from preferences
-async function getSTTUrl(): Promise<string> {
-  const url = await getPreference('sttUrl');
-  // Fall back to speachesUrl for backward compatibility
-  if (!url) {
-    const speachesUrl = await getPreference('speachesUrl');
-    return speachesUrl || 'https://speaches.locopuente.org';
-  }
-  return url;
-}
-
-// Get the TTS server URL from preferences
-async function getTTSUrl(): Promise<string> {
-  const url = await getPreference('ttsUrl');
-  // Fall back to speachesUrl for backward compatibility
-  if (!url) {
-    const speachesUrl = await getPreference('speachesUrl');
-    return speachesUrl || 'https://speaches.locopuente.org';
-  }
-  return url;
-}
-
-// Get STT API key from preferences. Env-var references are resolved
-// through the main process — see resolveApiKey in services/chat.ts.
-async function getSTTApiKey(): Promise<string> {
-  return resolveApiKey(await getPreference('sttApiKey'));
-}
-
-// Get TTS API key from preferences
-async function getTTSApiKey(): Promise<string> {
-  return resolveApiKey(await getPreference('ttsApiKey'));
-}
 
 function stripTrailingSlash(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -145,10 +111,10 @@ export async function generateSpeech(options: SpeechGenerationOptions, cfg: Spea
 }
 
 // Get available voices from Speaches — via the api:fetch proxy, also CORS-free.
-export async function getAvailableVoices(): Promise<string[]> {
+export async function getAvailableVoices(cfg: SpeachesTTS): Promise<string[]> {
   try {
-    const baseUrl = stripTrailingSlash(await getTTSUrl());
-    const apiKey = await getTTSApiKey();
+    const baseUrl = stripTrailingSlash(cfg.url);
+    const apiKey = await resolveApiKey(cfg.apiKey);
 
     const headers: Record<string, string> = {};
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
@@ -168,9 +134,8 @@ export async function getAvailableVoices(): Promise<string[]> {
     return parsed.voices || [];
   } catch (error) {
     console.error('Failed to get voices:', error);
-    const maleVoice = (await getPreference('maleVoice')) || 'am_adam';
-    const femaleVoice = (await getPreference('femaleVoice')) || 'af_bella';
-    return [maleVoice, femaleVoice];
+    // Voice pickers still need options when the server can't be reached.
+    return [cfg.male.voice, cfg.female.voice];
   }
 }
 
@@ -205,21 +170,14 @@ async function probeServer(baseUrl: string, apiKey: string): Promise<{ ok: boole
   return { ok: false, note: 'unreachable' };
 }
 
-// Check if STT server is available
-export async function checkSTTConnection(): Promise<boolean> {
-  const baseUrl = await getSTTUrl();
-  const apiKey = await getSTTApiKey();
-  const result = await probeServer(baseUrl, apiKey);
+// Check if the Listening server is available
+export async function checkSTTConnection(cfg: SpeachesSTT): Promise<boolean> {
+  const result = await probeServer(cfg.url, await resolveApiKey(cfg.apiKey));
   return result.ok;
 }
 
-// Check if TTS server is available
-export async function checkTTSConnection(): Promise<boolean> {
-  const baseUrl = await getTTSUrl();
-  const apiKey = await getTTSApiKey();
-  const result = await probeServer(baseUrl, apiKey);
+// Check if the Voice server is available
+export async function checkTTSConnection(cfg: SpeachesTTS): Promise<boolean> {
+  const result = await probeServer(cfg.url, await resolveApiKey(cfg.apiKey));
   return result.ok;
 }
-
-// Backward compatibility
-export const checkSpeachesConnection = checkSTTConnection;

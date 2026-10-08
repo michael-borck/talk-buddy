@@ -31,6 +31,30 @@ function migrateEmbeddedProviderPrefs() {
   db.prepare("UPDATE user_preferences SET value = 'piper' WHERE key = 'ttsProvider' AND value = 'embedded'").run();
 }
 
+// Listening and Voice each address a speech server separately, so the speech
+// URL lives in `sttUrl` / `ttsUrl`. `speachesUrl` was the older single key for
+// both; fold it into the per-service pair, then drop it. Anyone who set only
+// the old key keeps the server they configured.
+function migrateSpeachesUrlPrefs() {
+  const row = db.prepare("SELECT value FROM user_preferences WHERE key = 'speachesUrl'").get();
+  if (!row) return;
+  if (row.value) {
+    for (const key of ['sttUrl', 'ttsUrl']) {
+      // Adopt for any service that has no URL of its own. A blank value counts
+      // as unset — that's what the old `key || legacy || default` fallback
+      // did, and the migration must not move anyone's effective server.
+      db.prepare(
+        `INSERT OR REPLACE INTO user_preferences (key, value)
+         SELECT ?, ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM user_preferences WHERE key = ? AND value != ''
+         )`
+      ).run(key, row.value, key);
+    }
+  }
+  db.prepare("DELETE FROM user_preferences WHERE key = 'speachesUrl'").run();
+}
+
 // Default scenarios data - kept separately for restoration
 const DEFAULT_SCENARIOS = [
   // Business Communication & Professional Skills
@@ -435,6 +459,8 @@ app.whenReady().then(() => {
 
   // Provider-slot migration for the post-Python world (see function comment).
   migrateEmbeddedProviderPrefs();
+  // Fold the legacy combined speech URL into the per-service pair.
+  migrateSpeachesUrlPrefs();
 
   // Create tables if they don't exist
   db.exec(`
@@ -535,12 +561,13 @@ app.whenReady().then(() => {
   `);
 
   // Installs that predate the first-run privacy choice already have the
-  // server URLs seeded (speachesUrl was in every legacy seed) — treat
-  // them as onboarded so the welcome screen only greets new users.
+  // server URLs seeded — treat them as onboarded so the welcome screen
+  // only greets new users. (Runs after migrateSpeachesUrlPrefs, so the
+  // legacy key is already folded into the per-service pair.)
   const onboardedRow = db.prepare("SELECT value FROM user_preferences WHERE key = 'onboardingComplete'").get();
   if (!onboardedRow) {
-    const legacy = db.prepare("SELECT value FROM user_preferences WHERE key = 'speachesUrl'").get();
-    if (legacy) {
+    const seeded = db.prepare("SELECT value FROM user_preferences WHERE key = 'sttUrl'").get();
+    if (seeded) {
       db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)')
         .run('onboardingComplete', 'true');
     }
@@ -829,7 +856,7 @@ function isAllowedProxyUrl(url) {
   if (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') return true;
   if (HOSTED_API_ORIGINS.has(parsed.origin)) return true;
   // User-configured endpoints (BYO server URLs) from preferences.
-  const urlPrefKeys = ['speachesUrl', 'sttUrl', 'ttsUrl', 'ollamaUrl'];
+  const urlPrefKeys = ['sttUrl', 'ttsUrl', 'ollamaUrl'];
   for (const key of urlPrefKeys) {
     const row = db.prepare('SELECT value FROM user_preferences WHERE key = ?').get(key);
     if (row && row.value) {

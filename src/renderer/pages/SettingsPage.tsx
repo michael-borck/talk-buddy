@@ -11,11 +11,11 @@ import { DataTab } from '../components/settings/DataTab';
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel';
 import * as speechProvider from '../services/speechProvider';
 import { CHAT_PROVIDER_URLS, resolveApiKey } from '../services/chat';
+import { DEFAULTS } from '../services/config';
 
 export function SettingsPage() {
   const navigate = useNavigate();
   const [preferences, setPreferences] = useState<SettingsPreferences>({
-    speachesUrl: 'https://speaches.locopuente.org',
     sttUrl: 'https://speaches.locopuente.org',
     ttsUrl: 'https://speaches.locopuente.org',
     sttProvider: 'wasm' as 'wasm' | 'speaches',
@@ -95,9 +95,8 @@ export function SettingsPage() {
     try {
       const prefs = await getAllPreferences();
       setPreferences({
-        speachesUrl: prefs.speachesUrl || 'https://speaches.locopuente.org',
-        sttUrl: prefs.sttUrl || prefs.speachesUrl || 'https://speaches.locopuente.org',
-        ttsUrl: prefs.ttsUrl || prefs.speachesUrl || 'https://speaches.locopuente.org',
+        sttUrl: prefs.sttUrl || DEFAULTS.stt.speachesServer,
+        ttsUrl: prefs.ttsUrl || DEFAULTS.tts.speachesServer,
         // Legacy 'embedded' values mean the in-app engines now (phase 5).
         sttProvider: ((prefs.sttProvider === 'speaches') ? 'speaches' : 'wasm') as 'wasm' | 'speaches',
         ttsProvider: ((prefs.ttsProvider === 'speaches') ? 'speaches' : 'piper') as 'piper' | 'speaches',
@@ -135,7 +134,6 @@ export function SettingsPage() {
     setSaving(true);
     setMessage('');
     try {
-      await setPreference('speachesUrl', preferences.speachesUrl);
       await setPreference('sttUrl', preferences.sttUrl);
       await setPreference('ttsUrl', preferences.ttsUrl);
       await setPreference('sttProvider', preferences.sttProvider);

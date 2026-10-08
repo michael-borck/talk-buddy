@@ -42,11 +42,15 @@ describe('resolveSTT', () => {
     expect(DEFAULTS.stt.speachesModel).toBe('Systran/faster-whisper-small');
   });
 
-  it('falls back to legacy speachesUrl, then the default', () => {
-    expect(resolveSTT({ sttProvider: 'speaches', speachesUrl: 'https://legacy' }))
-      .toMatchObject({ url: 'https://legacy' });
+  it('reads the per-service URL, then the default', () => {
+    expect(resolveSTT({ sttProvider: 'speaches', sttUrl: 'https://mine' }))
+      .toMatchObject({ url: 'https://mine' });
     expect(resolveSTT({ sttProvider: 'speaches' }))
-      .toMatchObject({ url: DEFAULTS.stt.speachesUrl });
+      .toMatchObject({ url: DEFAULTS.stt.speachesServer });
+    // Listening and Voice address separate servers; one must not answer
+    // for the other.
+    expect(resolveTTS({ ttsProvider: 'speaches', sttUrl: 'https://mine' }))
+      .toMatchObject({ url: DEFAULTS.tts.speachesServer });
   });
 
   it('honours an explicit provider override (used for fallback)', () => {

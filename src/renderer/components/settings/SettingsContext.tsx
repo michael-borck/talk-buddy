@@ -13,7 +13,6 @@ import { createContext, useContext, Dispatch, SetStateAction } from 'react';
 export type ServiceType = 'stt' | 'tts' | 'chat';
 
 export interface SettingsPreferences {
-  speachesUrl: string;
   sttUrl: string;
   ttsUrl: string;
   sttProvider: 'wasm' | 'speaches';

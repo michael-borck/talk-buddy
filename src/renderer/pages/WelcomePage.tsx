@@ -25,7 +25,6 @@ export function WelcomePage({ onComplete }: WelcomePageProps) {
       } else {
         await setPreference('sttProvider', 'speaches');
         await setPreference('ttsProvider', 'speaches');
-        await setPreference('speachesUrl', COMMUNITY_SERVERS.speech);
         await setPreference('sttUrl', COMMUNITY_SERVERS.speech);
         await setPreference('ttsUrl', COMMUNITY_SERVERS.speech);
         await setPreference('chatProvider', 'ollama');

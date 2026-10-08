@@ -111,7 +111,7 @@ export async function collectDiagnostics(): Promise<DiagnosticsReport> {
     await check('Listening (Speaches)', async () => {
       if (sttCfg.provider !== 'speaches') return 'not selected';
       const { checkSTTConnection } = await import('./speaches');
-      return reachable(checkSTTConnection);
+      return reachable(() => checkSTTConnection(sttCfg));
     }),
     await check('Voice (in-app piper)', async () => {
       if (ttsCfg.provider !== 'piper') return 'not selected';
@@ -122,7 +122,7 @@ export async function collectDiagnostics(): Promise<DiagnosticsReport> {
     await check('Voice (Speaches)', async () => {
       if (ttsCfg.provider !== 'speaches') return 'not selected';
       const { checkTTSConnection } = await import('./speaches');
-      return reachable(checkTTSConnection);
+      return reachable(() => checkTTSConnection(ttsCfg));
     }),
     await check('AI Brain', async () =>
       `provider: ${chatCfg.provider}, model: ${chatCfg.model}, url: ${chatCfg.url || '(hosted)'}`),

@@ -44,20 +44,24 @@ export const CHAT_PROVIDER_ENV_VARS = {
 
 const KOKORO = 'speaches-ai/Kokoro-82M-v1.0-ONNX';
 
+// Listening and Voice each address a speech server of their own, but a fresh
+// install starts both at the same hosted one.
+const SPEACHES_SERVER = 'https://speaches.locopuente.org';
+
 // THE single source of Provider defaults. Anything that wants a default value
 // reads it from here; nothing redefines a default inline.
 export const DEFAULTS = {
   stt: {
     // In-app Whisper (phase 5): the offline built-in, no server involved.
     provider: 'wasm' as STTProvider,
-    // Speaches (cloud) fallback URL + model.
-    speachesUrl: 'https://speaches.locopuente.org',
+    // Speaches (cloud) server + model.
+    speachesServer: SPEACHES_SERVER,
     speachesModel: 'Systran/faster-whisper-small',
   },
   tts: {
     // In-app piper (phase 5): the offline built-in, no server involved.
     provider: 'piper' as TTSProvider,
-    speachesUrl: 'https://speaches.locopuente.org',
+    speachesServer: SPEACHES_SERVER,
     voice: 'female' as Voice,
     speed: 1.2, // unified: one slider value drives both Providers
     male:   { model: KOKORO, voice: 'am_adam' },
@@ -134,11 +138,6 @@ export async function loadPreferences(): Promise<PrefMap> {
   return getAllPreferences();
 }
 
-function speachesSpeechUrl(p: PrefMap, key: 'sttUrl' | 'ttsUrl'): string {
-  // `speachesUrl` is the legacy combined key kept for backward compatibility.
-  return p[key] || p.speachesUrl || DEFAULTS.tts.speachesUrl;
-}
-
 export function resolveSTT(
   p: PrefMap,
   provider: STTProvider = (p.sttProvider as STTProvider) || DEFAULTS.stt.provider,
@@ -146,7 +145,7 @@ export function resolveSTT(
   if (provider === 'speaches') {
     return {
       provider: 'speaches',
-      url: speachesSpeechUrl(p, 'sttUrl'),
+      url: p.sttUrl || DEFAULTS.stt.speachesServer,
       model: p.sttModel || DEFAULTS.stt.speachesModel,
       apiKey: p.sttApiKey || '',
     };
@@ -167,7 +166,7 @@ export function resolveTTS(
   if (provider === 'speaches') {
     return {
       provider: 'speaches',
-      url: speachesSpeechUrl(p, 'ttsUrl'),
+      url: p.ttsUrl || DEFAULTS.tts.speachesServer,
       voice,
       speed,
       apiKey: p.ttsApiKey || '',

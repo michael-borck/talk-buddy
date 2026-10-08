@@ -1,7 +1,6 @@
 // Speech Provider Abstraction Layer
 // Routes TTS/STT calls to the appropriate service based on user preferences
 
-import { getPreference } from './sqlite';
 import { TranscriptionResult, SpeechGenerationOptions } from '../types';
 import * as speachesService from './speaches';
 import { loadPreferences, resolveSTT, resolveTTS, STTConfig, TTSConfig } from './config';
@@ -11,18 +10,6 @@ import { loadPreferences, resolveSTT, resolveTTS, STTConfig, TTSConfig } from '.
 // Voice. Old stored 'embedded' values migrate to 'wasm'/'piper' in main.
 export type STTProvider = 'wasm' | 'speaches';
 export type TTSProvider = 'piper' | 'speaches';
-
-// Get current STT provider from preferences
-async function getSTTProvider(): Promise<STTProvider> {
-  const provider = await getPreference('sttProvider');
-  return (provider as STTProvider) || 'wasm';
-}
-
-// Get current TTS provider from preferences
-async function getTTSProvider(): Promise<TTSProvider> {
-  const provider = await getPreference('ttsProvider');
-  return (provider as TTSProvider) || 'piper';
-}
 
 // Universal Speech-to-Text function. Resolves the active Listening config from
 // one preference snapshot, then dispatches; on failure, resolves the OTHER
@@ -83,48 +70,31 @@ async function callTTS(options: SpeechGenerationOptions, cfg: TTSConfig): Promis
     : speachesService.generateSpeech(options, cfg);
 }
 
-// Check STT connection based on current provider
+// Is the Listening Provider ready? The in-app engine reports whether its
+// weights are on disk; the cloud Provider asks the server.
 export async function checkSTTConnection(): Promise<boolean> {
-  const provider = await getSTTProvider();
+  const cfg = resolveSTT(await loadPreferences());
 
-  switch (provider) {
-    case 'wasm':
-      return (await import('./wasmStt')).wasmSttStatus().then((s) => s.installed);
-    case 'speaches':
-      return await speachesService.checkSTTConnection();
-    default:
-      return false;
-  }
+  return cfg.provider === 'wasm'
+    ? (await import('./wasmStt')).wasmSttStatus().then((s) => s.installed)
+    : speachesService.checkSTTConnection(cfg);
 }
 
-// Check TTS connection based on current provider
+// Is the Voice Provider ready? Same shape as checkSTTConnection.
 export async function checkTTSConnection(): Promise<boolean> {
-  const provider = await getTTSProvider();
+  const cfg = resolveTTS(await loadPreferences());
 
-  switch (provider) {
-    case 'piper':
-      return (await import('./piperTts')).piperStatus().then((s) => s.installed);
-    case 'speaches':
-      return await speachesService.checkTTSConnection();
-    default:
-      return false;
-  }
+  return cfg.provider === 'piper'
+    ? (await import('./piperTts')).piperStatus().then((s) => s.installed)
+    : speachesService.checkTTSConnection(cfg);
 }
 
-// Get available voices from current TTS provider. The in-app piper engine
-// serves the fixed Alan & Amy pair; Speaches lists its own.
+// Voice options for the active Voice Provider. The in-app piper engine serves
+// the fixed Alan & Amy pair; Speaches lists its own.
 export async function getAvailableVoices(): Promise<string[]> {
-  const provider = await getTTSProvider();
+  const cfg = resolveTTS(await loadPreferences());
 
-  switch (provider) {
-    case 'piper':
-      return ['Alan', 'Amy'];
-    case 'speaches':
-      return await speachesService.getAvailableVoices();
-    default:
-      return [];
-  }
+  return cfg.provider === 'piper'
+    ? ['Alan', 'Amy']
+    : speachesService.getAvailableVoices(cfg);
 }
-
-// Backward compatibility - keep existing API
-export { checkSTTConnection as checkSpeachesConnection } from './speaches';
