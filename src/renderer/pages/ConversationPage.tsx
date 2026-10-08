@@ -5,10 +5,12 @@ import { Scenario, Session, ConversationMessage } from '../types';
 import { ArrowLeft, Info, Volume2, VolumeX, AlertCircle, Square, Loader2, AudioLines, Hand } from 'lucide-react';
 import { EditorialVoiceVisualizer } from '../components/EditorialVoiceVisualizer';
 import { ConversationLoadingSkeleton } from '../components/LoadingSkeleton';
+import { OllamaSetupCard } from '../components/OllamaSetupCard';
 import { useConversationTurn } from '../hooks/useConversationTurn';
 import { HandsFreeController } from '../turn/handsFree';
 import { splitSpeakerPrefix, parsePersonaTag } from '../turn/personaStream';
 import { EndReason } from '../turn/turnEngine';
+import { loadPreferences, resolveChat } from '../services/config';
 import toast from 'react-hot-toast';
 
 type InputMode = 'hands-free' | 'ptt';
@@ -104,13 +106,19 @@ export function ConversationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenarioId]);
 
+  // Practising needs an AI Brain. Home guards this with the setup card, but
+  // a student can arrive here directly (deep link, Journal resume, Explore) —
+  // without this they'd speak a full answer into a void and only then see
+  // "AI Brain request failed".
+  const [brainReady, setBrainReady] = useState<boolean | null>(null);
+
   // Resume a session once the engine is ready (so seed/greet land). Re-runs if
   // the engine is recreated (e.g. StrictMode remount) to re-seed it; greet is
   // idempotent via initialMessageSpokenRef + the persisted transcript.
   useEffect(() => {
-    if (resumeSessionId && scenario && t.ready) void resumeSession();
+    if (resumeSessionId && scenario && t.ready && brainReady !== false) void resumeSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeSessionId, scenario, t.ready]);
+  }, [resumeSessionId, scenario, t.ready, brainReady]);
 
   // Elapsed-time ticker — paused while the session is paused or complete.
   // (Preserves the original behaviour of re-basing on each active phase.)
@@ -141,12 +149,18 @@ export function ConversationPage() {
     getPreference('pttMode').then((v) => { if (v === 'toggle' || v === 'hold') setPttMode(v); });
   }, []);
 
+  useEffect(() => {
+    loadPreferences()
+      .then((prefs) => setBrainReady(Boolean(resolveChat(prefs).url)))
+      .catch(() => setBrainReady(true)); // never block on a preference read
+  }, []);
+
   // Hands-free turn-taking: a controller watches the engine phase and the
   // shared mic amplitude, auto-starting captures when it's the user's turn
   // and handing the turn over on sustained silence. Paused/complete/modal
   // states stop it; resuming restarts via the effect.
   useEffect(() => {
-    if (!t.ready || inputMode !== 'hands-free' || t.sessionComplete || showInfo || showEndModal) return;
+    if (!t.ready || inputMode !== 'hands-free' || t.sessionComplete || showInfo || showEndModal || brainReady === false) return;
     const controller = new HandsFreeController({
       phase: () => phaseRef.current,
       amplitude: t.amplitudeRef,
@@ -271,6 +285,8 @@ export function ConversationPage() {
   };
 
   const resumeSession = async () => {
+    // No AI Brain yet — the setup card owns the screen; resume after connect.
+    if (brainReady === false) return;
     try {
       const existing = await getSession(resumeSessionId!);
       if (!existing || existing.endTime) return;
@@ -298,6 +314,7 @@ export function ConversationPage() {
 
   const startConversation = async () => {
     if (!scenario) return;
+    if (brainReady === false) return; // the setup card owns this state
     try {
       const newSession = await createSession(scenario.id);
       setSession(newSession);
@@ -682,8 +699,14 @@ export function ConversationPage() {
             </div>
           )}
 
-          {/* Primary action */}
-          {t.phase === 'not-started' && !session ? (
+          {/* Primary action — or, when no AI Brain is connected, the setup
+              card. Without this the student would practise into a void and
+              only discover it after speaking a full answer. */}
+          {brainReady === false ? (
+            <div className="w-full max-w-lg">
+              <OllamaSetupCard onConnected={() => setBrainReady(true)} />
+            </div>
+          ) : t.phase === 'not-started' && !session ? (
             <button
               onClick={startConversation}
               className="btn-gradient px-10 py-4 text-[1rem]"
