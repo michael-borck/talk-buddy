@@ -55,16 +55,20 @@ export async function transcribeAudio(audioBlob: Blob, cfg: SpeachesSTT, prompt?
   const sttModel = cfg.model;
   const apiKey = await resolveApiKey(cfg.apiKey);
 
-  // Serialize the blob into a Uint8Array for IPC transport.
+  // Serialize the blob into a Uint8Array for IPC transport. The content type
+  // rides along so the main process rebuilds an accurately-typed Blob — the
+  // filename extension (wav vs webm) is what servers use to pick a decoder.
   const arrayBuffer = await audioBlob.arrayBuffer();
   const audioBuffer = new Uint8Array(arrayBuffer);
+  const isWav = audioBlob.type.includes('wav');
 
   const result = await window.electronAPI.speaches.transcribe({
     url: `${baseUrl}/v1/audio/transcriptions`,
     apiKey,
     audioBuffer,
     model: sttModel,
-    filename: 'audio.webm',
+    filename: isWav ? 'audio.wav' : 'audio.webm',
+    contentType: audioBlob.type || (isWav ? 'audio/wav' : 'audio/webm'),
     prompt,
   });
 

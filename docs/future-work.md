@@ -8,13 +8,21 @@ Grouped roughly by size: **architecture decisions** (multi-day, design-heavy), *
 
 ## Architecture decisions
 
-### Replace the Python embedded server with a native speech sidecar
+### Replace the Python embedded server with in-renderer speech (plan approved, in progress)
 
-**Idea:** Kill the Python venv (~500MB download, setup step, AV false-positive surface on Windows, interpreter drift) by bundling a small native sidecar that does Whisper STT + Piper TTS in-process — the Handy approach (whisper.cpp GGML with Metal/Vulkan GPU acceleration; possibly Parakeet V3 for CPU-optimised, auto-language-detecting STT, a good fit for ESL learners).
+**Idea:** Kill the Python venv sidecar (~500MB download + setup step, PyInstaller AV false-positives on Windows, hidden ffmpeg runtime dependency, four per-OS CI jobs) by running speech ML directly in the Electron renderer — the same onnxruntime-web runtime already shipped for Silero VAD.
 
-**Why parked:** a multi-week build touching the release pipeline per platform (compiling whisper.cpp/piper for mac/win/linux in CI, GPU discovery, model download/manager flow). The current Python server works, ships, and its OpenAI-compatible endpoints are already abstracted behind the Listening/Voice Provider seam — so this can land without any renderer changes when the time comes. Note the VAD work (Oct 2026) already moved the *turn-taking* intelligence into the renderer via onnxruntime-web; a native sidecar would follow that same "runtime in the bundle" pattern.
+**Why this shape:** the sidecar's Python is only glue — the ML is already native (whisper.cpp via pywhispercpp, Piper ONNX voices). What Python buys (Flask + PyInstaller + nice bindings) costs more than it returns for whisper-**tiny**-quality offline STT. `@huggingface/transformers` runs Whisper in a Web Worker; `kokoro-js` runs the *same Kokoro model the Speaches cloud path already uses*. No native binaries, no model-format forks, identical behaviour on Win/Mac/Linux. Electron stays — its Chromium audio stack (consistent MediaRecorder/Web Audio across OSes, unlike system WebViews — the issue the brief Tauri evaluation hit), node:sqlite, safeStorage, and the updater pipeline are unrelated to speech.
 
-**When to revive:** if Windows install friction (AV flagging the PyInstaller bundle, ffmpeg/PATH issues) or the 500MB setup step shows up as a top support theme in Diagnostics reports.
+**Phases (each independently shippable):**
+
+1. **PCM capture refactor** — record 16kHz mono `Float32Array` via an AudioWorklet tap instead of MediaRecorder webm; ~20-line JS WAV encoder for upload paths. Kills ffmpeg everywhere: embedded server gets a 16k-mono-WAV fast path that hands the file straight to whisper.cpp (pywhispercpp reads WAV natively). *Shipped.*
+2. **Benchmark gate** (½ day) — transformers.js whisper-tiny vs pywhispercpp-tiny on a 30s turn; kokoro-js sentence latency vs the TTSPipeline ~1s budget. *Decision gate: fail → pivot to a Rust sidecar (Handy's transcribe-cpp pattern); phases 3–5 unchanged.*
+3. **`embedded-wasm` STT Provider** — new member of the `STTConfig` union; whisper-tiny in a Web Worker; model downloaded to `userData` with progress + SHA-pinning (reuse setup.sh's checksum discipline); vocabulary `initial_prompt` already flows. Python server stays selectable for a transition release.
+4. **`embedded-wasm` TTS Provider** — kokoro-js in a worker behind TTSPipeline; voices `af_bella`/`am_adam` to match Speaches defaults, so built-in and cloud sound alike. Retires the Piper alan/amy voices.
+5. **Delete** — `embedded-server/`, PyInstaller CI jobs, the setup modal, bearer-token plumbing; docs update.
+
+**What we give up:** native whisper.cpp speed (WASM ~2–4× slower CPU-side; partially recoverable via WebGPU in Electron's Chromium), and the exact Piper voices (replaced by Kokoro). **What we gain:** zero install step (offline speech works on first launch), no AV flags, no ffmpeg, no venv support tickets, smaller CI matrix. The Provider seam (`resolveSTT`/`resolveTTS`) makes every phase invisible to the TurnEngine, and a Rust-sidecar pivot reuses phases 1, 3–5 unchanged.
 
 ### Tauri migration
 

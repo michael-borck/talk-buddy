@@ -47,7 +47,10 @@ export async function transcribeAudio(audioBlob: Blob, prompt?: string): Promise
   });
 
   const formData = new FormData();
-  formData.append('file', audioBlob, 'audio.webm');
+  // Filename follows the blob: 16kHz WAV from the PCM tap takes the server's
+  // ffmpeg-free fast path; legacy webm still converts.
+  const filename = audioBlob.type.includes('wav') ? 'audio.wav' : 'audio.webm';
+  formData.append('file', audioBlob, filename);
   // Try without model parameter - let server use default
   formData.append('response_format', 'json');
   if (prompt) formData.append('prompt', prompt);

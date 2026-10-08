@@ -279,6 +279,19 @@ def text_to_speech(text: str, voice_type: str = "female", voice_id: int = None, 
         logger.error(f"Piper TTS conversion failed: {e}")
         return None
 
+def _is_16k_mono_wav(path: str) -> bool:
+    """True when a file is a WAV the whisper.cpp wave reader can ingest
+    natively — 16kHz, mono, 16-bit PCM. Anything else needs conversion."""
+    import wave
+    try:
+        with wave.open(path, 'rb') as wf:
+            return (wf.getframerate() == 16000
+                    and wf.getnchannels() == 1
+                    and wf.getsampwidth() == 2)
+    except Exception:
+        return False
+
+
 def speech_to_text(audio_data: bytes, prompt: str = None) -> Optional[dict]:
     """Convert speech to text using Whisper"""
     global whisper_model
@@ -294,17 +307,24 @@ def speech_to_text(audio_data: bytes, prompt: str = None) -> Optional[dict]:
         import subprocess
         import wave
         
-        # Save incoming audio to temp file
-        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_input:
+        # Save incoming audio with a matching suffix — pywhispercpp dispatches
+        # on the extension (native wave reader for .wav, ffmpeg for the rest).
+        is_wav = len(audio_data) > 12 and audio_data[:4] == b'RIFF' and audio_data[8:12] == b'WAVE'
+        with tempfile.NamedTemporaryFile(suffix='.wav' if is_wav else '.webm', delete=False) as temp_input:
             temp_input.write(audio_data)
             input_path = temp_input.name
         
-        # Convert to 16kHz WAV using ffmpeg
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_output:
-            output_path = temp_output.name
-        
-        try:
-            # Use ffmpeg to convert to 16kHz WAV
+        # Fast path: the renderer's PCM tap uploads exactly 16kHz/mono/16-bit
+        # WAV — read it natively, no ffmpeg. (Removes the ffmpeg runtime
+        # dependency for every current client; kept as fallback for old
+        # releases still posting webm and for unusual WAV layouts.)
+        if is_wav and _is_16k_mono_wav(input_path):
+            logger.info("16kHz mono WAV received — skipping ffmpeg conversion")
+            output_path = input_path
+        else:
+            # Convert to 16kHz WAV using ffmpeg
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_output:
+                output_path = temp_output.name
             subprocess.run([
                 'ffmpeg', '-i', input_path,
                 '-ar', '16000',  # 16kHz sample rate
@@ -313,9 +333,9 @@ def speech_to_text(audio_data: bytes, prompt: str = None) -> Optional[dict]:
                 output_path,
                 '-y'  # Overwrite output
             ], capture_output=True, check=True)
-            
             logger.info(f"Converted audio to 16kHz WAV: {output_path}")
-            
+        
+        try:
             # Transcribe audio using pywhispercpp. An optional prompt (the
             # Scenario's vocabulary hint) biases decoding toward those terms —
             # pywhispercpp forwards it as whisper.cpp's initial_prompt.
@@ -349,11 +369,13 @@ def speech_to_text(audio_data: bytes, prompt: str = None) -> Optional[dict]:
             return None
             
         finally:
-            # Clean up temporary files
+            # Clean up temporary files. On the fast path output_path IS
+            # input_path — the exists() checks and the inequality guard keep
+            # the double unlink safe.
             if 'input_path' in locals() and os.path.exists(input_path):
                 os.unlink(input_path)
                 logger.info(f"Cleaned up input file: {input_path}")
-            if 'output_path' in locals() and os.path.exists(output_path):
+            if 'output_path' in locals() and output_path != input_path and os.path.exists(output_path):
                 os.unlink(output_path)
                 logger.info(f"Cleaned up output file: {output_path}")
                 

@@ -1062,14 +1062,15 @@ ipcMain.handle('app:getEnvVar', (event, name) => {
 // IPC). We rebuild FormData here where global fetch handles it natively.
 // Main process has no CORS enforcement, so this bypasses the browser
 // preflight that blocks direct renderer fetches to speaches.locopuente.org.
-ipcMain.handle('speaches:transcribe', async (event, { url, apiKey, audioBuffer, model, filename, prompt }) => {
+ipcMain.handle('speaches:transcribe', async (event, { url, apiKey, audioBuffer, model, filename, contentType, prompt }) => {
   if (!isAllowedProxyUrl(url)) {
     return { ok: false, status: 0, statusText: 'blocked', error: 'URL is not a configured endpoint' };
   }
   try {
     const formData = new FormData();
     // audioBuffer arrives as a Uint8Array over IPC; wrap in Blob for FormData.
-    const blob = new Blob([audioBuffer], { type: 'audio/webm' });
+    // Type rides along from the renderer so wav uploads declare audio/wav.
+    const blob = new Blob([audioBuffer], { type: contentType || 'audio/webm' });
     formData.append('file', blob, filename || 'audio.webm');
     formData.append('model', model);
     formData.append('response_format', 'json');

@@ -11,6 +11,8 @@ import { ListeningPort, BrainPort, VoicePort, CuePort, CaptureHandle } from './t
 import { AudioAnalyser } from './audioAnalyser';
 import { withPersonaTag, withSpokenText, parsePersonaTag, splitSpeakerPrefix } from './personaStream';
 import { vocabularyPrompt } from './sttPrompt';
+import { createPcmTap } from './pcmCapture';
+import { encodeWav } from './wav';
 
 // Shared per-Turn speaker state. The Brain side writes the `[[Name]]` tag it
 // strips; the Voice side reads it to pick the character's voice and to strip
@@ -26,14 +28,35 @@ export function createListeningPort(
   return {
     async startCapture(): Promise<CaptureHandle> {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-      recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
       const micToken = analyser.attachStream(stream);
       const cleanup = () => {
         analyser.detach(micToken);
         stream.getTracks().forEach((track) => track.stop());
       };
+
+      // Preferred capture: raw PCM via AudioWorklet, encoded to 16kHz mono
+      // WAV on stop. No webm, no ffmpeg conversion server-side. Falls back
+      // to MediaRecorder if the worklet path is unavailable.
+      try {
+        const tap = await createPcmTap(stream);
+        return {
+          stop: async () => {
+            const { pcm } = await tap.stop();
+            cleanup();
+            return encodeWav(pcm);
+          },
+          cancel: () => {
+            tap.cancel();
+            cleanup();
+          },
+        };
+      } catch (err) {
+        console.warn('PCM tap unavailable — falling back to MediaRecorder:', err);
+      }
+
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
       recorder.start();
       return {
         stop: () =>

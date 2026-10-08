@@ -36,6 +36,7 @@ interface ElectronAPI {
       audioBuffer: Uint8Array;
       model: string;
       filename?: string;
+      contentType?: string;
       prompt?: string;
     }) => Promise<{
       ok: boolean;
