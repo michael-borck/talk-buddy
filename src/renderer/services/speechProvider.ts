@@ -4,23 +4,24 @@
 import { getPreference } from './sqlite';
 import { TranscriptionResult, SpeechGenerationOptions } from '../types';
 import * as speachesService from './speaches';
-import * as embeddedService from './embedded';
 import { loadPreferences, resolveSTT, resolveTTS, STTConfig, TTSConfig } from './config';
 
-// Types for provider selection
-export type STTProvider = 'embedded' | 'speaches' | 'wasm';
-export type TTSProvider = 'embedded' | 'speaches' | 'piper';
+// Types for provider selection. 'embedded' is gone (phase 5): the offline
+// built-in IS the in-app engine now — wasm Whisper for Listening, piper for
+// Voice. Old stored 'embedded' values migrate to 'wasm'/'piper' in main.
+export type STTProvider = 'wasm' | 'speaches';
+export type TTSProvider = 'piper' | 'speaches';
 
 // Get current STT provider from preferences
 async function getSTTProvider(): Promise<STTProvider> {
   const provider = await getPreference('sttProvider');
-  return (provider as STTProvider) || 'embedded';
+  return (provider as STTProvider) || 'wasm';
 }
 
 // Get current TTS provider from preferences
 async function getTTSProvider(): Promise<TTSProvider> {
   const provider = await getPreference('ttsProvider');
-  return (provider as TTSProvider) || 'embedded';
+  return (provider as TTSProvider) || 'piper';
 }
 
 // Universal Speech-to-Text function. Resolves the active Listening config from
@@ -38,34 +39,22 @@ export async function transcribeAudio(
   try {
     return await callSTT(audioBlob, cfg, opts?.prompt);
   } catch (error) {
-    // Fallback chain: the other local Provider first, then the cloud one.
-    const fallbacks: Record<string, Array<'embedded' | 'wasm' | 'speaches'>> = {
-      wasm: ['embedded', 'speaches'],
-      embedded: ['wasm', 'speaches'],
-      speaches: ['wasm', 'embedded'],
-    };
-    for (const fallback of fallbacks[cfg.provider] ?? []) {
-      console.error(`STT failed with ${cfg.provider} provider:`, error);
-      console.log(`Attempting fallback to ${fallback} provider...`);
-      try {
-        return await callSTT(audioBlob, resolveSTT(prefs, fallback), opts?.prompt);
-      } catch (fallbackError) {
-        console.error(`Fallback STT (${fallback}) also failed:`, fallbackError);
-      }
+    const fallback: STTProvider = cfg.provider === 'wasm' ? 'speaches' : 'wasm';
+    console.error(`STT failed with ${cfg.provider} provider:`, error);
+    console.log(`Attempting fallback to ${fallback} provider...`);
+    try {
+      return await callSTT(audioBlob, resolveSTT(prefs, fallback), opts?.prompt);
+    } catch (fallbackError) {
+      console.error('Fallback STT also failed:', fallbackError);
+      throw error; // surface the original error
     }
-    throw error; // surface the original error
   }
 }
 
 async function callSTT(audioBlob: Blob, cfg: STTConfig, prompt?: string): Promise<TranscriptionResult> {
-  switch (cfg.provider) {
-    case 'wasm':
-      return (await import('./wasmStt')).transcribeAudio(audioBlob, prompt);
-    case 'speaches':
-      return speachesService.transcribeAudio(audioBlob, cfg, prompt);
-    default:
-      return embeddedService.transcribeAudio(audioBlob, prompt);
-  }
+  return cfg.provider === 'wasm'
+    ? (await import('./wasmStt')).transcribeAudio(audioBlob, prompt)
+    : speachesService.transcribeAudio(audioBlob, cfg, prompt);
 }
 
 // Universal Text-to-Speech function. Same resolve-then-dispatch shape as STT.
@@ -76,42 +65,31 @@ export async function generateSpeech(options: SpeechGenerationOptions): Promise<
   try {
     return await callTTS(options, cfg);
   } catch (error) {
-    const fallbacks: Record<string, Array<'embedded' | 'piper' | 'speaches'>> = {
-      piper: ['embedded', 'speaches'],
-      embedded: ['piper', 'speaches'],
-      speaches: ['piper', 'embedded'],
-    };
-    for (const fallback of fallbacks[cfg.provider] ?? []) {
-      console.error(`TTS failed with ${cfg.provider} provider:`, error);
-      console.log(`Attempting fallback to ${fallback} provider...`);
-      try {
-        return await callTTS(options, resolveTTS(prefs, fallback));
-      } catch (fallbackError) {
-        console.error(`Fallback TTS (${fallback}) also failed:`, fallbackError);
-      }
+    const fallback: TTSProvider = cfg.provider === 'piper' ? 'speaches' : 'piper';
+    console.error(`TTS failed with ${cfg.provider} provider:`, error);
+    console.log(`Attempting fallback to ${fallback} provider...`);
+    try {
+      return await callTTS(options, resolveTTS(prefs, fallback));
+    } catch (fallbackError) {
+      console.error('Fallback TTS also failed:', fallbackError);
+      throw error; // surface the original error
     }
-    throw error; // surface the original error
   }
 }
 
 async function callTTS(options: SpeechGenerationOptions, cfg: TTSConfig): Promise<Blob> {
-  switch (cfg.provider) {
-    case 'piper':
-      return (await import('./piperTts')).generateSpeech(options, cfg);
-    case 'speaches':
-      return speachesService.generateSpeech(options, cfg);
-    default:
-      return embeddedService.generateSpeech(options, cfg);
-  }
+  return cfg.provider === 'piper'
+    ? (await import('./piperTts')).generateSpeech(options, cfg)
+    : speachesService.generateSpeech(options, cfg);
 }
 
 // Check STT connection based on current provider
 export async function checkSTTConnection(): Promise<boolean> {
   const provider = await getSTTProvider();
-  
+
   switch (provider) {
-    case 'embedded':
-      return await embeddedService.checkSTTConnection();
+    case 'wasm':
+      return (await import('./wasmStt')).wasmSttStatus().then((s) => s.installed);
     case 'speaches':
       return await speachesService.checkSTTConnection();
     default:
@@ -122,10 +100,10 @@ export async function checkSTTConnection(): Promise<boolean> {
 // Check TTS connection based on current provider
 export async function checkTTSConnection(): Promise<boolean> {
   const provider = await getTTSProvider();
-  
+
   switch (provider) {
-    case 'embedded':
-      return await embeddedService.checkTTSConnection();
+    case 'piper':
+      return (await import('./piperTts')).piperStatus().then((s) => s.installed);
     case 'speaches':
       return await speachesService.checkTTSConnection();
     default:
@@ -133,35 +111,20 @@ export async function checkTTSConnection(): Promise<boolean> {
   }
 }
 
-// Get available voices from current TTS provider
+// Get available voices from current TTS provider. The in-app piper engine
+// serves the fixed Alan & Amy pair; Speaches lists its own.
 export async function getAvailableVoices(): Promise<string[]> {
   const provider = await getTTSProvider();
-  
+
   switch (provider) {
-    case 'embedded':
-      return await embeddedService.getAvailableVoices();
+    case 'piper':
+      return ['Alan', 'Amy'];
     case 'speaches':
       return await speachesService.getAvailableVoices();
     default:
       return [];
   }
 }
-
-// Provider management functions
-export const embeddedServer = {
-  start: embeddedService.startEmbeddedServer,
-  stop: embeddedService.stopEmbeddedServer,
-  restart: embeddedService.restartEmbeddedServer,
-  status: async () => {
-    try {
-      const status = await window.electronAPI.embeddedServerStatus();
-      return status;
-    } catch (error) {
-      console.error('Failed to get embedded server status:', error);
-      return { running: false, url: 'http://127.0.0.1:8765', port: 8765 };
-    }
-  }
-};
 
 // Backward compatibility - keep existing API
 export { checkSTTConnection as checkSpeachesConnection } from './speaches';

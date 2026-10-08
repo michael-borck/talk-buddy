@@ -13,13 +13,6 @@ module.exports = {
     'src/main/**/*',
     'node_modules/**/*',
   ],
-  extraResources: [
-    {
-      from: 'dist-server',
-      to: 'embedded-server',
-      filter: ['**/*'],
-    },
-  ],
   // electron-builder's own notarize wrapper has been buggy across 24.x.
   // We disable it here and run @electron/notarize directly from the
   // afterSign hook, which gives us full control over the options object.

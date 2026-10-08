@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllPreferences, setPreference, resetDatabase } from '../services/sqlite';
-import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Server, Mic, Volume2, MessageSquare, PenLine, Database, Activity, Cpu } from 'lucide-react';
+import { Save, ExternalLink, Download, Upload, RefreshCw, ChevronDown, AlertTriangle, Mic, Volume2, MessageSquare, PenLine, Database, Activity, Cpu } from 'lucide-react';
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel';
 import { WasmSttPanel } from '../components/WasmSttPanel';
 import { PiperPanel } from '../components/PiperPanel';
-import * as embeddedService from '../services/embedded';
 import * as speechProvider from '../services/speechProvider';
-import { EmbeddedInstallModal } from '../components/settings/EmbeddedInstallModal';
 import { DEFAULT_PROMPTS, CHAT_PROVIDER_URLS, CHAT_PROVIDER_ENV_VARS, resolveApiKey } from '../services/chat';
 
 // Component for API Key input with environment variable support.
@@ -271,13 +269,9 @@ export function SettingsPage() {
     speachesUrl: 'https://speaches.locopuente.org',
     sttUrl: 'https://speaches.locopuente.org',
     ttsUrl: 'https://speaches.locopuente.org',
-    sttProvider: 'embedded' as 'embedded' | 'speaches' | 'wasm',
-    ttsProvider: 'embedded' as 'embedded' | 'speaches' | 'piper',
+    sttProvider: 'wasm' as 'wasm' | 'speaches',
+    ttsProvider: 'piper' as 'piper' | 'speaches',
     chatProvider: 'ollama' as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom',
-    embeddedSttUrl: 'http://127.0.0.1:8765',
-    embeddedTtsUrl: 'http://127.0.0.1:8765',
-    embeddedMaleVoiceId: '',
-    embeddedFemaleVoiceId: '',
     embeddedSpeechSpeed: '1.2',
     sttApiKey: '',
     ttsApiKey: '',
@@ -334,103 +328,18 @@ export function SettingsPage() {
     tts: '',
     chat: ''
   });
-  const [embeddedServerStatus, setEmbeddedServerStatus] = useState({
-    running: false,
-    url: 'http://127.0.0.1:8765',
-    port: 8765
-  });
-  // Tracks whether the embedded server is actually installed (venv present
-  // in dev, or bundled binary present in prod). Distinct from `running` —
-  // installed can be true even if the server hasn't been started yet.
-  const [embeddedInstalled, setEmbeddedInstalled] = useState<boolean | null>(null);
-  const [showInstallModal, setShowInstallModal] = useState(false);
-  // When the user clicks Embedded while it's not installed, we defer
-  // flipping the provider state until install succeeds — otherwise the
-  // UI would silently switch to a provider that can't respond.
-  const [pendingProviderSwitch, setPendingProviderSwitch] = useState<null | 'stt' | 'tts' | 'both'>(null);
-  // Embedded voices state - currently not displayed but available for future use
-  // @ts-ignore - Reserved for future voice selection UI
-  const [embeddedVoices, setEmbeddedVoices] = useState({
-    male: [] as Array<{id: number, name: string, gender: string}>,
-    female: [] as Array<{id: number, name: string, gender: string}>,
-    unknown: [] as Array<{id: number, name: string, gender: string}>,
-    all: [] as Array<{id: number, name: string, gender: string}>
-  });
-  // Voice loading state - currently not used but available for future voice selection UI
-  // @ts-ignore - Reserved for future voice loading indicators
-  const [loadingVoices, setLoadingVoices] = useState(false);
-
   useEffect(() => {
     loadPreferences();
-    checkEmbeddedServerStatus();
-    void refreshEmbeddedInstallState();
   }, []);
 
-  const refreshEmbeddedInstallState = async () => {
-    try {
-      const state = await window.electronAPI.embeddedInstall.check();
-      setEmbeddedInstalled(state.installed);
-    } catch (err) {
-      console.warn('Failed to check embedded install state:', err);
-      setEmbeddedInstalled(false);
-    }
-  };
-
-  // Intercepts attempts to switch to the embedded provider. If the server
-  // isn't installed yet, opens the install modal instead of silently
-  // flipping to a broken state. Called from both STT and TTS radio groups.
-  // (TTS never passes 'wasm' — only STT has the in-app provider.)
+  // Intercepts provider switches. Kept as a seam even though it no longer
+  // gates on install state — the in-app panels (WasmSttPanel/PiperPanel)
+  // handle their own download flow inline.
   const handleProviderChange = (
     field: 'sttProvider' | 'ttsProvider',
-    newValue: 'embedded' | 'speaches' | 'wasm' | 'piper'
+    newValue: 'wasm' | 'piper' | 'speaches'
   ) => {
-    if (newValue === 'embedded' && embeddedInstalled === false) {
-      setPendingProviderSwitch(field === 'sttProvider' ? 'stt' : 'tts');
-      setShowInstallModal(true);
-      return;
-    }
     setPreferences({ ...preferences, [field]: newValue });
-  };
-
-  const handleInstallSuccess = async () => {
-    await refreshEmbeddedInstallState();
-    // If the user clicked Embedded before install started, honor that
-    // intent now that the server is actually available.
-    if (pendingProviderSwitch === 'stt') {
-      setPreferences({ ...preferences, sttProvider: 'embedded' });
-    } else if (pendingProviderSwitch === 'tts') {
-      setPreferences({ ...preferences, ttsProvider: 'embedded' });
-    }
-    setPendingProviderSwitch(null);
-    // Kick the embedded server start in the background so the user can
-    // start using it immediately after closing the modal.
-    void window.electronAPI.embeddedServerStart().then(() => checkEmbeddedServerStatus());
-  };
-
-  const checkEmbeddedServerStatus = async () => {
-    try {
-      const status = await window.electronAPI.embeddedServerStatus();
-      setEmbeddedServerStatus(status);
-      
-      // Load voices if server is running
-      if (status.running) {
-        loadEmbeddedVoices();
-      }
-    } catch (error) {
-      console.error('Failed to get embedded server status:', error);
-    }
-  };
-
-  const loadEmbeddedVoices = async () => {
-    setLoadingVoices(true);
-    try {
-      const voices = await embeddedService.getCategorizedVoices();
-      setEmbeddedVoices(voices);
-    } catch (error) {
-      console.error('Failed to load embedded voices:', error);
-    } finally {
-      setLoadingVoices(false);
-    }
   };
 
   const loadPreferences = async () => {
@@ -440,13 +349,10 @@ export function SettingsPage() {
         speachesUrl: prefs.speachesUrl || 'https://speaches.locopuente.org',
         sttUrl: prefs.sttUrl || prefs.speachesUrl || 'https://speaches.locopuente.org',
         ttsUrl: prefs.ttsUrl || prefs.speachesUrl || 'https://speaches.locopuente.org',
-        sttProvider: (prefs.sttProvider || 'embedded') as 'embedded' | 'speaches',
-        ttsProvider: (prefs.ttsProvider || 'embedded') as 'embedded' | 'speaches',
+        // Legacy 'embedded' values mean the in-app engines now (phase 5).
+        sttProvider: ((prefs.sttProvider === 'speaches') ? 'speaches' : 'wasm') as 'wasm' | 'speaches',
+        ttsProvider: ((prefs.ttsProvider === 'speaches') ? 'speaches' : 'piper') as 'piper' | 'speaches',
         chatProvider: (prefs.chatProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom',
-        embeddedSttUrl: (prefs.embeddedSttUrl || 'http://127.0.0.1:8765').replace(':8766', ':8765'),
-        embeddedTtsUrl: (prefs.embeddedTtsUrl || 'http://127.0.0.1:8765').replace(':8766', ':8765'),
-        embeddedMaleVoiceId: prefs.embeddedMaleVoiceId || '',
-        embeddedFemaleVoiceId: prefs.embeddedFemaleVoiceId || '',
         embeddedSpeechSpeed: prefs.embeddedSpeechSpeed || '1.2',
         sttApiKey: prefs.sttApiKey || '',
         ttsApiKey: prefs.ttsApiKey || '',
@@ -486,10 +392,6 @@ export function SettingsPage() {
       await setPreference('sttProvider', preferences.sttProvider);
       await setPreference('ttsProvider', preferences.ttsProvider);
       await setPreference('chatProvider', preferences.chatProvider);
-      await setPreference('embeddedSttUrl', preferences.embeddedSttUrl);
-      await setPreference('embeddedTtsUrl', preferences.embeddedTtsUrl);
-      await setPreference('embeddedMaleVoiceId', preferences.embeddedMaleVoiceId);
-      await setPreference('embeddedFemaleVoiceId', preferences.embeddedFemaleVoiceId);
       await setPreference('embeddedSpeechSpeed', preferences.embeddedSpeechSpeed);
       await setPreference('sttApiKey', preferences.sttApiKey);
       await setPreference('ttsApiKey', preferences.ttsApiKey);
@@ -600,8 +502,8 @@ export function SettingsPage() {
         setTestResults(prev => ({
           ...prev,
           [serviceType]: connected
-            ? `✅ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} STT server is running and healthy`
-            : `❌ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} STT server is not available. Check configuration.`
+            ? `✅ ${provider === 'wasm' ? 'In-app' : 'Speaches'} STT is ready`
+            : `❌ ${provider === 'wasm' ? 'In-app' : 'Speaches'} STT is not available. Check configuration.`
         }));
         notifyFooter();
         return;
@@ -613,8 +515,8 @@ export function SettingsPage() {
         setTestResults(prev => ({
           ...prev,
           [serviceType]: connected
-            ? `✅ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} TTS server is running and healthy`
-            : `❌ ${provider === 'embedded' ? 'Embedded' : 'Speaches'} TTS server is not available. Check configuration.`
+            ? `✅ ${provider === 'piper' ? 'In-app' : 'Speaches'} TTS is ready`
+            : `❌ ${provider === 'piper' ? 'In-app' : 'Speaches'} TTS is not available. Check configuration.`
         }));
         notifyFooter();
         return;
@@ -804,14 +706,13 @@ export function SettingsPage() {
 
     try {
       // Handle provider-specific model fetching
-      if (serviceType === 'stt' && preferences.sttProvider === 'embedded') {
-        const models = await embeddedService.getAvailableModels();
-        const sttModels = models.filter(model => model.id.includes('whisper'));
-        setModels(prev => ({ ...prev, stt: sttModels.map(m => m.id) }));
+      if (serviceType === 'stt' && preferences.sttProvider === 'wasm') {
+        // The in-app engine has a single fixed model — nothing to list.
+        setModels(prev => ({ ...prev, stt: ['whisper-tiny (in-app)'] }));
         return;
       }
-      
-      if (serviceType === 'tts' && preferences.ttsProvider === 'embedded') {
+
+      if (serviceType === 'tts' && preferences.ttsProvider === 'piper') {
         const voices = await speechProvider.getAvailableVoices();
         setModels(prev => ({ ...prev, tts: voices }));
         return;
@@ -1034,58 +935,28 @@ export function SettingsPage() {
                   <label className="flex items-center">
                     <input
                       type="radio"
-                      value="embedded"
-                      checked={preferences.sttProvider === 'embedded'}
-                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches' | 'wasm')}
+                      value="wasm"
+                      checked={preferences.sttProvider === 'wasm'}
+                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'wasm' | 'speaches')}
                       className="mr-2"
                     />
-                    <Server size={16} className="mr-1" />
+                    <Cpu size={16} className="mr-1" />
                     <span>Built-in (works offline)</span>
-                    {embeddedInstalled === false ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setPendingProviderSwitch('stt');
-                          setShowInstallModal(true);
-                        }}
-                        className="ml-2 text-xs text-accent hover:text-accent-deep border-b border-accent pb-px"
-                      >
-                        Not installed — Set up
-                      </button>
-                    ) : (
-                      <span className={`ml-2 px-2 py-1 text-xs rounded ${embeddedServerStatus.running ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {embeddedServerStatus.running ? 'Running' : 'Stopped'}
-                      </span>
-                    )}
                   </label>
                   <label className="flex items-center">
                     <input
                       type="radio"
                       value="speaches"
                       checked={preferences.sttProvider === 'speaches'}
-                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches' | 'wasm')}
+                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'wasm' | 'speaches')}
                       className="mr-2"
                     />
                     <ExternalLink size={16} className="mr-1" />
                     <span>Cloud server</span>
                   </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      value="wasm"
-                      checked={preferences.sttProvider === 'wasm'}
-                      onChange={(e) => handleProviderChange('sttProvider', e.target.value as 'embedded' | 'speaches' | 'wasm')}
-                      className="mr-2"
-                    />
-                    <Cpu size={16} className="mr-1" />
-                    <span>In-app (beta — no setup)</span>
-                  </label>
                 </div>
                 <p className="text-sm text-gray-600">
-                  {preferences.sttProvider === 'embedded'
-                    ? 'Understands your speech right on this computer — no internet needed'
-                    : preferences.sttProvider === 'wasm'
+                  {preferences.sttProvider === 'wasm'
                     ? 'Runs a compact speech model inside the app — no internet, no server, one small download'
                     : 'Sends your speech to a cloud server for processing — needs internet'
                   }
@@ -1150,40 +1021,6 @@ export function SettingsPage() {
               </div>
               )}
 
-              {/* Embedded Server Configuration */}
-              {preferences.sttProvider === 'embedded' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Built-in speech recognition
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={preferences.embeddedSttUrl}
-                      onChange={(e) => setPreferences({ ...preferences, embeddedSttUrl: e.target.value })}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="http://127.0.0.1:8765"
-                      readOnly
-                    />
-                    <button
-                      onClick={() => testService('stt')}
-                      disabled={testing.stt}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {testing.stt ? 'Testing...' : 'Test'}
-                    </button>
-                  </div>
-                  <p className="mt-1 text-sm text-gray-600">
-                    Running on this computer — no internet needed
-                  </p>
-                  {testResults.stt && (
-                    <p className={`mt-2 text-sm ${testResults.stt.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
-                      {testResults.stt}
-                    </p>
-                  )}
-                </div>
-              )}
-
               {preferences.sttProvider === 'speaches' && (
               <ModelSelector
                 value={preferences.sttModel}
@@ -1215,59 +1052,29 @@ export function SettingsPage() {
                   <label className="flex items-center">
                     <input
                       type="radio"
-                      value="embedded"
-                      checked={preferences.ttsProvider === 'embedded'}
-                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'embedded' | 'speaches')}
+                      value="piper"
+                      checked={preferences.ttsProvider === 'piper'}
+                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'piper' | 'speaches')}
                       className="mr-2"
                     />
-                    <Server size={16} className="mr-1" />
+                    <Cpu size={16} className="mr-1" />
                     <span>Built-in (works offline)</span>
-                    {embeddedInstalled === false ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setPendingProviderSwitch('tts');
-                          setShowInstallModal(true);
-                        }}
-                        className="ml-2 text-xs text-accent hover:text-accent-deep border-b border-accent pb-px"
-                      >
-                        Not installed — Set up
-                      </button>
-                    ) : (
-                      <span className={`ml-2 px-2 py-1 text-xs rounded ${embeddedServerStatus.running ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {embeddedServerStatus.running ? 'Ready' : 'Not running'}
-                      </span>
-                    )}
                   </label>
                   <label className="flex items-center">
                     <input
                       type="radio"
                       value="speaches"
                       checked={preferences.ttsProvider === 'speaches'}
-                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'embedded' | 'speaches' | 'piper')}
+                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'piper' | 'speaches')}
                       className="mr-2"
                     />
                     <ExternalLink size={16} className="mr-1" />
                     <span>Cloud server</span>
                   </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      value="piper"
-                      checked={preferences.ttsProvider === 'piper'}
-                      onChange={(e) => handleProviderChange('ttsProvider', e.target.value as 'embedded' | 'speaches' | 'piper')}
-                      className="mr-2"
-                    />
-                    <Cpu size={16} className="mr-1" />
-                    <span>In-app (beta — no setup)</span>
-                  </label>
                 </div>
                 <p className="text-sm text-gray-600">
-                  {preferences.ttsProvider === 'embedded'
-                    ? 'Speaks using voices built into this computer (Alan & Amy) — no internet needed'
-                    : preferences.ttsProvider === 'piper'
-                    ? 'Speaks with the same Alan & Amy voices, run by a small engine inside the app — no internet, no server, one download'
+                  {preferences.ttsProvider === 'piper'
+                    ? 'Speaks with the Alan & Amy voices, run by a small engine inside the app — no internet, no server, one download'
                     : 'Sends text to a cloud server which speaks it back — needs internet'
                   }
                 </p>
@@ -1278,41 +1085,8 @@ export function SettingsPage() {
                 <PiperPanel />
               )}
 
-              {/* Embedded TTS Configuration */}
-              {preferences.ttsProvider === 'embedded' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Built-in voice engine
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={preferences.embeddedTtsUrl}
-                    onChange={(e) => setPreferences({ ...preferences, embeddedTtsUrl: e.target.value })}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="http://127.0.0.1:8765"
-                  />
-                  <button
-                    onClick={() => testService('tts')}
-                    disabled={testing.tts || !preferences.embeddedTtsUrl}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {testing.tts ? 'Testing...' : 'Test'}
-                  </button>
-                </div>
-                <p className="mt-1 text-sm text-gray-600">
-                  Running on this computer with Alan (male) and Amy (female) voices
-                </p>
-                {testResults.tts && (
-                  <p className={`mt-2 text-sm ${testResults.tts.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
-                    {testResults.tts}
-                  </p>
-                )}
-              </div>
-              )}
-
-              {/* Voice Selection for Embedded Server */}
-              {preferences.ttsProvider === 'embedded' && (
+              {/* Voice selection + speed for the in-app engine */}
+              {preferences.ttsProvider === 'piper' && (
               <div className="border-t pt-4 mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Choose a voice
@@ -1320,42 +1094,40 @@ export function SettingsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Male Voice Preference
+                      Male Voice
                     </label>
                     <select
-                      value={preferences.embeddedMaleVoiceId || 'alan'}
-                      onChange={(e) => setPreferences({ ...preferences, embeddedMaleVoiceId: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value="alan"
+                      disabled
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                     >
                       <option value="alan">Alan (British)</option>
-                      <option value="amy">Amy (American)</option>
                     </select>
                     <p className="mt-1 text-sm text-gray-600">
-                      Voice used when scenario calls for male character
+                      Voice used when a scenario calls for a male character
                     </p>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Female Voice Preference
+                      Female Voice
                     </label>
                     <select
-                      value={preferences.embeddedFemaleVoiceId || 'amy'}
-                      onChange={(e) => setPreferences({ ...preferences, embeddedFemaleVoiceId: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value="amy"
+                      disabled
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                     >
                       <option value="amy">Amy (American)</option>
-                      <option value="alan">Alan (British)</option>
                     </select>
                     <p className="mt-1 text-sm text-gray-600">
-                      Voice used when scenario calls for female character
+                      Voice used when a scenario calls for a female character
                     </p>
                   </div>
                 </div>
                 <p className="mt-3 text-sm text-gray-500">
                   💡 You can use Alan for all conversations or Amy for all conversations regardless of scenario gender
                 </p>
-                
+
                 {/* Speech Speed Control */}
                 <div className="mt-4 border-t pt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2089,15 +1861,6 @@ export function SettingsPage() {
           ))}
         </div>
       </div>
-
-      <EmbeddedInstallModal
-        open={showInstallModal}
-        onClose={() => {
-          setShowInstallModal(false);
-          setPendingProviderSwitch(null);
-        }}
-        onSuccess={handleInstallSuccess}
-      />
     </div>
   );
 }

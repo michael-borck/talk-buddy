@@ -85,13 +85,13 @@ Standards used to evaluate performance and learning outcomes in conversation pra
 ## Service Architecture
 
 ### **Local Services**
-Software components that run on your own computer, providing AI, speech recognition, or voice synthesis functionality without internet connection. In Talk Buddy's Settings, the local/embedded Speaches option is labelled **Built-in (offline)**.
+Software components that run on your own computer, providing AI, speech recognition, or voice synthesis functionality without internet connection. In Talk Buddy's Settings, the in-app engine (Whisper for Listening, Piper for Voice) is labelled **Built-in (offline)**.
 
 ### **Online Services**
 Cloud-based services that provide AI, speech recognition, or voice synthesis functionality via internet connection. In Talk Buddy's Settings, remote provider options are labelled **Cloud server**.
 
 ### **Built-in (offline)**
-Provider option available in the Listening and Voice tabs that uses the embedded Speaches server bundled with Talk Buddy, enabling fully offline speech processing.
+Provider option available in the Listening and Voice tabs that runs entirely inside Talk Buddy — Whisper via transformers.js for Listening, a bundled Piper engine for Voice — enabling fully offline speech processing after a one-time model download.
 
 ### **Cloud server**
 Provider option available in the Listening and Voice tabs that connects to an external Speaches-compatible or cloud-based speech service over the internet.

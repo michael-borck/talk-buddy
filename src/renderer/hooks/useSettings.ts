@@ -14,34 +14,24 @@ import {
 
 const DEFAULT_SETTINGS: AllSettings = {
   stt: {
-    provider: 'embedded',
-    url: 'http://127.0.0.1:8765',
+    provider: 'wasm',
+    url: DEFAULTS.stt.speachesUrl,
     apiKey: '',
-    // Source the model default from the single Provider-defaults table so the
-    // form display and runtime resolution can't diverge (was 'whisper-tiny',
-    // while runtime always used Systran/faster-whisper-small).
     model: DEFAULTS.stt.speachesModel
   },
   tts: {
-    provider: 'embedded',
-    url: 'http://127.0.0.1:8765',
+    provider: 'piper',
+    url: DEFAULTS.tts.speachesUrl,
     apiKey: '',
     model: 'piper',
     voice: 'female',
-    speed: 1.2
+    speed: DEFAULTS.tts.speed
   },
   chat: {
     provider: 'ollama',
     url: 'https://ollama.serveur.au',
     apiKey: '',
     model: 'llama2'
-  },
-  embedded: {
-    sttUrl: 'http://127.0.0.1:8765',
-    ttsUrl: 'http://127.0.0.1:8765',
-    speechSpeed: 1.2,
-    maleVoiceId: 'alan',
-    femaleVoiceId: 'amy'
   },
   prompt: {
     template: 'natural',
@@ -84,13 +74,6 @@ export function useSettings() {
           url: await getPreference('ollamaUrl') || DEFAULT_SETTINGS.chat.url,
           apiKey: await getPreference('ollamaApiKey') || DEFAULT_SETTINGS.chat.apiKey,
           model: await getPreference('ollamaModel') || DEFAULT_SETTINGS.chat.model
-        },
-        embedded: {
-          sttUrl: await getPreference('embeddedSttUrl') || DEFAULT_SETTINGS.embedded.sttUrl,
-          ttsUrl: await getPreference('embeddedTtsUrl') || DEFAULT_SETTINGS.embedded.ttsUrl,
-          speechSpeed: parseFloat(await getPreference('embeddedSpeechSpeed') || '1.2'),
-          maleVoiceId: await getPreference('embeddedMaleVoiceId') || DEFAULT_SETTINGS.embedded.maleVoiceId,
-          femaleVoiceId: await getPreference('embeddedFemaleVoiceId') || DEFAULT_SETTINGS.embedded.femaleVoiceId
         },
         prompt: {
           template: (await getPreference('promptTemplate') as AllSettings['prompt']['template']) || DEFAULT_SETTINGS.prompt.template,
@@ -135,13 +118,6 @@ export function useSettings() {
       await setPreference('ollamaUrl', newSettings.chat.url);
       await setPreference('ollamaApiKey', newSettings.chat.apiKey);
       await setPreference('ollamaModel', newSettings.chat.model);
-
-      // Save Embedded settings
-      await setPreference('embeddedSttUrl', newSettings.embedded.sttUrl);
-      await setPreference('embeddedTtsUrl', newSettings.embedded.ttsUrl);
-      await setPreference('embeddedSpeechSpeed', newSettings.embedded.speechSpeed.toString());
-      await setPreference('embeddedMaleVoiceId', newSettings.embedded.maleVoiceId);
-      await setPreference('embeddedFemaleVoiceId', newSettings.embedded.femaleVoiceId);
 
       // Save Prompt settings
       await setPreference('promptTemplate', newSettings.prompt.template);

@@ -9,8 +9,14 @@ import {
 } from './config';
 
 describe('resolveSTT', () => {
-  it('defaults to the embedded Provider when nothing is stored', () => {
-    expect(resolveSTT({})).toEqual({ provider: 'embedded' });
+  it('defaults to the in-app wasm Provider when nothing is stored', () => {
+    expect(resolveSTT({})).toEqual({ provider: 'wasm' });
+  });
+
+  it('maps a legacy embedded value to the in-app wasm Provider', () => {
+    // The stored value is normally migrated in main at startup; this is the
+    // belt-and-braces path if a stale row survives.
+    expect(resolveSTT({ sttProvider: 'embedded' })).toEqual({ provider: 'wasm' });
   });
 
   it('resolves the Speaches branch with stored url/model/key', () => {
@@ -44,7 +50,7 @@ describe('resolveSTT', () => {
   });
 
   it('honours an explicit provider override (used for fallback)', () => {
-    const p: PrefMap = { sttProvider: 'embedded', sttModel: 'm' };
+    const p: PrefMap = { sttProvider: 'wasm', sttModel: 'm' };
     expect(resolveSTT(p, 'speaches')).toMatchObject({ provider: 'speaches', model: 'm' });
   });
 
@@ -54,20 +60,24 @@ describe('resolveSTT', () => {
 });
 
 describe('resolveTTS additions', () => {
-  it('resolves the in-app piper Provider with no settings at all', () => {
-    expect(resolveTTS({ ttsProvider: 'piper' })).toEqual({ provider: 'piper' });
+  it('resolves the in-app piper Provider from an explicit preference', () => {
+    expect(resolveTTS({ ttsProvider: 'piper' })).toEqual({ provider: 'piper', voice: 'female', speed: 1.2 });
   });
 });
 
 describe('resolveTTS', () => {
-  it('defaults to embedded with the default voice and speed', () => {
-    expect(resolveTTS({})).toEqual({ provider: 'embedded', voice: 'female', speed: 1.2 });
+  it('defaults to the in-app piper Provider with the default voice and speed', () => {
+    expect(resolveTTS({})).toEqual({ provider: 'piper', voice: 'female', speed: 1.2 });
+  });
+
+  it('maps a legacy embedded value to the in-app piper Provider', () => {
+    expect(resolveTTS({ ttsProvider: 'embedded' })).toEqual({ provider: 'piper', voice: 'female', speed: 1.2 });
   });
 
   // Regression: one slider value must reach BOTH Providers.
-  it('uses the unified embeddedSpeechSpeed for embedded and speaches alike', () => {
+  it('uses the unified embeddedSpeechSpeed for piper and speaches alike', () => {
     const p: PrefMap = { embeddedSpeechSpeed: '1.5' };
-    expect(resolveTTS({ ...p, ttsProvider: 'embedded' })).toMatchObject({ speed: 1.5 });
+    expect(resolveTTS({ ...p, ttsProvider: 'piper' })).toMatchObject({ speed: 1.5 });
     expect(resolveTTS({ ...p, ttsProvider: 'speaches' })).toMatchObject({ speed: 1.5 });
   });
 

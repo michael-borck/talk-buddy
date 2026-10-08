@@ -19,8 +19,8 @@ export function WelcomePage({ onComplete }: WelcomePageProps) {
     setSaving(true);
     try {
       if (mode === 'private') {
-        await setPreference('sttProvider', 'embedded');
-        await setPreference('ttsProvider', 'embedded');
+        await setPreference('sttProvider', 'wasm');
+        await setPreference('ttsProvider', 'piper');
         // No chat provider configured — HomePage prompts to connect one.
       } else {
         await setPreference('sttProvider', 'speaches');

@@ -28,7 +28,7 @@ Everything runs on your computer. Your recordings and transcripts never leave yo
 - **Practice packs** — group scenarios into focused practice sessions
 - **Session history** with transcripts and optional AI analysis
 - **Multiple AI providers** — Anthropic (Claude), OpenAI (GPT), Google (Gemini), Groq, Ollama, or any custom endpoint
-- **Built-in offline speech** — works without internet using the embedded Piper + Whisper engine
+- **Built-in offline speech** — works without internet: Whisper runs inside the app (transformers.js), Piper speaks the replies. One-time model download, no server
 - **Cloud speech** — connect to a [Speaches](https://github.com/speaches-ai/speaches) server for higher-quality voices (Kokoro TTS, Faster Whisper STT)
 - **Audio turn cue** — a subtle sound when it's your turn to speak (configurable: rise, click, or silent)
 - **Privacy-first** — all data stored locally in SQLite; bring your own keys; nothing phoned home
@@ -60,21 +60,17 @@ No native build step is needed — the database uses `node:sqlite`, which ships 
 talk-buddy/
 ├── src/
 │   ├── main/                  # Electron main process
-│   │   ├── index.js           # App lifecycle, IPC handlers, embedded server management
+│   │   ├── index.js           # App lifecycle, IPC handlers, provider bridges (in-app STT/TTS)
 │   │   └── preload.js         # Context bridge exposing electronAPI to renderer
 │   └── renderer/              # React application (Vite-bundled)
 │       ├── App.tsx            # Router, sidebar, home page
 │       ├── pages/             # Scenarios, Conversation, Settings, SessionHistory, etc.
 │       ├── components/        # EditorialVoiceVisualizer, StatusFooter, cards, modals
-│       ├── services/          # speaches.ts, chat.ts, embedded.ts, audioCues.ts, sqlite.ts
+│       ├── services/          # speaches.ts, chat.ts, wasmStt.ts, piperTts.ts, audioCues.ts, sqlite.ts
 │       └── index.css          # Studio Calm design tokens + component classes
-├── embedded-server/           # Optional offline speech engine (Python + Piper + Whisper)
-│   ├── server.py              # Flask server with OpenAI-compatible endpoints
-│   ├── setup.sh               # Creates venv + installs deps + downloads voice models
-│   └── requirements.txt       # Python dependencies (synced with CI workflow)
 ├── .github/workflows/
-│   └── build.yml              # Release pipeline: builds embedded server + Electron app
-│                              #   on macOS / Windows / Linux, publishes to GitHub Releases
+│   └── build.yml              # Release pipeline: builds the Electron app on
+│                              #   macOS / Windows / Linux, publishes to GitHub Releases
 ├── docs/                      # In-app help documentation (markdown)
 │   └── design/
 │       └── studio-calm.md     # Design system spec for the Buddy suite
@@ -107,7 +103,7 @@ All settings are in the app's Settings page (the wrench icon in the sidebar). Th
 
 | Option | Internet needed? | Quality | Setup |
 |---|---|---|---|
-| **Built-in (offline)** | No | Good (Piper TTS, Whisper STT) | Click "Set up" in Settings — installs Python venv + voice models (~500MB, one-time) |
+| **Built-in (offline)** | No | Good (Piper TTS, Whisper STT) | One-click download in Settings (~210MB of models, one-time) — no server, no Python |
 | **Cloud server** | Yes | Better (Kokoro TTS, Faster Whisper STT) | Point to a [Speaches](https://github.com/speaches-ai/speaches) server and paste the access key |
 
 ### AI options
@@ -150,14 +146,12 @@ npm run build        # Vite production build (type-checks + bundles)
 npm run electron:dist  # Package for current platform via electron-builder
 ```
 
-### Embedded speech server (optional)
+### In-app speech engines (optional download)
 
-```bash
-cd embedded-server
-./setup.sh           # Creates Python venv, installs deps, downloads Piper voice models
-```
-
-Or use the in-app setup: Settings → Listening/Voice → Built-in → "Not installed — Set up".
+Both offline engines are built in: pick Settings → Listening/Voice → Built-in and
+click the download button. Whisper weights go to your user-data folder, and the
+Piper engine + Alan/Amy voices are fetched once — after that, speech works fully
+offline.
 
 ## Part of the Buddy suite
 
@@ -183,7 +177,7 @@ MIT — see [LICENSE](LICENSE).
 - [React](https://react.dev/) — UI framework
 - [Speaches](https://github.com/speaches-ai/speaches) — speech-to-text and text-to-speech server
 - [Ollama](https://ollama.com/) — local AI models
-- [Piper](https://github.com/rhasspy/piper) — offline voice synthesis (embedded server)
+- [Piper](https://github.com/rhasspy/piper) — offline voice synthesis (in-app engine)
 - [Figtree](https://fonts.google.com/specimen/Figtree) — the typeface
 
 ### Inspiration

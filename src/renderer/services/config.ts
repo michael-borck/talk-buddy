@@ -48,14 +48,15 @@ const KOKORO = 'speaches-ai/Kokoro-82M-v1.0-ONNX';
 // reads it from here; nothing redefines a default inline.
 export const DEFAULTS = {
   stt: {
-    provider: 'embedded' as STTProvider,
-    // Speaches (cloud) fallback URL + model. Embedded has no static URL/model:
-    // its URL is the live server port and it sends no model name.
+    // In-app Whisper (phase 5): the offline built-in, no server involved.
+    provider: 'wasm' as STTProvider,
+    // Speaches (cloud) fallback URL + model.
     speachesUrl: 'https://speaches.locopuente.org',
     speachesModel: 'Systran/faster-whisper-small',
   },
   tts: {
-    provider: 'embedded' as TTSProvider,
+    // In-app piper (phase 5): the offline built-in, no server involved.
+    provider: 'piper' as TTSProvider,
     speachesUrl: 'https://speaches.locopuente.org',
     voice: 'female' as Voice,
     speed: 1.2, // unified: one slider value drives both Providers
@@ -81,13 +82,9 @@ export const COMMUNITY_SERVERS = {
   chatModel: 'llama2',
 } as const;
 
-// Preference keys the Settings UI still writes but no runtime path reads.
-// Documented here so the next reader doesn't wire logic onto a dead key.
-//  - ttsModel              → runtime reads maleTTSModel/femaleTTSModel instead
-//  - embeddedMaleVoiceId   → embedded.ts hardcodes 'alan'
-//  - embeddedFemaleVoiceId → embedded.ts hardcodes 'amy'
-//  - embeddedSttUrl/Url    → embedded uses the live server port
-//  - ttsSpeed              → superseded by the unified embeddedSpeechSpeed
+// Preference keys that no runtime path reads any more. Most were orphaned by
+// phase 5 (the Python embedded server deleted; its Provider slots migrated to
+// the in-app wasm/piper engines — values migrated in main at startup).
 export const DEPRECATED_PREFERENCE_KEYS = [
   'ttsModel',
   'embeddedMaleVoiceId',
@@ -100,14 +97,14 @@ export const DEPRECATED_PREFERENCE_KEYS = [
 // ---- Resolved config shapes -------------------------------------------------
 // Discriminated unions: the shape itself documents what each Provider reads.
 
-export interface EmbeddedSTT { provider: 'embedded'; }
 export interface SpeachesSTT { provider: 'speaches'; url: string; model: string; apiKey: string; }
 // In-app WASM inference (phase 3 of the sidecar retirement): no settings at
-// all — models live in userData, managed by the main process.
+// all — models live in userData, managed by the main process. Since phase 5
+// this IS the offline built-in (the old 'embedded' Provider slot migrates
+// here in main at startup).
 export interface WasmSTT { provider: 'wasm'; }
-export type STTConfig = EmbeddedSTT | SpeachesSTT | WasmSTT;
+export type STTConfig = SpeachesSTT | WasmSTT;
 
-export interface EmbeddedTTS { provider: 'embedded'; voice: Voice; speed: number; }
 export interface SpeachesTTS {
   provider: 'speaches';
   url: string;
@@ -118,9 +115,10 @@ export interface SpeachesTTS {
   female: { model: string; voice: string };
 }
 // In-app piper (phase 4 of the sidecar retirement): standalone binary +
-// alan/amy voices in userData, no settings at all.
-export interface PiperTTS { provider: 'piper'; }
-export type TTSConfig = EmbeddedTTS | SpeachesTTS | PiperTTS;
+// alan/amy voices in userData. Since phase 5 this IS the offline built-in
+// (the old 'embedded' Provider slot migrates here in main at startup).
+export interface PiperTTS { provider: 'piper'; voice: Voice; speed: number; }
+export type TTSConfig = SpeachesTTS | PiperTTS;
 
 export interface ChatConfig {
   provider: ChatProvider;
@@ -153,10 +151,9 @@ export function resolveSTT(
       apiKey: p.sttApiKey || '',
     };
   }
-  if (provider === 'wasm') {
-    return { provider: 'wasm' };
-  }
-  return { provider: 'embedded' };
+  // 'wasm' — and a stray legacy 'embedded' value, which the startup
+  // migration normally rewrites — resolve to the in-app engine.
+  return { provider: 'wasm' };
 }
 
 export function resolveTTS(
@@ -178,10 +175,9 @@ export function resolveTTS(
       female: { model: p.femaleTTSModel || DEFAULTS.tts.female.model, voice: p.femaleVoice || DEFAULTS.tts.female.voice },
     };
   }
-  if (provider === 'piper') {
-    return { provider: 'piper' };
-  }
-  return { provider: 'embedded', voice, speed };
+  // 'piper' — and a stray legacy 'embedded' value, which the startup
+  // migration normally rewrites — resolve to the in-app engine.
+  return { provider: 'piper', voice, speed };
 }
 
 export function resolveChat(

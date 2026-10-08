@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
 const isDev = process.argv.includes('--dev') || (process.env.NODE_ENV !== 'production' && require('electron-is-dev'));
 // node:sqlite ships inside Electron's bundled Node — no native compile,
 // no node-gyp/electron-rebuild, and it tracks Electron's V8 automatically.
@@ -23,13 +22,14 @@ if (process.platform === 'linux' && (isDev || process.argv.includes('--no-sandbo
 
 let mainWindow;
 let db;
-let embeddedServer = null;
-let embeddedServerPort = 8765;
-let embeddedInstallProcess = null;
-// Per-session bearer token for the embedded server: localhost-only
-// binding doesn't stop other local processes (or webpage form POSTs)
-// from reaching it, so every route except /health requires this.
-const embeddedServerToken = require('crypto').randomBytes(32).toString('hex');
+
+// Phase-5 migration: the Python embedded server is gone. Its Provider slot
+// now means the in-app engines — wasm Whisper for Listening, piper for Voice
+// — so existing installs keep their "built-in offline" behaviour.
+function migrateEmbeddedProviderPrefs() {
+  db.prepare("UPDATE user_preferences SET value = 'wasm' WHERE key = 'sttProvider' AND value = 'embedded'").run();
+  db.prepare("UPDATE user_preferences SET value = 'piper' WHERE key = 'ttsProvider' AND value = 'embedded'").run();
+}
 
 // Default scenarios data - kept separately for restoration
 const DEFAULT_SCENARIOS = [
@@ -298,344 +298,6 @@ function insertSeedScenarios(db) {
   });
 }
 
-// Embedded Server Management
-function getEmbeddedServerPath() {
-  if (isDev) {
-    // Development: use Python script directly
-    return path.join(__dirname, '../../embedded-server/server.py');
-  } else {
-    // Production: use bundled executable
-    const platform = process.platform;
-    const extension = platform === 'win32' ? '.exe' : '';
-    return path.join(process.resourcesPath, 'embedded-server', `embedded-server${extension}`);
-  }
-}
-
-// Check whether the embedded server is ready to spawn. In dev, this
-// means BOTH the Python venv exists AND the Piper voice models are
-// downloaded — a venv without models leaves the server "running" but
-// with TTS silently broken (health check reports services.tts=false).
-// Treating missing models as "not installed" lets the UI surface the
-// "Set up now" prompt so the user can re-run setup.sh, which is
-// idempotent and will only download what's missing.
-//
-// In prod, this means the bundled standalone executable exists
-// (PyInstaller wraps the models into the binary via --add-data).
-function getEmbeddedInstallState() {
-  const serverPath = getEmbeddedServerPath();
-  if (isDev) {
-    const rootDir = path.dirname(serverPath);
-    const venvPython = path.join(rootDir, 'venv', 'bin', 'python');
-    const setupScript = path.join(rootDir, 'setup.sh');
-    // Model files the TTS engine needs. If any are missing, we treat
-    // the install as incomplete and let the setup flow fill them in.
-    const requiredModels = [
-      path.join(rootDir, 'models', 'en_GB-alan-low.onnx'),
-      path.join(rootDir, 'models', 'en_GB-alan-low.onnx.json'),
-      path.join(rootDir, 'models', 'en_US-amy-low.onnx'),
-      path.join(rootDir, 'models', 'en_US-amy-low.onnx.json'),
-    ];
-    const venvOk = fs.existsSync(venvPython);
-    const modelsOk = requiredModels.every((p) => fs.existsSync(p));
-    return {
-      installed: venvOk && modelsOk,
-      venvOk,
-      modelsOk,
-      path: venvPython,
-      setupScript: fs.existsSync(setupScript) ? setupScript : null,
-      mode: 'dev',
-    };
-  }
-  return {
-    installed: fs.existsSync(serverPath),
-    venvOk: fs.existsSync(serverPath),
-    modelsOk: true,
-    path: serverPath,
-    setupScript: null,
-    mode: 'prod',
-  };
-}
-
-function findAvailablePort(startPort = 8765) {
-  return new Promise((resolve) => {
-    const server = require('net').createServer();
-    server.listen(startPort, () => {
-      const port = server.address().port;
-      server.close(() => resolve(port));
-    });
-    server.on('error', () => {
-      resolve(findAvailablePort(startPort + 1));
-    });
-  });
-}
-
-async function startEmbeddedServer() {
-  if (embeddedServer) {
-    console.log('Embedded server already running');
-    return true;
-  }
-
-  // Fast path: if the embedded server isn't installed, don't spawn
-  // anything — just log a tidy one-liner. The user can set it up from
-  // Settings → STT/TTS if they want offline speech.
-  const installState = getEmbeddedInstallState();
-  if (!installState.installed) {
-    console.log('[Embedded] Not installed. Using external services. Run Settings → Embedded → Set up to enable offline mode.');
-    return false;
-  }
-
-  try {
-    console.log('Starting embedded TTS/STT server...');
-
-    // Find available port
-    embeddedServerPort = await findAvailablePort(8765);
-    console.log(`Using port ${embeddedServerPort} for embedded server`);
-
-    const serverPath = getEmbeddedServerPath();
-    // Whitelisted environment: the Python server needs none of the
-    // shell's secrets (API keys, tokens), so don't hand them over.
-    const PASSTHROUGH_ENV = [
-      'PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP', 'TMP',
-      // Windows process essentials
-      'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'APPDATA', 'LOCALAPPDATA',
-      'PROGRAMDATA', 'USERPROFILE', 'SYSTEMDRIVE', 'PATHEXT', 'NUMBER_OF_PROCESSORS',
-    ];
-    const env = {};
-    for (const key of PASSTHROUGH_ENV) {
-      if (process.env[key] !== undefined) env[key] = process.env[key];
-    }
-    env.PORT = embeddedServerPort.toString();
-    env.HOST = '127.0.0.1';
-    env.EMBEDDED_AUTH_TOKEN = embeddedServerToken;
-
-    if (isDev) {
-      // Development: run Python script using venv
-      const venvPython = path.join(path.dirname(serverPath), 'venv', 'bin', 'python');
-      embeddedServer = spawn(venvPython, [serverPath], {
-        env,
-        cwd: path.dirname(serverPath),
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-    } else {
-      // Production: run bundled executable
-      embeddedServer = spawn(serverPath, [], {
-        env,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-    }
-
-    // Handle server output with error handling for EPIPE
-    if (embeddedServer.stdout) {
-      embeddedServer.stdout.on('data', (data) => {
-        try {
-          console.log(`[Embedded Server] ${data.toString().trim()}`);
-        } catch (err) {
-          // Ignore write errors
-        }
-      });
-    }
-
-    if (embeddedServer.stderr) {
-      embeddedServer.stderr.on('data', (data) => {
-        try {
-          console.error(`[Embedded Server Error] ${data.toString().trim()}`);
-        } catch (err) {
-          // Ignore write errors  
-        }
-      });
-    }
-
-    embeddedServer.on('error', (error) => {
-      if (error.code !== 'EPIPE') {
-        console.error('Failed to start embedded server:', error);
-      }
-      embeddedServer = null;
-    });
-
-    embeddedServer.on('exit', (code, signal) => {
-      if (code !== null || signal !== null) {
-        console.log(`Embedded server exited with code ${code}, signal ${signal}`);
-      }
-      embeddedServer = null;
-    });
-
-    // Wait for server to be ready
-    const maxRetries = 30; // 30 seconds
-    let retries = 0;
-    
-    while (retries < maxRetries) {
-      try {
-        const response = await testEmbeddedServerHealth();
-        if (response.ok) {
-          console.log('Embedded server is ready');
-          // Update database with embedded server URL
-          await updateEmbeddedServerConfig();
-          // Fire-and-forget warmup so Piper/Whisper load their models in
-          // the background instead of on the student's first utterance.
-          warmupEmbeddedServer(`http://127.0.0.1:${embeddedServerPort}`);
-          return true;
-        }
-      } catch (error) {
-        // Server not ready yet
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      retries++;
-    }
-
-    console.error('Embedded server failed to start within timeout');
-    stopEmbeddedServer();
-    return false;
-
-  } catch (error) {
-    console.error('Error starting embedded server:', error);
-    return false;
-  }
-}
-
-function stopEmbeddedServer() {
-  if (embeddedServer) {
-    console.log('Stopping embedded server...');
-    
-    // Try graceful shutdown first
-    try {
-      const request = net.request({
-        method: 'POST',
-        url: `http://127.0.0.1:${embeddedServerPort}/shutdown`
-      });
-      request.setHeader('Authorization', `Bearer ${embeddedServerToken}`);
-      request.end();
-    } catch (error) {
-      console.log('Graceful shutdown failed, forcing termination');
-    }
-    
-    // Force kill after 5 seconds
-    setTimeout(() => {
-      if (embeddedServer && !embeddedServer.killed) {
-        embeddedServer.kill('SIGTERM');
-        setTimeout(() => {
-          if (embeddedServer && !embeddedServer.killed) {
-            embeddedServer.kill('SIGKILL');
-          }
-        }, 2000);
-      }
-    }, 5000);
-    
-    embeddedServer = null;
-  }
-}
-
-// Pre-load Piper and Whisper models in the background by firing tiny
-// requests against the embedded server right after /health succeeds.
-// Both models are otherwise lazy-loaded on first real request, which
-// makes the student's first utterance feel laggy. Fire-and-forget;
-// failures here are non-fatal.
-async function warmupEmbeddedServer(baseUrl) {
-  // TTS warmup — Piper loads the voice model on first synth.
-  try {
-    await fetch(`${baseUrl}/v1/audio/speech`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${embeddedServerToken}`,
-      },
-      body: JSON.stringify({
-        model: 'tts-embedded',
-        input: 'hi',
-        voice: 'amy',
-        speed: 1.0,
-        response_format: 'wav',
-      }),
-    });
-    console.log('[embedded-server] TTS warmup complete');
-  } catch (e) {
-    console.warn('[embedded-server] TTS warmup failed (non-fatal):', e.message);
-  }
-
-  // STT warmup — Whisper loads the model on first transcription.
-  // Build a minimal valid WAV file (header + 0.5s of silence) and POST
-  // it as multipart so the server takes the same code path as a real
-  // transcription request.
-  try {
-    const sampleRate = 16000;
-    const numSamples = sampleRate / 2; // 0.5s
-    const dataSize = numSamples * 2; // 16-bit mono
-    const wav = Buffer.alloc(44 + dataSize);
-    wav.write('RIFF', 0);
-    wav.writeUInt32LE(36 + dataSize, 4);
-    wav.write('WAVE', 8);
-    wav.write('fmt ', 12);
-    wav.writeUInt32LE(16, 16);
-    wav.writeUInt16LE(1, 20);
-    wav.writeUInt16LE(1, 22);
-    wav.writeUInt32LE(sampleRate, 24);
-    wav.writeUInt32LE(sampleRate * 2, 28);
-    wav.writeUInt16LE(2, 32);
-    wav.writeUInt16LE(16, 34);
-    wav.write('data', 36);
-    wav.writeUInt32LE(dataSize, 40);
-    // Audio bytes are already zeros from Buffer.alloc → silence.
-
-    const formData = new FormData();
-    formData.append('file', new Blob([wav], { type: 'audio/wav' }), 'warmup.wav');
-    formData.append('response_format', 'json');
-    await fetch(`${baseUrl}/v1/audio/transcriptions`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${embeddedServerToken}` },
-      body: formData,
-    });
-    console.log('[embedded-server] STT warmup complete');
-  } catch (e) {
-    console.warn('[embedded-server] STT warmup failed (non-fatal):', e.message);
-  }
-}
-
-async function testEmbeddedServerHealth() {
-  return new Promise((resolve, reject) => {
-    const request = net.request({
-      method: 'GET',
-      url: `http://127.0.0.1:${embeddedServerPort}/health`
-    });
-
-    request.on('response', (response) => {
-      resolve({ ok: response.statusCode === 200 });
-    });
-
-    request.on('error', (error) => {
-      reject(error);
-    });
-
-    request.end();
-  });
-}
-
-async function updateEmbeddedServerConfig() {
-  try {
-    const embeddedUrl = `http://127.0.0.1:${embeddedServerPort}`;
-    
-    // Add embedded server URL to user preferences if not already set
-    const checkStmt = db.prepare('SELECT value FROM user_preferences WHERE key = ?');
-    
-    const sttProvider = checkStmt.get('sttProvider');
-    if (!sttProvider) {
-      db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)').run('sttProvider', 'embedded');
-    }
-    
-    const ttsProvider = checkStmt.get('ttsProvider');
-    if (!ttsProvider) {
-      db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)').run('ttsProvider', 'embedded');
-    }
-    
-    // Set embedded server URLs
-    db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)').run('embeddedSttUrl', embeddedUrl);
-    db.prepare('INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)').run('embeddedTtsUrl', embeddedUrl);
-    
-    console.log(`Updated embedded server config: ${embeddedUrl}`);
-  } catch (error) {
-    console.error('Failed to update embedded server config:', error);
-  }
-}
-
 // ---- API key storage --------------------------------------------------------
 // BYOK keys live in user_preferences but encrypted with the OS keychain
 // (safeStorage) rather than plaintext. Stored format: 'enc:v1:<base64>'.
@@ -736,8 +398,6 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
-    // Stop embedded server when main window closes
-    stopEmbeddedServer();
   });
 
   // Dev tools can be opened manually with Ctrl+Shift+I if needed
@@ -772,6 +432,9 @@ app.whenReady().then(() => {
   } catch (e) {
     // Column already exists, ignore error
   }
+
+  // Provider-slot migration for the post-Python world (see function comment).
+  migrateEmbeddedProviderPrefs();
 
   // Create tables if they don't exist
   db.exec(`
@@ -912,18 +575,6 @@ app.whenReady().then(() => {
     'female'
   );
   
-  // Start embedded server if it's already installed. If not, stay quiet —
-  // the user can set it up from Settings and we'll auto-start afterward.
-  if (getEmbeddedInstallState().installed) {
-    startEmbeddedServer().then((success) => {
-      if (success) {
-        console.log('Embedded server started successfully');
-      } else {
-        console.log('[Embedded] Start attempt returned false — check logs above.');
-      }
-    });
-  }
-  
   createWindow();
 
   app.on('activate', () => {
@@ -962,7 +613,7 @@ app.whenReady().then(() => {
       }
     });
     // Wait 30s after launch before checking — give the app time to
-    // settle (window painted, embedded server warmed up) so the
+    // settle (window painted, models warmed up) so the
     // update check doesn't compete for resources at the worst moment.
     setTimeout(() => {
       autoUpdater.checkForUpdates().catch((err) => {
@@ -973,14 +624,9 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  stopEmbeddedServer();
   if (process.platform !== 'darwin') {
     app.quit();
   }
-});
-
-app.on('before-quit', () => {
-  stopEmbeddedServer();
 });
 
 // IPC Handlers for database operations. The renderer invokes named
@@ -1366,124 +1012,3 @@ ipcMain.handle('scenarios:restoreDefaults', async () => {
   }
 });
 
-// Embedded server IPC handlers
-ipcMain.handle('embedded-server:status', async () => {
-  return {
-    running: embeddedServer !== null && !embeddedServer.killed,
-    port: embeddedServerPort,
-    url: `http://127.0.0.1:${embeddedServerPort}`,
-    token: embeddedServerToken
-  };
-});
-
-ipcMain.handle('embedded-server:start', async () => {
-  const success = await startEmbeddedServer();
-  return { success };
-});
-
-ipcMain.handle('embedded-server:stop', async () => {
-  stopEmbeddedServer();
-  return { success: true };
-});
-
-ipcMain.handle('embedded-server:restart', async () => {
-  stopEmbeddedServer();
-  // Wait a moment for cleanup
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  const success = await startEmbeddedServer();
-  return { success };
-});
-
-// Check whether the embedded server is installed and which setup script
-// (if any) is available to install it.
-ipcMain.handle('embedded-server:check-install', async () => {
-  const state = getEmbeddedInstallState();
-  // In dev mode, also tell the renderer whether python3 is available on
-  // PATH so the Settings UI can give a specific pre-flight error before
-  // the user even clicks Set Up.
-  let pythonAvailable = null;
-  if (state.mode === 'dev') {
-    pythonAvailable = await new Promise((resolve) => {
-      const probe = spawn('python3', ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] });
-      probe.on('error', () => resolve(false));
-      probe.on('exit', (code) => resolve(code === 0));
-    });
-  }
-  return {
-    installed: state.installed,
-    venvOk: state.venvOk,
-    modelsOk: state.modelsOk,
-    mode: state.mode,
-    path: state.path,
-    hasSetupScript: state.setupScript !== null,
-    pythonAvailable,
-  };
-});
-
-// Run the embedded-server setup script, streaming stdout + stderr to the
-// renderer over 'embedded-install:output' so the Settings modal can show
-// live progress. Returns the final exit code.
-//
-// Only valid in dev mode. In a packaged build the embedded server ships
-// as a pre-built executable and never needs installing at runtime.
-ipcMain.handle('embedded-server:install', async () => {
-  const state = getEmbeddedInstallState();
-  if (state.mode !== 'dev') {
-    return { ok: false, error: 'Install flow is only available in dev builds — packaged releases bundle the embedded server.' };
-  }
-  if (!state.setupScript) {
-    return { ok: false, error: 'setup.sh not found in embedded-server/ — the repo may be incomplete.' };
-  }
-  if (embeddedInstallProcess) {
-    return { ok: false, error: 'Install already in progress.' };
-  }
-
-  const sendOutput = (stream, text) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('embedded-install:output', { stream, text });
-    }
-  };
-
-  sendOutput('info', `Running ${state.setupScript}\n`);
-
-  return new Promise((resolve) => {
-    const child = spawn('bash', [state.setupScript], {
-      cwd: path.dirname(state.setupScript),
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    embeddedInstallProcess = child;
-
-    child.stdout.on('data', (chunk) => sendOutput('stdout', chunk.toString()));
-    child.stderr.on('data', (chunk) => sendOutput('stderr', chunk.toString()));
-
-    child.on('error', (err) => {
-      embeddedInstallProcess = null;
-      sendOutput('error', `Failed to spawn setup.sh: ${err.message}\n`);
-      resolve({ ok: false, error: err.message });
-    });
-
-    child.on('exit', (code, signal) => {
-      embeddedInstallProcess = null;
-      if (signal) {
-        sendOutput('info', `\nInstall cancelled (${signal}).\n`);
-        resolve({ ok: false, cancelled: true });
-        return;
-      }
-      if (code === 0) {
-        sendOutput('info', '\nInstall complete.\n');
-        resolve({ ok: true });
-      } else {
-        sendOutput('error', `\nInstall exited with code ${code}.\n`);
-        resolve({ ok: false, error: `Exit code ${code}` });
-      }
-    });
-  });
-});
-
-ipcMain.handle('embedded-server:install-cancel', async () => {
-  if (embeddedInstallProcess) {
-    embeddedInstallProcess.kill('SIGTERM');
-    return { ok: true };
-  }
-  return { ok: false, error: 'No install in progress.' };
-});

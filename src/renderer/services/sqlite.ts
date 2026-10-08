@@ -72,26 +72,6 @@ interface ElectronAPI {
       error?: string;
     }>;
   };
-  embeddedServerStatus: () => Promise<{ running: boolean; url: string; port: number; token?: string }>;
-  embeddedServerStart: () => Promise<{ success: boolean; error?: string }>;
-  embeddedServerStop: () => Promise<{ success: boolean; error?: string }>;
-  embeddedServerRestart: () => Promise<{ success: boolean; error?: string }>;
-  embeddedInstall: {
-    check: () => Promise<{
-      installed: boolean;
-      venvOk: boolean;
-      modelsOk: boolean;
-      mode: 'dev' | 'prod';
-      path: string;
-      hasSetupScript: boolean;
-      pythonAvailable: boolean | null;
-    }>;
-    run: () => Promise<{ ok: boolean; error?: string; cancelled?: boolean }>;
-    cancel: () => Promise<{ ok: boolean; error?: string }>;
-    onOutput: (
-      callback: (payload: { stream: 'stdout' | 'stderr' | 'info' | 'error'; text: string }) => void
-    ) => () => void;
-  };
 }
 
 declare global {

@@ -47,15 +47,18 @@ The large-language-model subsystem that generates the reply for a Turn.
 _Avoid_: LLM service, model, assistant.
 
 **Provider**:
-A concrete, swappable backend behind Listening, Voice, or AI Brain — e.g. `embedded`
-or `speaches` for speech; `anthropic`, `openai`, `gemini`, `groq`, `ollama`, `custom`
-for the AI Brain. Picking a Provider is what a user does in a Settings tab.
+A concrete, swappable backend behind Listening, Voice, or AI Brain — e.g. `wasm`
+or `piper` (the in-app engines) or `speaches` for speech; `anthropic`, `openai`,
+`gemini`, `groq`, `ollama`, `custom` for the AI Brain. Picking a Provider is
+what a user does in a Settings tab.
 _Avoid_: service, backend, engine, vendor.
 
-**Embedded server**:
-The bundled offline speech Provider — a local Piper (TTS) + Whisper (STT) process the
-app spawns and health-checks. Its URL is the live local port, not a stored setting.
-_Avoid_: local server, built-in service.
+**In-app engine**:
+The bundled offline speech Provider — Whisper (STT) run via transformers.js in a
+renderer Web Worker, and Piper (TTS) run by a standalone executable the main
+process spawns. Weights live in userData; nothing listens on a port. Replaced
+the old Python "embedded server" (phase 5 of the sidecar retirement).
+_Avoid_: embedded server, local server, built-in service.
 
 **Speaches**:
 An external/cloud speech Provider (Kokoro TTS + Faster-Whisper STT), reached over HTTP
@@ -77,8 +80,8 @@ _Avoid_: settings object, options.
 ## Example dialogue
 
 > **Dev:** When the user holds the mic during a Turn, who decides which model transcribes it?
-> **Domain expert:** The Listening Provider. If they picked the Embedded server, it uses
-> the local Whisper at the live port and sends no model name. If they picked Speaches, the
+> **Domain expert:** The Listening Provider. If they picked the in-app engine, it uses
+> the bundled Whisper weights in userData and sends no model name. If they picked Speaches, the
 > Resolved config supplies the cloud STT model.
 > **Dev:** And the reply is spoken back by the Voice Provider?
 > **Domain expert:** Right — same Provider split. The AI Brain generates the text, the Voice

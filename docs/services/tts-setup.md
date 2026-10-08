@@ -336,7 +336,7 @@ curl -X POST http://localhost:8000/tts \
 - [ ] Verify audio output device is working
 - [ ] Test with sample text
 
-### Local Voice Synthesis / Built-in (offline) (45 minutes)
+### Self-hosted Speaches (45 minutes)
 - [ ] Install Speaches (Docker, Python, or binary)
 - [ ] Start Speaches service on port 8000 with voice synthesis enabled
 - [ ] Configure Talk Buddy to use localhost:8000 (Voice tab in Settings)

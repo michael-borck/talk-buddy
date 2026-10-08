@@ -322,7 +322,7 @@ curl -X POST http://localhost:8000/stt \
 - [ ] Grant microphone permissions if prompted
 - [ ] Test with sample speech
 
-### Local Speech Recognition / Built-in (offline) (30 minutes)
+### Self-hosted Speaches (30 minutes)
 - [ ] Install Speaches (Docker, Python, or binary)
 - [ ] Start Speaches service on port 8000
 - [ ] Configure Talk Buddy to use localhost:8000 (Listening tab in Settings)

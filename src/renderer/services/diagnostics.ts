@@ -71,17 +71,6 @@ async function micDevices(): Promise<string> {
   return `${mics.length} input device(s): ${labelled.join('; ')}`;
 }
 
-async function embeddedHealth(): Promise<string> {
-  const status = await window.electronAPI.embeddedServerStatus();
-  if (!status.running) return 'not running';
-  const resp = await fetch(`${status.url}/health`, { signal: AbortSignal.timeout(4000) });
-  if (!resp.ok) return `running at ${status.url} but /health returned ${resp.status}`;
-  const data = await resp.json();
-  const stt = data.services?.stt ? 'STT ok' : 'STT down';
-  const tts = data.services?.tts ? 'TTS ok' : 'TTS down';
-  return `running at ${status.url} (${stt}, ${tts})`;
-}
-
 async function reachable(probe: () => Promise<boolean>): Promise<string> {
   const ok = await probe();
   return ok ? 'reachable' : 'not reachable';
@@ -113,18 +102,22 @@ export async function collectDiagnostics(): Promise<DiagnosticsReport> {
   const checks: CheckResult[] = [
     await check('Microphone', async () =>
       `${await micPermission()} — ${await micDevices()}`),
-    await check('Listening (embedded server)', async () => {
-      if (sttCfg.provider !== 'embedded') return 'not selected';
-      return embeddedHealth();
+    await check('Listening (in-app Whisper)', async () => {
+      if (sttCfg.provider !== 'wasm') return 'not selected';
+      const { wasmSttStatus } = await import('./wasmStt');
+      const s = await wasmSttStatus();
+      return s.installed ? 'models installed' : `models not installed (~${(s.totalBytes / 1e6).toFixed(0)}MB download)`;
     }),
     await check('Listening (Speaches)', async () => {
       if (sttCfg.provider !== 'speaches') return 'not selected';
       const { checkSTTConnection } = await import('./speaches');
       return reachable(checkSTTConnection);
     }),
-    await check('Voice (embedded server)', async () => {
-      if (ttsCfg.provider !== 'embedded') return 'not selected';
-      return embeddedHealth();
+    await check('Voice (in-app piper)', async () => {
+      if (ttsCfg.provider !== 'piper') return 'not selected';
+      const { piperStatus } = await import('./piperTts');
+      const s = await piperStatus();
+      return s.installed ? 'engine + voices installed' : `not installed (engine: ${s.piperInstalled ? '✓' : 'missing'}, voices: ${s.voices.male ? 'male ✓' : 'male ✗'}/${s.voices.female ? 'female ✓' : 'female ✗'})`;
     }),
     await check('Voice (Speaches)', async () => {
       if (ttsCfg.provider !== 'speaches') return 'not selected';
@@ -133,20 +126,6 @@ export async function collectDiagnostics(): Promise<DiagnosticsReport> {
     }),
     await check('AI Brain', async () =>
       `provider: ${chatCfg.provider}, model: ${chatCfg.model}, url: ${chatCfg.url || '(hosted)'}`),
-    await check('In-app STT (wasm)', async () => {
-      const { wasmSttStatus } = await import('./wasmStt');
-      const s = await wasmSttStatus();
-      return s.installed
-        ? `models installed at ${s.dir}`
-        : `not installed (~${(s.totalBytes / 1e6).toFixed(0)}MB download)`;
-    }),
-    await check('In-app TTS (piper)', async () => {
-      const { piperStatus } = await import('./piperTts');
-      const s = await piperStatus();
-      return s.installed
-        ? `engine + voices installed at ${s.dir}`
-        : `not installed (engine: ${s.piperInstalled ? '✓' : 'missing'}, voices: ${s.voices.male ? 'male ✓' : 'male ✗'}/${s.voices.female ? 'female ✓' : 'female ✗'})`;
-    }),
     await check('Hands-free VAD runtime', vadRuntime),
   ];
 

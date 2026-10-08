@@ -1,8 +1,11 @@
 // Type definitions for Settings components
 // Commercial-grade TypeScript interfaces for type safety
 
-export type STTProvider = 'embedded' | 'speaches' | 'wasm';
-export type TTSProvider = 'embedded' | 'speaches' | 'piper';
+// 'embedded' is gone (phase 5): the offline built-in IS the in-app engine —
+// wasm Whisper for Listening, piper for Voice. Old stored values migrate in
+// main at startup.
+export type STTProvider = 'wasm' | 'speaches';
+export type TTSProvider = 'piper' | 'speaches';
 export type ChatProvider = 'anthropic' | 'openai' | 'ollama' | 'groq' | 'gemini' | 'custom';
 export type PromptBehavior = 'enhance' | 'override' | 'scenario-only';
 
@@ -29,14 +32,6 @@ export interface ChatSettings {
   model: string;
 }
 
-export interface EmbeddedServerSettings {
-  sttUrl: string;
-  ttsUrl: string;
-  speechSpeed: number;
-  maleVoiceId: string;
-  femaleVoiceId: string;
-}
-
 export interface PromptSettings {
   template: 'natural' | 'educational' | 'concise' | 'business' | 'supportive' | 'custom';
   customPrompt: string;
@@ -49,7 +44,6 @@ export interface AllSettings {
   stt: STTSettings;
   tts: TTSSettings;
   chat: ChatSettings;
-  embedded: EmbeddedServerSettings;
   prompt: PromptSettings;
 }
 
@@ -81,18 +75,6 @@ export interface ModelErrors {
   stt: string;
   tts: string;
   chat: string;
-}
-
-export interface EmbeddedServerStatus {
-  running: boolean;
-  url: string;
-  port: number;
-}
-
-export interface EmbeddedVoices {
-  male: Array<{ id: number; name: string; gender: string }>;
-  female: Array<{ id: number; name: string; gender: string }>;
-  all: Array<{ id: number; name: string; gender: string }>;
 }
 
 // Model information interfaces

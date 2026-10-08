@@ -55,12 +55,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     speak: (params) => ipcRenderer.invoke('speaches:speak', params),
   },
 
-  // Embedded server operations
-  embeddedServerStatus: () => ipcRenderer.invoke('embedded-server:status'),
-  embeddedServerStart: () => ipcRenderer.invoke('embedded-server:start'),
-  embeddedServerStop: () => ipcRenderer.invoke('embedded-server:stop'),
-  embeddedServerRestart: () => ipcRenderer.invoke('embedded-server:restart'),
-
   // In-app (wasm) STT — model download/status; progress events while ensuring.
   wasmStt: {
     status: () => ipcRenderer.invoke('wasm-stt:status'),
@@ -82,20 +76,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
       const listener = (_event, payload) => callback(payload);
       ipcRenderer.on('piper:progress', listener);
       return () => ipcRenderer.removeListener('piper:progress', listener);
-    },
-  },
-
-  // Embedded server setup flow — used by the Settings "Set up now" modal.
-  embeddedInstall: {
-    check: () => ipcRenderer.invoke('embedded-server:check-install'),
-    run: () => ipcRenderer.invoke('embedded-server:install'),
-    cancel: () => ipcRenderer.invoke('embedded-server:install-cancel'),
-    // Subscribe to live stdout/stderr from setup.sh. Returns an
-    // unsubscribe function that also removes the listener.
-    onOutput: (callback) => {
-      const listener = (_event, payload) => callback(payload);
-      ipcRenderer.on('embedded-install:output', listener);
-      return () => ipcRenderer.removeListener('embedded-install:output', listener);
     },
   },
 });

@@ -5,7 +5,7 @@ import { useState, useCallback } from 'react';
 import { ModelList, ChatProvider, LoadingState, ModelErrors } from '../types/settings';
 
 interface FetchModelsParams {
-  provider: ChatProvider | 'embedded' | 'speaches';
+  provider: ChatProvider | 'wasm' | 'piper' | 'speaches';
   url: string;
   apiKey?: string;
   serviceType: 'stt' | 'tts' | 'chat';
@@ -76,9 +76,10 @@ export function useModelFetcher() {
           }
           break;
 
-        case 'embedded':
-          endpoint = `${url}/v1/models`;
-          break;
+        case 'wasm':
+        case 'piper':
+          // In-app engines have no model catalogue — the caller handles them.
+          return [];
 
         case 'speaches':
           endpoint = `${url}/models`;
@@ -134,7 +135,6 @@ export function useModelFetcher() {
           modelList = responseData.models?.map((m: any) => m.name || m.model) || [];
           break;
 
-        case 'embedded':
         case 'speaches':
           modelList = responseData.data?.map((m: any) => m.id || m.name) || [];
           break;
