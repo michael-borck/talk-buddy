@@ -5,7 +5,7 @@ import {
   listScenarios,
   deleteScenario,
   restoreDefaultScenarios,
-  getScenarioPacks,
+  getAllScenarioPacks,
   startStandaloneSession,
   archiveScenario,
   exportScenario,
@@ -68,17 +68,19 @@ export function ScenariosPage() {
   const loadScenarios = async () => {
     setLoading(true);
     try {
-      const scenarioList = await listScenarios();
-      
-      // Load pack information for each scenario
-      const scenariosWithPacks = await Promise.all(
-        scenarioList.map(async (scenario) => {
-          const packs = await getScenarioPacks(scenario.id);
-          return { ...scenario, packs };
-        })
+      // Two round trips total: the scenarios, and every pack_scenarios row
+      // (was one IPC call per scenario — 21+ on a default install).
+      const [scenarioList, packsByScenario] = await Promise.all([
+        listScenarios(),
+        getAllScenarioPacks(),
+      ]);
+
+      setScenarios(
+        scenarioList.map((scenario) => ({
+          ...scenario,
+          packs: packsByScenario.get(scenario.id) ?? [],
+        }))
       );
-      
-      setScenarios(scenariosWithPacks);
     } catch (error) {
       console.error('Failed to load scenarios:', error);
     } finally {

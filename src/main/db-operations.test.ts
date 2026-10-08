@@ -92,4 +92,20 @@ describe('runOperation', () => {
     expect(calls[0].sql).not.toContain(malicious);
     expect(calls[0].values).toEqual([malicious, 'now', 'pack_1']);
   });
+
+  it('packScenarios:listAll reads every link in one unparameterised SELECT', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'packScenarios:listAll', {});
+    expect(calls).toHaveLength(1);
+    expect(calls[0].sql).toContain('FROM pack_scenarios');
+    expect(calls[0].sql).toContain('scenario_id');
+    expect(calls[0].values).toEqual([]); // no binds needed — no user input
+  });
+
+  it('packScenarios:listPacks still scopes to one scenario', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'packScenarios:listPacks', { scenarioId: 'scn_1' });
+    expect(calls[0].sql).toContain('WHERE ps.scenario_id = ?');
+    expect(calls[0].values).toEqual(['scn_1']);
+  });
 });

@@ -22,15 +22,15 @@
 
 ---
 
-## Phase 1 — Correctness batch (in progress)
+## Phase 1 — Correctness batch (done)
 
-- [ ] **Catch-all route.** `App.tsx` has no `path="*"`; any unknown hash renders a permanently blank window with no way back. Add `<Route path="*" element={<Navigate to="/" replace />} />`.
-- [ ] **Error boundary.** None exists anywhere. A render crash = blank window. Add `components/ErrorBoundary.tsx` (class component, Studio Calm styled) around `AppContent`, copy that reassures about saved sessions, plus a Reload action.
-- [ ] **AI Brain guard in ConversationPage.** Check `resolveChat(prefs).url` before creating a session; render `OllamaSetupCard` (already exists, already used on Home) instead of letting the student practise into a failure.
-- [ ] **`alert()` → toast sweep** (43 sites, 8 files: SessionHistoryPage, ScenariosPage, ArchivePage, PracticePacksPage, HomePage, PackDetailPage, LocalScenariosPage, ScenarioFormPage). Failures → `toast.error`, import/save successes → `toast.success`, required-fields → inline error under the field.
-- [ ] **ScenariosPage N+1.** Add a `packScenarios:listAll` DB op returning every `pack_scenarios` row; build the scenario→packs map client-side from one round trip.
+- [x] **Catch-all route.** `App.tsx` has no `path="*"`; any unknown hash renders a permanently blank window with no way back. Add `<Route path="*" element={<Navigate to="/" replace />} />`.
+- [x] **Error boundary.** None exists anywhere. A render crash = blank window. Add `components/ErrorBoundary.tsx` (class component, Studio Calm styled) around `AppContent`, copy that reassures about saved sessions, plus a Reload action.
+- [x] **AI Brain guard in ConversationPage.** Check `resolveChat(prefs).url` before creating a session; render `OllamaSetupCard` (already exists, already used on Home) instead of letting the student practise into a failure.
+- [x] **`alert()` → toast sweep** (43 sites, 8 files: SessionHistoryPage, ScenariosPage, ArchivePage, PracticePacksPage, HomePage, PackDetailPage, LocalScenariosPage, ScenarioFormPage). Failures → `toast.error`, import/save successes → `toast.success`, required-fields → inline error under the field.
+- [x] **ScenariosPage N+1.** Add a `packScenarios:listAll` DB op returning every `pack_scenarios` row; build the scenario→packs map client-side from one round trip.
 
-**Verify:** `npm run test:run`, `npx tsc --noEmit`, `npx vite build`, then a manual pass: delete a session (toast, not dialog), deep-link to a bogus hash (lands on Today), start a conversation with no AI Brain configured (setup card, not a failure mid-answer).
+**Verify:** `npm run test:run` (110 passing), `npx tsc --noEmit`, `npx vite build` — all green. Still worth a manual pass in the running app: delete a session (toast, not dialog), deep-link a bogus hash (lands on Today), start a conversation with no AI Brain configured (setup card, not a failure mid-answer), and confirm the Scenarios page still shows pack chips per card.
 
 ---
 
@@ -73,3 +73,14 @@
 ## Already solid — protect these
 
 The turn architecture (`turnEngine` / `handsFree` / the Provider seam) is clean and covered by 105 tests; `prefers-reduced-motion` is handled globally; the design system documents its own rationale well enough that most decisions are self-justifying. Phase 3/4 work must not erode that.
+
+---
+
+## Log
+
+- **b720df2** catch-all route + ErrorBoundary (+3 tests for the boundary)
+- **581b58a** AI Brain guard in ConversationPage
+- **21de45b** `alert()` → toast sweep across 8 pages (43 sites)
+- **<this step>** ScenariosPage N+1 → one `packScenarios:listAll` query (+2 DB tests)
+
+The two `ConversationPage.tsx(6x)` `t`-before-declaration type errors are a pre-existing baseline, unrelated to this plan — `npm run build` is vite-only and never ran `tsc`. Worth a separate five-minute fix.

@@ -342,6 +342,15 @@ const operations = {
       .all(scenarioId);
   },
 
+  // Every pack_scenarios row in one round trip — for pages that need the
+  // scenario→pack map for the whole library at once (the per-scenario
+  // variant above was an N+1 over IPC on the Scenarios page).
+  'packScenarios:listAll': (db) => {
+    return db
+      .prepare('SELECT pack_id, scenario_id, order_index FROM pack_scenarios')
+      .all();
+  },
+
   'packScenarios:updateOrder': (db, { packId, scenarioId, orderIndex }) => {
     return db
       .prepare('UPDATE pack_scenarios SET order_index = ? WHERE pack_id = ? AND scenario_id = ?')

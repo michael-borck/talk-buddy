@@ -759,16 +759,49 @@ export async function getPackScenarios(packId: string): Promise<Scenario[]> {
 
 export async function getScenarioPacks(scenarioId: string): Promise<Pack[]> {
   const result = await window.electronAPI.database.op('packScenarios:listPacks', { scenarioId });
-  
+
   if (!result.success || !result.data) {
     return [];
   }
-  
+
   return result.data.map((pack: any) => ({
     ...pack,
     orderIndex: pack.order_index
   }));
 }
+
+/**
+ * Pack membership for every scenario in two round trips instead of one per
+ * scenario. Returns a scenarioId → Pack[] map, each pack ordered by its
+ * position within that scenario's pack.
+ */
+export async function getAllScenarioPacks(): Promise<Map<string, Pack[]>> {
+  const [links, packs] = await Promise.all([
+    window.electronAPI.database.op('packScenarios:listAll', {}),
+    listPacks(),
+  ]);
+
+  const byId = new Map(packs.map((p) => [p.id, p]));
+  const grouped = new Map<string, Array<{ pack_id: string; order_index: number }>>();
+  for (const row of (links.success && links.data) || []) {
+    const list = grouped.get(row.scenario_id) ?? [];
+    list.push({ pack_id: row.pack_id, order_index: row.order_index ?? 0 });
+    grouped.set(row.scenario_id, list);
+  }
+
+  const result = new Map<string, Pack[]>();
+  for (const [scenarioId, entries] of grouped) {
+    result.set(
+      scenarioId,
+      entries
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((e) => byId.get(e.pack_id))
+        .filter((p): p is Pack => Boolean(p))
+    );
+  }
+  return result;
+}
+
 
 export async function updatePackScenarioOrder(packId: string, scenarioId: string, newOrderIndex: number): Promise<void> {
   const result = await window.electronAPI.database.op('packScenarios:updateOrder', {
