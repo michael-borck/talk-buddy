@@ -47,6 +47,16 @@ Asked whether `sttUrl`/`ttsUrl` were really used — they are, and always were; 
 
 ---
 
+## Found by the visual check (not by the audit)
+
+- [ ] **Dark mode is broken on every Studio Calm page.** `tailwind.config.js` hardcodes the `ink` scale as hex (`DEFAULT: '#252420'`) while `paper` resolves from `html[data-theme='dark']`. So the background flips to `#1B1A17` and the text stays light-theme ink — measured `rgb(37,36,32)` on `rgb(27,26,23)`, about 1.1:1. Every heading on Home, Conversation, Settings and Scenarios is effectively invisible. 151 `text-ink` usages across 11 files, including the Conversation itself.
+
+  The fix is the pattern `accent` already uses: define the ink scale as a function of `opacityValue` over RGB channel variables (`--ink-rgb` etc.), added to both `:root` and the dark block. Channels rather than plain `var(--ink)` because `border-ink/10` is used in 11 places and a plain var cannot carry an alpha modifier. Audit the `bg-white` occurrences in ScenarioFormPage (5), ScenariosPage (2) and ChatTab (1) first — a light card plus newly-light ink would invert the problem.
+
+- [ ] **Legacy pages ignore the theme entirely.** Archive, Session History, Settings' older tabs and the rest still use literal `bg-white` / `text-gray-800`, so they stay light whatever the theme is. Not a regression — they have simply not been migrated. Fixing the ink scale makes this asymmetry visible rather than hidden.
+
+---
+
 ## Phase 3 — Layout
 
 - [ ] **Unify column widths.** Today/Explore/Journal/Settings grow toward ~880–960px on wide windows, matching the Conversation's existing `lg` treatment. Keep 640px below `lg`. One width rule everywhere — no layout jump when leaving a conversation.
