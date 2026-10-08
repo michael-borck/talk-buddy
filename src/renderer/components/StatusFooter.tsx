@@ -2,13 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getAllPreferences } from '../services/sqlite';
 import * as speechProvider from '../services/speechProvider';
 import { CHAT_PROVIDER_URLS } from '../services/chat';
+import type { ChatProvider } from '../types/settings';
 
 interface ServiceStatus {
   status: 'connected' | 'error' | 'checking' | 'unknown';
   message?: string;
 }
 
-type ChatProvider = 'ollama' | 'anthropic' | 'openai' | 'groq' | 'gemini' | 'custom';
 
 // The chat service reuses the legacy `ollamaUrl` / `ollamaApiKey` pref
 // names for ALL providers — see src/renderer/services/chat.ts where
