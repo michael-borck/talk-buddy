@@ -38,8 +38,12 @@
 
 - [x] **Split `SettingsPage.tsx` (1,865 lines)** into `settings/SttTab.tsx`, `settings/TtsTab.tsx`, `settings/ChatTab.tsx`, `settings/StyleTab.tsx`, `settings/DataTab.tsx` sharing one preferences source. Diagnostics already had its own `DiagnosticsPanel`. The page is now 730 lines of state, handlers, and layout; the tab JSX moved verbatim. The file being 1,865 lines is why the phase-5 Provider edits were surgical.
 - [x] **Extract the shared settings state** (`settings/SettingsContext.tsx`) so tabs read one typed source. `SettingsPreferences` also pins the shape the `useState` literal never declared — `sttUrl` and `ttsUrl` were always in state but no tab ever read or wrote them, since both tabs fall back to `speachesUrl`. Left in place as the likely intent; flagged here rather than silently deleted.
-- [ ] **`chat.ts` (1,082 lines)** — review for a per-provider split behind the existing interface. Only if it stays under pressure after the Settings split.
-- [ ] **Page scaffolding** — the header/loading/empty-state block is re-implemented per page; extract the common shape.
+- [x] **`chat.ts` (1,082 lines)** — split per Provider dialect under `services/chat/` (`providers/gemini`, `providers/openaiCompatible`, `providers/ollama`, plus `prompts`, `secrets`, `preferences`, `transport`, `types`). `chat.ts` stays the entry point with an unchanged exported surface. The dialects genuinely differ, so this is a seam, not a filing exercise: Gemini authenticates by `?key=` and uses `systemInstruction` with `model` roles; Ollama threads a numeric `context` through a Turn. Also collapsed three separate copies of the `ChatProvider` union onto the canonical one in `types/settings.ts`.
+- [x] **Page scaffolding** — `components/layout/PageShell.tsx` now owns `PageHeader`, `LoadingState` and `EmptyState`. Eight pages had a byte-identical loading block, six the same empty-state card, four the same title block; they had already drifted. Page-specific markup (filters, lists, the buttons that offer a way out of an empty state) passes through children.
+
+### Configuration surface (added after the audit question)
+
+Asked whether `sttUrl`/`ttsUrl` were really used — they are, and always were; every control writes them. The confusion was `speachesUrl`, a legacy third key whose `key || speachesUrl || default` precedence had been re-typed in five files. Now migrated away and deleted, and `speaches.ts` takes a resolved config instead of re-reading preferences behind `speechProvider`'s back. Two dead hooks (`useSettings`, `useModelFetcher`, zero importers) removed. Configuring the stack is now: pick a Provider, set its URL and key.
 
 ---
 
