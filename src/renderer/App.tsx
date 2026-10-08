@@ -18,6 +18,7 @@ import { WelcomePage } from './pages/WelcomePage';
 import { getPreference } from './services/sqlite';
 import { StatusFooter } from './components/StatusFooter';
 import { TabBar } from './components/TabBar';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 
 // Apply the user's theme preference and respond to system colour-scheme
@@ -137,26 +138,31 @@ function AppContent() {
 
   return (
     <>
-      <main className="flex-1 overflow-auto relative z-10">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/scenarios" element={<ScenariosPage />} />
-          <Route path="/scenarios/new" element={<ScenarioFormPage />} />
-          <Route path="/scenarios/edit/:scenarioId" element={<ScenarioFormPage />} />
-          <Route path="/scenarios/local" element={<Navigate to="/scenarios" replace />} />
-          <Route path="/packs" element={<PracticePacksPage />} />
-          <Route path="/packs/:packId" element={<PackDetailPage />} />
-          <Route path="/sessions" element={<SessionHistoryPage />} />
-          <Route path="/archive" element={<ArchivePage />} />
-          <Route path="/conversation/:scenarioId" element={<ConversationPage />} />
-          <Route path="/analysis/:sessionId" element={<ConversationAnalysisPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/license" element={<LicensePage />} />
-          <Route path="/help" element={<HelpPage />} />
-          <Route path="/documentation" element={<DocumentationPage />} />
-        </Routes>
-      </main>
+      <ErrorBoundary>
+        <main className="flex-1 overflow-auto relative z-10">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/scenarios" element={<ScenariosPage />} />
+            <Route path="/scenarios/new" element={<ScenarioFormPage />} />
+            <Route path="/scenarios/edit/:scenarioId" element={<ScenarioFormPage />} />
+            <Route path="/scenarios/local" element={<Navigate to="/scenarios" replace />} />
+            <Route path="/packs" element={<PracticePacksPage />} />
+            <Route path="/packs/:packId" element={<PackDetailPage />} />
+            <Route path="/sessions" element={<SessionHistoryPage />} />
+            <Route path="/archive" element={<ArchivePage />} />
+            <Route path="/conversation/:scenarioId" element={<ConversationPage />} />
+            <Route path="/analysis/:sessionId" element={<ConversationAnalysisPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/license" element={<LicensePage />} />
+            <Route path="/help" element={<HelpPage />} />
+            <Route path="/documentation" element={<DocumentationPage />} />
+            {/* Anything else (typo, stale bookmark, bad id) lands on Today
+                rather than on a blank window with no way back. */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </ErrorBoundary>
       {inSettings && <StatusFooter />}
       {!inConversation && <TabBar />}
     </>
