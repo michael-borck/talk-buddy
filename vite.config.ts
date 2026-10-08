@@ -22,6 +22,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src/renderer'),
+      // kokoro-js's dist imports node builtins it only uses in Node (voice
+      // loading from disk). The stub forces its browser fetch path.
+      path: path.resolve(__dirname, './src/bench/stubs/empty-module.ts'),
+      'fs/promises': path.resolve(__dirname, './src/bench/stubs/empty-module.ts'),
     },
     // onnxruntime-web: prefer the "extern wasm" build, which never references
     // the 14MB .wasm from JS — the runtime fetches it from public/ort/ via
@@ -36,6 +40,17 @@ export default defineConfig({
   server: {
     port: 3307,
     strictPort: true,
+    // BENCH_COOP=1 opts the dev server into cross-origin isolation so the
+    // speech benchmark can measure multithreaded WASM inference (ORT needs
+    // SharedArrayBuffer). Off by default — regular dev doesn't need it.
+    ...(process.env.BENCH_COOP
+      ? {
+          headers: {
+            'Cross-Origin-Opener-Policy': 'same-origin',
+            'Cross-Origin-Embedder-Policy': 'require-corp',
+          },
+        }
+      : {}),
   },
   optimizeDeps: {
     force: true, // Force rebuild dependencies

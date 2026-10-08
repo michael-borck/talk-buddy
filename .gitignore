@@ -69,3 +69,6 @@ dist-server/
 
 # Vendored onnxruntime-web binaries (copied from node_modules by scripts/copy-ort.mjs)
 public/ort/
+
+# Benchmark model mirror (scripts/fetch-bench-models.mjs) — dev-machine cache
+public/hf-proxy/
