@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { listScenarios, deleteScenario } from '../services/sqlite';
 import { Scenario } from '../types';
 import { Plus, Edit, Trash2, Play, Clock } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export function LocalScenariosPage() {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ export function LocalScenariosPage() {
       await loadScenarios();
     } catch (error) {
       console.error('Failed to delete scenario:', error);
-      alert('Failed to delete scenario. Please try again.');
+      toast.error('Failed to delete scenario. Please try again.');
     } finally {
       setDeletingId(null);
     }

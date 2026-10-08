@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { 
   listArchivedScenarios, 
   listArchivedPacks,
@@ -58,7 +59,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to unarchive scenario:', error);
-      alert('Failed to unarchive scenario. Please try again.');
+      toast.error('Failed to unarchive scenario. Please try again.');
     } finally {
       setActionLoading(null);
     }
@@ -71,7 +72,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to unarchive pack:', error);
-      alert('Failed to unarchive pack. Please try again.');
+      toast.error('Failed to unarchive pack. Please try again.');
     } finally {
       setActionLoading(null);
     }
@@ -88,7 +89,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to delete scenario:', error);
-      alert('Failed to delete scenario. Please try again.');
+      toast.error('Failed to delete scenario. Please try again.');
     } finally {
       setActionLoading(null);
     }
@@ -105,7 +106,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to delete pack:', error);
-      alert('Failed to delete pack. Please try again.');
+      toast.error('Failed to delete pack. Please try again.');
     } finally {
       setActionLoading(null);
     }
@@ -131,7 +132,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to bulk unarchive:', error);
-      alert('Failed to unarchive items. Please try again.');
+      toast.error('Failed to unarchive items. Please try again.');
     } finally {
       setActionLoading(null);
     }

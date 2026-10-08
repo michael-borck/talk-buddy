@@ -9,6 +9,7 @@ import { loadPreferences, resolveChat } from '../services/config';
 import { Scenario, Session } from '../types';
 import { OllamaSetupCard } from '../components/OllamaSetupCard';
 import { Flame, NotebookPen, Sun, TrendingUp } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const TUTORIAL_SCENARIO_ID = 'seed_tutorial_1';
 
@@ -157,7 +158,7 @@ export function HomePage() {
       navigate(`/conversation/${suggested.id}?sessionId=${session.id}`);
     } catch (error) {
       console.error('Failed to start session:', error);
-      alert('Failed to start session. Please try again.');
+      toast.error('Failed to start session. Please try again.');
     } finally {
       setStarting(false);
     }

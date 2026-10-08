@@ -11,6 +11,7 @@ import {
 } from '../services/sqlite';
 import { Pack, ScenarioPersona } from '../types';
 import { Save, X, Plus, Package, UserPlus, Trash2, Users } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 // New persona rows get a locally-unique id; persisted on save with the scenario.
 const newPersona = (): ScenarioPersona => ({
@@ -27,6 +28,7 @@ export function ScenarioFormPage() {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [availablePacks, setAvailablePacks] = useState<Pack[]>([]);
   const [selectedPacks, setSelectedPacks] = useState<string[]>([]);
@@ -91,13 +93,13 @@ export function ScenarioFormPage() {
         setSelectedPacks(packIds);
         setOriginalPacks(packIds);
       } else {
-        alert('Scenario not found');
-        navigate('/scenarios/local');
+        toast.error('Scenario not found');
+        navigate('/scenarios/local', { replace: true });
       }
     } catch (error) {
       console.error('Failed to load scenario:', error);
-      alert('Failed to load scenario');
-      navigate('/scenarios/local');
+      toast.error('Failed to load scenario');
+      navigate('/scenarios/local', { replace: true });
     } finally {
       setLoading(false);
     }
@@ -107,9 +109,13 @@ export function ScenarioFormPage() {
     e.preventDefault();
     
     if (!formData.name.trim() || !formData.description.trim()) {
-      alert('Please fill in all required fields');
+      const missing = [!formData.name.trim() && 'name', !formData.description.trim() && 'description']
+        .filter(Boolean)
+        .join(' and ');
+      setValidationError(`Add a ${missing} before saving.`);
       return;
     }
+    setValidationError(null);
 
     setSaving(true);
     try {
@@ -131,7 +137,7 @@ export function ScenarioFormPage() {
       navigate('/scenarios');
     } catch (error) {
       console.error('Failed to save scenario:', error);
-      alert('Failed to save scenario. Please try again.');
+      toast.error('Failed to save scenario. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -215,6 +221,14 @@ export function ScenarioFormPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {validationError && (
+          <p
+            role="alert"
+            className="px-4 py-3 border-l-2 border-accent bg-paper-warm text-ink text-sm"
+          >
+            {validationError}
+          </p>
+        )}
         {/* Basic Information */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h2 className="text-xl font-semibold text-gray-800">Basic Information</h2>

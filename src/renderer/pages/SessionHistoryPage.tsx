@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { 
   listSessions, 
   getScenario, 
@@ -101,7 +102,7 @@ export function SessionHistoryPage() {
       await loadData();
     } catch (error) {
       console.error('Failed to delete session:', error);
-      alert('Failed to delete session. Please try again.');
+      toast.error('Failed to delete session. Please try again.');
     } finally {
       setDeletingId(null);
     }
@@ -120,7 +121,7 @@ export function SessionHistoryPage() {
       await loadData();
     } catch (error) {
       console.error('Failed to delete session pack:', error);
-      alert('Failed to delete session pack. Please try again.');
+      toast.error('Failed to delete session pack. Please try again.');
     } finally {
       setDeletingId(null);
     }
@@ -140,7 +141,7 @@ export function SessionHistoryPage() {
       navigate(`/conversation/${session.scenario}?sessionId=${session.id}`);
     } catch (error) {
       console.error('Failed to start/resume session:', error);
-      alert('Failed to start session. Please try again.');
+      toast.error('Failed to start session. Please try again.');
     }
   };
 
@@ -172,7 +173,7 @@ export function SessionHistoryPage() {
       await loadData();
     } catch (error) {
       console.error('Failed to end session:', error);
-      alert('Failed to end session. Please try again.');
+      toast.error('Failed to end session. Please try again.');
     }
   };
 

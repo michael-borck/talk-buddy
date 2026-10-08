@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { 
   getPack,
   getPackScenarios,
@@ -73,7 +74,7 @@ export function PackDetailPage() {
       await loadPackData();
     } catch (error) {
       console.error('Failed to remove scenario:', error);
-      alert('Failed to remove scenario. Please try again.');
+      toast.error('Failed to remove scenario. Please try again.');
     } finally {
       setRemovingId(null);
     }
@@ -90,7 +91,7 @@ export function PackDetailPage() {
       await loadPackData();
     } catch (error) {
       console.error('Failed to add scenarios:', error);
-      alert('Failed to add scenarios. Please try again.');
+      toast.error('Failed to add scenarios. Please try again.');
     }
   };
 
@@ -102,7 +103,7 @@ export function PackDetailPage() {
       navigate(`/conversation/${scenarioId}?sessionId=${session.id}`);
     } catch (error) {
       console.error('Failed to start session:', error);
-      alert('Failed to start session. Please try again.');
+      toast.error('Failed to start session. Please try again.');
     }
   };
 

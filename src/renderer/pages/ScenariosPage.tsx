@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
   listScenarios,
   deleteScenario,
@@ -134,7 +135,7 @@ export function ScenariosPage() {
       await loadScenarios();
     } catch (error) {
       console.error('Failed to delete scenario:', error);
-      alert('Failed to delete scenario. Please try again.');
+      toast.error('Failed to delete scenario. Please try again.');
     } finally {
       setDeletingId(null);
     }
@@ -149,7 +150,7 @@ export function ScenariosPage() {
       await loadScenarios();
     } catch (error) {
       console.error('Failed to archive scenario:', error);
-      alert('Failed to archive scenario. Please try again.');
+      toast.error('Failed to archive scenario. Please try again.');
     } finally {
       setDeletingId(null);
     }
@@ -160,14 +161,14 @@ export function ScenariosPage() {
     try {
       const result = await restoreDefaultScenarios();
       if (result.success) {
-        alert(`Restored ${result.restoredCount} default scenarios.`);
+        toast.success(`Restored ${result.restoredCount} default scenarios.`);
         await loadScenarios();
       } else {
-        alert('Failed to restore default scenarios.');
+        toast.error('Failed to restore default scenarios.');
       }
     } catch (error) {
       console.error('Failed to restore scenarios:', error);
-      alert('Failed to restore default scenarios. Please try again.');
+      toast.error('Failed to restore default scenarios. Please try again.');
     } finally {
       setRestoring(false);
     }
@@ -184,7 +185,7 @@ export function ScenariosPage() {
       navigate(`/conversation/${scenarioId}?sessionId=${session.id}`);
     } catch (error) {
       console.error('Failed to start session:', error);
-      alert('Failed to start session. Please try again.');
+      toast.error('Failed to start session. Please try again.');
     }
   };
 
@@ -194,7 +195,7 @@ export function ScenariosPage() {
       await exportScenario(scenarioId);
     } catch (error) {
       console.error('Failed to export scenario:', error);
-      alert('Failed to export scenario. Please try again.');
+      toast.error('Failed to export scenario. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -209,7 +210,7 @@ export function ScenariosPage() {
       setSelectedScenarios([]);
     } catch (error) {
       console.error('Failed to export scenarios:', error);
-      alert('Failed to export scenarios. Please try again.');
+      toast.error('Failed to export scenarios. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -238,20 +239,20 @@ export function ScenariosPage() {
           const result = await importFromFile(content);
           
           if (result.success) {
-            alert(result.message);
+            toast.success(result.message);
             await loadScenarios();
           } else {
-            alert(`Import failed: ${result.message}`);
+            toast.error(`Import failed: ${result.message}`);
           }
         } catch (error) {
           console.error('Import error:', error);
-          alert('Failed to import file. Please check the file format.');
+          toast.error('Failed to import file. Please check the file format.');
         }
       };
       input.click();
     } catch (error) {
       console.error('Failed to open import dialog:', error);
-      alert('Failed to open import dialog.');
+      toast.error('Failed to open import dialog.');
     }
   };
 
