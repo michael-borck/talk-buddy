@@ -12,12 +12,22 @@
   /* Paper surfaces */
   --paper:              #F4F1EA;
   --paper-warm:         #FBF8F1;
+  --paper-rgb:          244 241 234;
+  --paper-warm-rgb:     251 248 241;
 
   /* Text */
   --ink:                #252420;
   --ink-soft:           #3B3830;
   --ink-muted:          #5C564C;
   --ink-quiet:          #8A8377;
+
+  /* Channel form of the text and status colours. Tailwind's ink and error
+     scales resolve from these, so `text-ink` follows the theme and
+     `border-ink/10` still carries an alpha — which a plain var() cannot. */
+  --ink-rgb:            37 36 32;
+  --ink-soft-rgb:       59 56 48;
+  --ink-muted-rgb:      92 86 76;
+  --ink-quiet-rgb:      138 131 119;
 
   /* Strokes */
   --hairline:           rgba(37, 36, 32, 0.10);
@@ -26,6 +36,10 @@
 
   /* Status */
   --error:              #A8442F;
+  --error-rgb:          168 68 47;
+  /* Darkened from Tailwind's green-600, which measured 2.92:1 as text on
+     paper; green-700 still only reached 4.45:1, so this is green-800. */
+  --success:            #166534;
 
   /* Accent — Talk Buddy default (sage / eucalyptus).
      Override via html[data-app='study'] or html[data-app='career']. */
@@ -61,14 +75,22 @@ html[data-app='career'] {
 html[data-theme='dark'] {
   --paper:            #1B1A17;
   --paper-warm:       #24231F;
+  --paper-rgb:        27 26 23;
+  --paper-warm-rgb:   36 35 31;
   --ink:              #F1EEE6;
   --ink-soft:         #DAD6CC;
   --ink-muted:        #9E9A90;
   --ink-quiet:        #6F6C63;
+  --ink-rgb:          241 238 230;
+  --ink-soft-rgb:     218 214 204;
+  --ink-muted-rgb:    158 154 144;
+  --ink-quiet-rgb:    111 108 99;
   --hairline:         rgba(241, 238, 230, 0.10);
   --hairline-strong:  rgba(241, 238, 230, 0.20);
   --hairline-contrast: rgba(241, 238, 230, 0.40);
   --error:            #D66A54;
+  --error-rgb:        214 106 84;
+  --success:          #6EE7A8;
   --accent:           #6FA593;
   --accent-deep:      #8BBFAD;
   --accent-soft:      rgba(111, 165, 147, 0.12);
@@ -84,6 +106,67 @@ html[data-theme='dark'][data-app='career'] {
   --accent-soft: rgba(208, 137, 99, 0.12);
 }
 
+/* ---- Dark mode: legacy grey ramp ----
+   Pages that predate Studio Calm still use literal Tailwind greys, which stay
+   light in dark mode: measured at 1.19:1 for a gray-800 heading on the dark
+   page background. Remapping the ramp here makes those pages legible now
+   rather than after they are migrated.
+
+   Specificity is (0,2,1) against Tailwind's (0,1,0), so these win. The cost is
+   that a state like `hover:text-gray-900` is overridden in dark mode and stops
+   responding — acceptable while the class is on its way out.
+
+   Delete this block as each page moves to the ink/paper/accent tokens. */
+html[data-theme='dark'] .text-gray-900,
+html[data-theme='dark'] .text-gray-800 { color: var(--ink); }
+html[data-theme='dark'] .text-gray-700 { color: var(--ink-soft); }
+html[data-theme='dark'] .text-gray-600,
+html[data-theme='dark'] .text-gray-500 { color: var(--ink-muted); }
+html[data-theme='dark'] .text-gray-400 { color: var(--ink-quiet); }
+
+/* Cards and page fills. `bg-white` is the big one: unmigrated pages paint
+   their cards with it, and a dark surface is the precondition for dark text
+   landing on them. */
+html[data-theme='dark'] .bg-white,
+html[data-theme='dark'] .bg-gray-100 { background-color: var(--paper-warm); }
+html[data-theme='dark'] .bg-gray-50 { background-color: var(--paper); }
+/* Dividers and skeletons: a subtle lift off the surface, not a grey fill. */
+html[data-theme='dark'] .bg-gray-200 { background-color: rgb(var(--ink-rgb) / 0.08); }
+
+html[data-theme='dark'] .border-gray-100,
+html[data-theme='dark'] .border-gray-200,
+html[data-theme='dark'] .border-gray-300 { border-color: var(--hairline-strong); }
+
+/* Legacy blue text. The ramp is remapped to the ink scale in the Tailwind
+   config, but 600–900 are fixed dark because they sit under hardcoded
+   text-white; flipping them here as text only keeps a dark button from
+   acquiring white-on-white text. */
+html[data-theme='dark'] .text-blue-900,
+html[data-theme='dark'] .text-blue-800,
+html[data-theme='dark'] .text-blue-700,
+html[data-theme='dark'] .text-blue-600 { color: var(--ink); }
+html[data-theme='dark'] .text-blue-500 { color: var(--ink-soft); }
+html[data-theme='dark'] .text-blue-400,
+html[data-theme='dark'] .text-blue-300 { color: var(--ink-muted); }
+html[data-theme='dark'] .border-blue-600,
+html[data-theme='dark'] .border-blue-500 { border-color: var(--ink-soft); }
+html[data-theme='dark'] .bg-blue-50,
+html[data-theme='dark'] .bg-blue-100 { background-color: var(--paper-warm); }
+
+/* Success green as text and as a border. Backgrounds stay put: they are dark
+   fills under white text and read fine in both themes. */
+html[data-theme='dark'] .text-green-800,
+html[data-theme='dark'] .text-green-700,
+html[data-theme='dark'] .text-green-600,
+html[data-theme='dark'] .text-green-500 { color: var(--success); }
+html[data-theme='dark'] .border-green-200 { border-color: var(--hairline-strong); }
+
+/* Legacy green as text, in both themes. Backgrounds are left alone — they are
+   dark fills under white text. */
+:root .text-green-800,
+:root .text-green-700,
+:root .text-green-600 { color: var(--success); }
+
 /* --------------------------------------------------------------------------
    Base
    -------------------------------------------------------------------------- */
@@ -96,6 +179,21 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* Form controls have no Tailwind background utility on most pages, so they were
+   inheriting the browser's white default — which put themed light text on a
+   white field once ink followed the theme. A `input` selector is (0,0,1), so an
+   explicit utility like `bg-accent` still wins where a page asks for one. */
+input,
+select,
+textarea {
+  background-color: var(--paper-warm);
+  color: var(--ink);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-quiet);
 }
 
 /* Paper grain overlay — light mode only, configurable */

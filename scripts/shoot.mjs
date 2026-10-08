@@ -127,17 +127,29 @@ async function main() {
       await cdp.send('Page.navigate', { url: BASE + route });
       await sleep(1800);
 
-      // Applied after load: the app sets data-theme from its own preference,
-      // and navigation wipes anything injected beforehand.
-      await cdp.send('Runtime.evaluate', {
-        expression: `
-          document.documentElement.setAttribute('data-theme', '${theme}');
-          const s = document.createElement('style');
-          s.textContent = ${JSON.stringify(FREEZE_CSS)};
-          document.head.appendChild(s);
-        `,
-      });
-      await sleep(600);
+      // Applied after load: the app resolves its own theme preference in an
+      // async effect and will overwrite this, so re-assert until it sticks and
+      // confirm before capturing. Without the check, a "light" run silently
+      // photographs a dark page.
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await cdp.send('Runtime.evaluate', {
+          expression: `
+            document.documentElement.setAttribute('data-theme', '${theme}');
+            if (!document.getElementById('__freeze')) {
+              const s = document.createElement('style');
+              s.id = '__freeze';
+              s.textContent = ${JSON.stringify(FREEZE_CSS)};
+              document.head.appendChild(s);
+            }
+          `,
+        });
+        await sleep(400);
+        const applied = await cdp.send('Runtime.evaluate', {
+          expression: "document.documentElement.getAttribute('data-theme')",
+          returnByValue: true,
+        });
+        if (applied.result?.value === theme) break;
+      }
 
       const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
       writeFileSync(`${OUT}/${theme}-${name}.png`, Buffer.from(data, 'base64'));

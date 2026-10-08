@@ -49,11 +49,19 @@ Asked whether `sttUrl`/`ttsUrl` were really used — they are, and always were; 
 
 ## Found by the visual check (not by the audit)
 
-- [ ] **Dark mode is broken on every Studio Calm page.** `tailwind.config.js` hardcodes the `ink` scale as hex (`DEFAULT: '#252420'`) while `paper` resolves from `html[data-theme='dark']`. So the background flips to `#1B1A17` and the text stays light-theme ink — measured `rgb(37,36,32)` on `rgb(27,26,23)`, about 1.1:1. Every heading on Home, Conversation, Settings and Scenarios is effectively invisible. 151 `text-ink` usages across 11 files, including the Conversation itself.
+- [x] **Dark mode was broken on every Studio Calm page.** `tailwind.config.js` hardcoded the `ink` and `paper` scales as hex while `--paper` resolved from `html[data-theme='dark']`, so the background flipped and the text did not: measured `rgb(37,36,32)` on `rgb(27,26,23)`, about 1.1:1. Every heading on Home, Conversation, Settings and Scenarios was invisible.
 
-  The fix is the pattern `accent` already uses: define the ink scale as a function of `opacityValue` over RGB channel variables (`--ink-rgb` etc.), added to both `:root` and the dark block. Channels rather than plain `var(--ink)` because `border-ink/10` is used in 11 places and a plain var cannot carry an alpha modifier. Audit the `bg-white` occurrences in ScenarioFormPage (5), ScenariosPage (2) and ChatTab (1) first — a light card plus newly-light ink would invert the problem.
+  Fixed by resolving those scales from RGB channel variables with `<alpha-value>` — channels, not plain `var()`, because `border-ink/10` appears 19 times and a bare var cannot carry an alpha. (The functional form `({ opacityValue }) => ({...})` silently emits `--tw-text-opacity` with *no* colour; `<alpha-value>` is the one that works.) Home went from 1.1:1 to 15.01:1.
 
-- [ ] **Legacy pages ignore the theme entirely.** Archive, Session History, Settings' older tabs and the rest still use literal `bg-white` / `text-gray-800`, so they stay light whatever the theme is. Not a regression — they have simply not been migrated. Fixing the ink scale makes this asymmetry visible rather than hidden.
+  Two things surfaced only after measuring rather than looking:
+  - `paper` was hardcoded too, so fixing ink alone left near-white stat cards with light text on them — a regression caught by the contrast tool, not by eye.
+  - Form controls had no background utility at all and were inheriting the browser's white default, which put themed light text on white fields. Fixed at the source with a token-based base rule at `input` specificity, so an explicit utility still wins.
+
+  `scripts/contrast.mjs` audits both themes; all 54 sampled pairs now meet WCAG AA, and light mode is byte-identical to before.
+
+- [x] **Legacy grey and blue ramps, dark mode.** Unmigrated pages used literal Tailwind greys that stayed light on a dark page — a gray-800 heading measured 1.19:1. Remapped under `html[data-theme='dark']` in CSS rather than in the Tailwind config, because `bg-blue-700` and friends are dark surfaces paired with hardcoded `text-white`; flipping them as config values would have put white text on a white button. Targeting `.text-blue-*` only leaves those buttons alone. Also themed the success green, which measured 2.92:1 as light-mode text.
+
+- [ ] **Legacy pages are still visually light-mode only.** Archive, Session History, the Settings tabs and About/License/Documentation are legible in dark mode now, but they have not been migrated to the Studio Calm tokens, so they do not *look* like the rest of the app. Roughly 350 legacy `text-gray-*` usages across 20 files. The compatibility shim in `index.css` exists so this can be done page by page; delete each remap as its page migrates.
 
 ---
 

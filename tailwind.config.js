@@ -11,19 +11,28 @@ export default {
         mono: ['"JetBrains Mono"', 'ui-monospace', '"SF Mono"', 'Menlo', 'monospace'],
       },
       colors: {
-        // Studio Calm neutral palette
+        // Studio Calm neutral palette. Surfaces resolve from channel variables
+        // for the same reason ink does: a hardcoded light hex here leaves
+        // near-white cards sitting on a dark page, and any themed text on top
+        // of them disappears. Ivory is deliberately exempt — it is the fixed
+        // light text for .glass-card-dark, which stays dark in both themes.
         paper: {
-          DEFAULT: '#F4F1EA',
-          warm: '#FBF8F1',
+          DEFAULT: 'rgb(var(--paper-rgb) / <alpha-value>)',
+          warm: 'rgb(var(--paper-warm-rgb) / <alpha-value>)',
         },
         // Fixed light text for the Ink sidebar (.glass-card-dark), which stays
         // dark in BOTH themes — so this must NOT flip with the theme tokens.
         ivory: '#F4F1EA',
+        // Ink resolves from CSS channel variables so the text scale follows
+        // the theme. `<alpha-value>` is what lets `border-ink/10` keep an
+        // alpha modifier against a var()-based colour — a plain var cannot.
+        // (The functional form `({ opacityValue }) => ({...})` does not: it
+        // emits --tw-text-opacity with no colour at all.)
         ink: {
-          DEFAULT: '#252420',
-          soft: '#3B3830',
-          muted: '#5C564C',
-          quiet: '#8A8377',
+          DEFAULT: 'rgb(var(--ink-rgb) / <alpha-value>)',
+          soft: 'rgb(var(--ink-soft-rgb) / <alpha-value>)',
+          muted: 'rgb(var(--ink-muted-rgb) / <alpha-value>)',
+          quiet: 'rgb(var(--ink-quiet-rgb) / <alpha-value>)',
         },
         // Accent resolves from CSS variables so per-app overrides
         // (html[data-app='study'] etc.) propagate into Tailwind utilities.
@@ -32,7 +41,8 @@ export default {
           deep: 'var(--accent-deep)',
           soft: 'var(--accent-soft)',
         },
-        error: '#A8442F',
+        // Status red is themed too — the dark palette lightens it for contrast.
+        error: 'rgb(var(--error-rgb) / <alpha-value>)',
         // Backwards-compat remap — legacy purple/blue utility classes
         // (from pages not yet migrated) resolve to the accent/ink scales.
         purple: {
@@ -47,6 +57,11 @@ export default {
           800: 'var(--accent-deep)',
           900: 'var(--accent-deep)',
         },
+        // Legacy blue is remapped to the ink scale — but 700–900 are dark
+        // surfaces paired with hardcoded text-white, so they must stay dark in
+        // BOTH themes. Only the text shades flip, and they do it in CSS under
+        // html[data-theme='dark'] rather than here, so a themed bg-blue-700
+        // can never end up under white text.
         blue: {
           50: '#F4F3F0',
           100: '#E3E1DC',

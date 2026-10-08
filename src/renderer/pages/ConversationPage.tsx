@@ -731,7 +731,7 @@ export function ConversationPage() {
                       ? 'bg-accent text-paper'
                       : t.phase === 'idle'
                       ? 'bg-ink text-paper hover:bg-accent'
-                      : 'bg-ink/20 text-ink-muted'
+                      : 'bg-paper-warm text-ink-muted'
                   }`}
                   style={{ borderRadius: '2px' }}
                 >
