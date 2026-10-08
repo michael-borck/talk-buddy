@@ -4,6 +4,7 @@ import { listScenarios, deleteScenario } from '../services/sqlite';
 import { Scenario } from '../types';
 import { Plus, Edit, Trash2, Play, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 
 export function LocalScenariosPage() {
   const navigate = useNavigate();
@@ -55,35 +56,27 @@ export function LocalScenariosPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your scenarios...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading your scenarios..." />;
   }
 
   return (
     <div className="max-w-6xl mx-auto p-8">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">My Scenarios</h1>
-          <p className="text-gray-600">Manage your custom conversation scenarios</p>
-        </div>
-        <button
-          onClick={() => navigate('/scenarios/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          New Scenario
-        </button>
-      </div>
+      <PageHeader
+        title="My Scenarios"
+        subtitle="Manage your custom conversation scenarios"
+        actions={
+          <button
+            onClick={() => navigate('/scenarios/new')}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={20} />
+            New Scenario
+          </button>
+        }
+      />
 
       {scenarios.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-600 mb-4">You haven't created any scenarios yet.</p>
+        <EmptyState message="You haven't created any scenarios yet.">
           <button
             onClick={() => navigate('/scenarios/new')}
             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -91,7 +84,7 @@ export function LocalScenariosPage() {
             <Plus size={20} />
             Create Your First Scenario
           </button>
-        </div>
+        </EmptyState>
       ) : (
         <div className="space-y-4">
           {scenarios.map((scenario) => (

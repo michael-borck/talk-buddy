@@ -21,6 +21,7 @@ import {
   Square,
   X
 } from 'lucide-react';
+import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 
 export function ArchivePage() {
   const [activeTab, setActiveTab] = useState<'scenarios' | 'packs'>('scenarios');
@@ -184,25 +185,16 @@ export function ArchivePage() {
   );
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading archived content...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading archived content..." />;
   }
 
   return (
     <div className="max-w-6xl mx-auto p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-          <Archive size={32} className="text-gray-600" />
-          Archive
-        </h1>
-        <p className="text-gray-600">Manage your archived scenarios and practice packs</p>
-      </div>
+      <PageHeader
+        title="Archive"
+        icon={<Archive size={32} className="text-gray-600" />}
+        subtitle="Manage your archived scenarios and practice packs"
+      />
 
       {/* Search Bar */}
       <div className="mb-6">
@@ -282,13 +274,11 @@ export function ArchivePage() {
       {activeTab === 'scenarios' ? (
         <div>
           {filteredScenarios.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <MessageSquare size={48} className="mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600 mb-2">No archived scenarios found.</p>
+            <EmptyState icon={<MessageSquare size={48} />} message="No archived scenarios found.">
               {searchTerm && (
                 <p className="text-gray-500">Try adjusting your search terms.</p>
               )}
-            </div>
+            </EmptyState>
           ) : (
             <div className="space-y-4">
               {/* Select All */}

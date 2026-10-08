@@ -25,6 +25,7 @@ import {
   Trophy,
   Link as LinkIcon
 } from 'lucide-react';
+import { EmptyState, LoadingState } from '../components/layout/PageShell';
 
 export function PracticePacksPage() {
   const navigate = useNavigate();
@@ -162,14 +163,7 @@ export function PracticePacksPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading practice packs...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading practice packs..." />;
   }
 
   return (
@@ -246,9 +240,7 @@ export function PracticePacksPage() {
       )}
 
       {packs.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <Package size={48} className="mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 mb-4">No practice packs yet.</p>
+        <EmptyState icon={<Package size={48} />} message="No practice packs yet.">
           <p className="text-gray-500 mb-6">Create your first pack to organize scenarios by theme, difficulty, or learning goal.</p>
           <button
             onClick={() => setShowCreateForm(true)}
@@ -257,7 +249,7 @@ export function PracticePacksPage() {
             <Plus size={20} />
             Create Your First Pack
           </button>
-        </div>
+        </EmptyState>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {packs.map((pack) => (

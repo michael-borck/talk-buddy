@@ -22,6 +22,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { EmptyState, LoadingState } from '../components/layout/PageShell';
 
 interface ScenarioWithPacks extends Scenario {
   packs?: Pack[];
@@ -108,14 +109,7 @@ export function PackDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading pack...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading pack..." />;
   }
 
   if (!pack) {
@@ -192,9 +186,7 @@ export function PackDetailPage() {
 
       {/* Scenarios */}
       {packScenarios.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <Package size={48} className="mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 mb-4">No scenarios in this pack yet.</p>
+        <EmptyState icon={<Package size={48} />} message="No scenarios in this pack yet.">
           <p className="text-gray-500 mb-6">Add scenarios to get started with this practice pack.</p>
           <button
             onClick={() => setShowAddModal(true)}
@@ -203,7 +195,7 @@ export function PackDetailPage() {
             <Plus size={20} />
             Add Scenarios
           </button>
-        </div>
+        </EmptyState>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {packScenarios.map((scenario) => (

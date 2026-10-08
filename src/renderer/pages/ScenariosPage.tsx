@@ -33,6 +33,7 @@ import {
   Package,
   MoreHorizontal
 } from 'lucide-react';
+import { EmptyState, LoadingState } from '../components/layout/PageShell';
 
 interface ScenarioWithPacks extends Scenario {
   packs?: Pack[];
@@ -278,14 +279,7 @@ export function ScenariosPage() {
   const difficulties = ['beginner', 'intermediate', 'advanced'];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading scenarios...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading scenarios..." />;
   }
 
   return (
@@ -501,14 +495,14 @@ export function ScenariosPage() {
 
       {/* Scenarios List */}
       {filteredScenarios.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <Trophy size={48} className="mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 mb-4">
-            {searchTerm || filter.category || filter.difficulty || filter.source !== 'all'
+        <EmptyState
+          icon={<Trophy size={48} />}
+          message={
+            searchTerm || filter.category || filter.difficulty || filter.source !== 'all'
               ? 'No scenarios match your search criteria.'
               : 'No scenarios available.'
-            }
-          </p>
+          }
+        >
           {(!searchTerm && !filter.category && !filter.difficulty && filter.source === 'all') && (
             <div className="space-y-3">
               <p className="text-gray-500">Get started by creating your first scenario or restoring defaults.</p>
@@ -531,7 +525,7 @@ export function ScenariosPage() {
               </div>
             </div>
           )}
-        </div>
+        </EmptyState>
       ) : (
         <div className={viewMode === 'grid' 
           ? 'grid gap-6 md:grid-cols-2 lg:grid-cols-3' 

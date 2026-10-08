@@ -17,6 +17,7 @@ import {
   Award,
   BookOpen
 } from 'lucide-react';
+import { LoadingState } from '../components/layout/PageShell';
 
 export function ConversationAnalysisPage() {
   const { sessionId } = useParams();
@@ -72,14 +73,7 @@ export function ConversationAnalysisPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Analyzing conversation...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Analyzing conversation..." />;
   }
 
   if (error || !session || !analysis) {

@@ -30,6 +30,7 @@ import {
   Circle,
   PlayCircle
 } from 'lucide-react';
+import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 
 interface SessionWithScenario extends Session {
   scenarioData?: Scenario;
@@ -218,22 +219,15 @@ export function SessionHistoryPage() {
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading session history...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading session history..." />;
   }
 
   return (
     <div className="max-w-6xl mx-auto p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Session History</h1>
-        <p className="text-gray-600">Review your conversation practice sessions and track progress</p>
-      </div>
+      <PageHeader
+        title="Session History"
+        subtitle="Review your conversation practice sessions and track progress"
+      />
 
       {/* Filters */}
       <div className="mb-6 flex flex-wrap items-center gap-4">
@@ -272,11 +266,9 @@ export function SessionHistoryPage() {
       </div>
 
       {filteredSessions.length === 0 && filteredSessionPacks.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <MessageSquare size={48} className="mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 mb-4">No sessions found.</p>
+        <EmptyState icon={<MessageSquare size={48} />} message="No sessions found.">
           <p className="text-gray-500">Start a conversation scenario to see your history here.</p>
-        </div>
+        </EmptyState>
       ) : (
         <div className="space-y-6">
           {/* Session Packs */}

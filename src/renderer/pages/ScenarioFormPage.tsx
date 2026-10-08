@@ -12,6 +12,7 @@ import {
 import { Pack, ScenarioPersona } from '../types';
 import { Save, X, Plus, Package, UserPlus, Trash2, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { LoadingState, PageHeader } from '../components/layout/PageShell';
 
 // New persona rows get a locally-unique id; persisted on save with the scenario.
 const newPersona = (): ScenarioPersona => ({
@@ -199,26 +200,15 @@ export function ScenarioFormPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading scenario...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading scenario..." />;
   }
 
   return (
     <div className="max-w-4xl mx-auto p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          {isEditing ? 'Edit Scenario' : 'Create New Scenario'}
-        </h1>
-        <p className="text-gray-600">
-          Design a conversation scenario for practice
-        </p>
-      </div>
+      <PageHeader
+        title={isEditing ? 'Edit Scenario' : 'Create New Scenario'}
+        subtitle="Design a conversation scenario for practice"
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {validationError && (
