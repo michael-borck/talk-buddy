@@ -40,23 +40,91 @@ export function minutesThisWeek(sessions: Session[]): number {
   return Math.round(totalSec / 60);
 }
 
+export interface Suggestion {
+  scenario: Scenario;
+  /** Why this one, in words fit to show a student. */
+  reason: string;
+}
+
 /**
- * The Scenario to suggest next. Someone who has never finished a conversation
- * gets the guided tutorial; after that, the most recently touched Scenario is
- * the best guess at what they are working on.
+ * The Scenario to suggest next, and why.
+ *
+ * Two rules, and both matter. A person who has never finished a conversation
+ * gets the guided tutorial. After that, the pick *rotates*: anything
+ * practised before but not recently comes first, because re-reading the same
+ * most-recently-updated Scenario every morning trains nothing. Only when
+ * everything has been touched recently does recency decide, and then the
+ * reason says so rather than pretending it was a considered choice.
  */
+export function suggestScenarioWithReason(
+  scenarios: Scenario[],
+  sessions: Session[],
+  now: Date = new Date()
+): Suggestion | undefined {
+  const hasFinishedASession = sessions.some((s) => s.status === 'ended');
+  if (!hasFinishedASession) {
+    const tutorial = scenarios.find((s) => s.id === TUTORIAL_SCENARIO_ID);
+    if (tutorial) {
+      return { scenario: tutorial, reason: 'A guided first conversation.' };
+    }
+  }
+  if (scenarios.length === 0) return undefined;
+
+  // Last practised date per Scenario, and the most recent of any kind.
+  const lastPractised = new Map<string, number>();
+  const lastTouched = new Map<string, number>();
+  for (const s of scenarios) {
+    lastTouched.set(s.id, new Date(s.updated).getTime());
+  }
+  for (const sess of sessions) {
+    if (!sess.startTime) continue;
+    const when = new Date(sess.startTime).getTime();
+    const seen = lastPractised.get(sess.scenario) ?? 0;
+    if (when > seen) lastPractised.set(sess.scenario, when);
+    const touched = lastTouched.get(sess.scenario) ?? 0;
+    if (when > touched) lastTouched.set(sess.scenario, when);
+  }
+
+  const STALE_DAYS = 3;
+  const practised = scenarios.filter((s) => lastPractised.has(s.id));
+  const never = scenarios.filter((s) => !lastPractised.has(s.id));
+
+  // Never-practised first, then least-recently-practised. Sorting ascending on
+  // the last-practised timestamp (oldest first) does the second part; the never
+  // group simply precedes it.
+  const ordered = [
+    ...never.sort((a, b) => (lastTouched.get(b.id) ?? 0) - (lastTouched.get(a.id) ?? 0)),
+    ...practised.sort((a, b) => (lastPractised.get(a.id) ?? 0) - (lastPractised.get(b.id) ?? 0)),
+  ];
+  const choice = ordered[0];
+  if (!choice) return undefined;
+
+  const practisedAt = lastPractised.get(choice.id);
+  if (practisedAt === undefined) {
+    return { scenario: choice, reason: 'You have not practised this one yet.' };
+  }
+  const days = calendarDaysBetween(practisedAt, now.getTime());
+  if (days <= 1) {
+    return {
+      scenario: choice,
+      reason: `Last practised ${relativeDay(practisedAt)} — try something else, or warm up again.`,
+    };
+  }
+  if (days < STALE_DAYS) {
+    return { scenario: choice, reason: `Not practised for ${days} days.` };
+  }
+  return {
+    scenario: choice,
+    reason: `Not practised for ${days} days — a good one to come back to.`,
+  };
+}
+
+/** The Scenario to suggest next. */
 export function suggestScenario(
   scenarios: Scenario[],
   sessions: Session[]
 ): Scenario | undefined {
-  const hasFinishedASession = sessions.some((s) => s.status === 'ended');
-  if (!hasFinishedASession) {
-    const tutorial = scenarios.find((s) => s.id === TUTORIAL_SCENARIO_ID);
-    if (tutorial) return tutorial;
-  }
-  return [...scenarios].sort(
-    (a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime()
-  )[0];
+  return suggestScenarioWithReason(scenarios, sessions)?.scenario;
 }
 
 /** The most recent finished Session — what the rail calls "last time". */
@@ -83,6 +151,11 @@ export function relativeDay(when: string | number | Date | undefined | null): st
   return `${Math.floor(days / 30)} months ago`;
 }
 
+/** Whole calendar days from `from` to `to`, not elapsed 24-hour blocks. */
+function calendarDaysBetween(from: number, to: number): number {
+  return Math.floor((startOfDay(new Date(to)) - startOfDay(new Date(from))) / 86_400_000);
+}
+
 function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
@@ -98,4 +171,28 @@ export function streakPhrase(streak: number): string {
   if (streak === 1) return 'First conversation logged.';
   const n = streak < SMALL_NUMBERS.length ? SMALL_NUMBERS[streak] : String(streak);
   return `${n[0].toUpperCase()}${n.slice(1)} days running.`;
+}
+
+/**
+ * A line worth re-reading from a Session, for the Journal.
+ *
+ * The journal is a learning artefact, so it should read like one rather than a
+ * log. Picks the longest thing the student said — their own words, where the
+ * effort is — falling back to the first thing their partner said, and to
+ * nothing at all when the transcript is empty.
+ */
+export function transcriptExcerpt(session: Session, maxLength = 140): string {
+  const messages = session.transcript ?? [];
+  const spoken = messages.filter((m) => m.role === 'user' && (m.content ?? '').trim());
+  const line = (spoken.length > 0
+    ? spoken.reduce((a, b) => ((b.content ?? '').length > (a.content ?? '').length ? b : a))
+    : messages.find((m) => (m.content ?? '').trim())
+  )?.content ?? '';
+
+  const flat = line.replace(/\s+/g, ' ').trim();
+  if (flat.length <= maxLength) return flat;
+  // Cut on a word boundary so the excerpt does not end mid-word.
+  const cut = flat.slice(0, maxLength);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
 }

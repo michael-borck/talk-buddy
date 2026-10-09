@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getSession, listSessions } from '../services/sqlite';
+import { getSession, listSessions, startStandaloneSession } from '../services/sqlite';
 import { computeStreak, streakPhrase } from '../services/practice';
 import { analyzeConversation, ConversationAnalysis } from '../services/analysis';
 import { Session } from '../types';
@@ -8,6 +8,7 @@ import {
   ArrowLeft, 
  
   MessageSquare, 
+  RotateCcw,
   Volume2, 
   TrendingUp, 
   Users, 
@@ -32,12 +33,27 @@ export function ConversationAnalysisPage() {
   // there is a streak to recognise, so an old Session reviewed months
   // later does not claim one.
   const [streakLine, setStreakLine] = useState('');
+  const [restarting, setRestarting] = useState(false);
 
   useEffect(() => {
     if (sessionId) {
       loadSessionAndAnalyze();
     }
   }, [sessionId]);
+
+  // Practise again: a fresh Session on the same Scenario. Ending a Session
+  // should not strand the student on a summary with only a Back button.
+  const practiseAgain = async () => {
+    if (!session?.scenario || restarting) return;
+    setRestarting(true);
+    try {
+      const next = await startStandaloneSession(session.scenario);
+      navigate(`/conversation/${session.scenario}?sessionId=${next.id}`);
+    } catch (err) {
+      console.error('Failed to start another session:', err);
+      setRestarting(false);
+    }
+  };
 
   const loadSessionAndAnalyze = async () => {
     if (!sessionId) return;
@@ -118,6 +134,14 @@ export function ConversationAnalysisPage() {
             Session from {session.startTime ? new Date(session.startTime).toLocaleDateString() : 'Unknown date'} at {session.startTime ? new Date(session.startTime).toLocaleTimeString() : 'Unknown time'}
           </p>
         </div>
+        <button
+          onClick={practiseAgain}
+          disabled={restarting}
+          className="ml-auto flex items-center gap-2 px-5 py-2.5 border border-ink/20 rounded-lg text-ink hover:border-accent hover:text-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <RotateCcw size={16} />
+          {restarting ? 'Starting…' : 'Practise again'}
+        </button>
       </div>
 
       {streakLine && (

@@ -37,6 +37,7 @@ const ROUTES = [
   ['settings-tts', '/settings?tab=tts'],
   ['settings-chat', '/settings?tab=chat'],
   ['setup-check', '/setup-check'],
+  ['analysis', '/analysis/ses_1787208326635_0v0epphc8'],
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

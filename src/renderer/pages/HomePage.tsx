@@ -9,6 +9,8 @@ import { loadPreferences, resolveChat } from '../services/config';
 import { Scenario, Session } from '../types';
 import { OllamaSetupCard } from '../components/OllamaSetupCard';
 import { hasPassedSetupCheck } from '../services/setupCheck';
+import { suggestScenarioWithReason } from '../services/practice';
+import { checkSpeechReadiness, Readiness } from '../services/readiness';
 import { Flame, NotebookPen, Sun, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -93,6 +95,7 @@ export function HomePage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [starting, setStarting] = useState(false);
   const [chatConfigured, setChatConfigured] = useState(true);
+  const [readiness, setReadiness] = useState<Readiness>({ ready: true, issues: [] });
   // Until the stack has been checked once, offer it before the first Session
   // rather than letting a blocked microphone surface mid-conversation.
   const [setupChecked, setSetupChecked] = useState(true);
@@ -100,6 +103,9 @@ export function HomePage() {
   useEffect(() => {
     // A failed read is treated as 'not yet checked' so the check stays offered.
     hasPassedSetupCheck().then(setSetupChecked).catch(() => setSetupChecked(false));
+    // Ask the Providers whether they can work, so an unready stack is said
+    // out loud here rather than surfacing as silence mid-conversation.
+    checkSpeechReadiness().then(setReadiness).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -128,16 +134,13 @@ export function HomePage() {
   // touched (edited, imported, or practised against) is the best guess
   // for what they're working on. Exception: someone who has never
   // finished a conversation gets the guided tutorial first.
-  const suggested = useMemo(() => {
-    const hasFinishedASession = sessions.some((s) => s.status === 'ended');
-    if (!hasFinishedASession) {
-      const tutorial = scenarios.find((s) => s.id === TUTORIAL_SCENARIO_ID);
-      if (tutorial) return tutorial;
-    }
-    return [...scenarios].sort(
-      (a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime()
-    )[0];
-  }, [scenarios, sessions]);
+  // Pick and reason together, so the card can say why rather than presenting
+  // an arbitrary choice as if it had been considered.
+  const suggestion = useMemo(
+    () => suggestScenarioWithReason(scenarios, sessions),
+    [scenarios, sessions]
+  );
+  const suggested = suggestion?.scenario;
 
   const pace = paceSeries(sessions);
   const recentPace = pace.slice(-5);
@@ -203,6 +206,29 @@ export function HomePage() {
             download a model in-app. */}
         {!chatConfigured && <OllamaSetupCard onConnected={() => setChatConfigured(true)} />}
 
+        {/* Something in the stack is not ready. Said plainly, with the one
+            place that fixes it, rather than discovered as silence later. */}
+        {!readiness.ready && (
+          <div className="glass-card rounded-soft px-7 py-5 mb-8 border-l-2 border-l-error">
+            <p className="font-sans text-[0.95rem] text-ink font-medium mb-1">
+              Not ready to practise yet
+            </p>
+            {readiness.issues.map((issue) => (
+              <div key={issue.step} className="mb-3 last:mb-0">
+                <p className="font-sans text-[0.9rem] text-ink-muted leading-relaxed">
+                  {issue.message}
+                </p>
+                <button
+                  onClick={() => navigate(`/settings?tab=${issue.settingsTab}`)}
+                  className="text-[0.85rem] text-accent hover:text-accent-deep transition-colors font-sans font-medium mt-1 text-left"
+                >
+                  {issue.remedy} →
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Untested stack: check it before investing in a Scenario */}
         {!setupChecked && (
           <div className="glass-card rounded-soft px-7 py-5 mb-8 border-l-2 border-l-accent">
@@ -232,8 +258,14 @@ export function HomePage() {
               {suggested.name}
             </h2>
             {suggested.description && (
-              <p className="text-[0.9rem] text-ink-muted leading-relaxed mb-5 font-sans">
+              <p className="text-[0.9rem] text-ink-muted leading-relaxed mb-3 font-sans">
                 {suggested.description}
+              </p>
+            )}
+            {suggestion?.reason && (
+              <p className="text-[0.78rem] text-ink-quiet mb-5 font-sans flex items-center gap-2">
+                <span aria-hidden className="editorial-rule w-6 shrink-0" />
+                {suggestion.reason}
               </p>
             )}
             <div className="flex items-center justify-between">

@@ -31,6 +31,7 @@ import {
   PlayCircle
 } from 'lucide-react';
 import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
+import { transcriptExcerpt } from '../services/practice';
 
 interface SessionWithScenario extends Session {
   scenarioData?: Scenario;
@@ -473,6 +474,15 @@ function SessionCard({
               </span>
             </div>
             
+            {/* The journal is a learning artefact, so it should read like one:
+                a line the student can recognise their own words in beats a
+                duration and a word count. */}
+            {transcriptExcerpt(session) && (
+              <p className="text-sm text-gray-600 italic leading-relaxed mb-3 line-clamp-2 border-l-2 border-gray-200 pl-3">
+                &ldquo;{transcriptExcerpt(session)}&rdquo;
+              </p>
+            )}
+
             <div className="flex items-center gap-4 text-sm text-gray-600">
               {session.startTime && (
                 <span className="flex items-center gap-1">

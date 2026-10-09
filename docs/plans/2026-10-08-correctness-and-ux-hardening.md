@@ -100,12 +100,14 @@ Asked whether the UI reads as fun or too clinical. Verdict: composed, not clinic
   - **Only a pass is recorded.** A stack that later breaks — server moved, model deleted — starts offering the check again rather than trusting a stale pass.
 
   Failure → remedy mapping lives in `services/setupCheck.ts` (21 tests) rather than in the page, because "which fix applies" is the part worth being sure about. Settings now honours `?tab=`, so each remedy links to the tab that fixes it.
-- [ ] **Explain the suggestion.** Home picks "most recently updated" scenario. Show the reason ("not practised in 6 days") and rotate toward least-recently-practised — a fixed "Today" that never changes trains nothing.
-- [ ] **Provider readiness on the Today card.** If in-app models aren't downloaded, say "Offline speech isn't set up yet — one click" instead of failing on first use.
-- [ ] **Journal entries invite re-reading.** Show a two-line transcript excerpt instead of "3 min · 240 words". The journal is a learning artefact; it currently reads as a log.
-- [ ] **After "End session"**, land on the analysis with a "Practise again" action rather than stranding the student on a summary.
-- [ ] **"Still listening…" affordance** — prolonged silence in hands-free mode is ambiguous (thinking? broken? finished?). A quiet, non-alarming hint after ~3s of no speech stops students talking over the AI to check.
-- [ ] **`aria-live` on the conversation status** so phase changes are announced. Cheap; the visualizer itself stays decorative (`aria-hidden`).
+- [x] **Explain the suggestion, and make it rotate.** `suggestScenarioWithReason` returns the Scenario *and* the reason, so the card says why ("Not practised for 6 days", "You have not practised this one yet") instead of presenting an arbitrary pick as a considered one. The pick itself now rotates — never-practised first, then least-recently-practised — because a fixed "Today" that never changes trains nothing.
+
+  Two bugs the tests caught, both mine: the ordering helper sorted never-practised Scenarios *last* while its own comment said they should lead, and day gaps were elapsed 24-hour blocks rather than calendar days, so "practised 6 days ago" read as 5 whenever the time of day had drifted past noon.
+- [x] **Provider readiness on the Today card.** `services/readiness.ts` asks the in-app engines whether their weights are on disk and names what is missing, each with a link to the tab that fixes it. Cloud Providers are left alone — probing a remote server on every Today visit would be slow, and the setup check already covers reachability.
+- [x] **Journal entries invite re-reading.** Each entry quotes its longest line from the *student*, falling back to the partner, truncated on a word boundary and with newlines collapsed so an excerpt cannot break the card. Recognising your own words beats a duration and a word count.
+- [x] **After "End session"**, the analysis offers "Practise again" — a fresh Session on the same Scenario. The Conversation's end-state already had this; the summary you actually land on did not.
+- [x] **"Still listening…" affordance.** In hands-free, silence is ambiguous — broken, thinking, or simply finished — so students talk over the AI to find out. After ~3s with nothing on the meter the hint changes, and it clears the moment amplitude moves. Uses the smoothed value the visualiser already draws rather than adding a second analyser.
+- [x] **`aria-live` on the conversation status**, so phase changes are announced without moving focus. The chunk-progress counter is `aria-hidden` — redundant with the status label — and the visualizer stays decorative.
 
 ---
 

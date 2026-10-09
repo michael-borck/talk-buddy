@@ -61,6 +61,7 @@ export function ConversationPage() {
   phaseRef.current = t.phase;
 
   const handsFree = inputMode === 'hands-free';
+
   // The main button and key-up behave as tap-to-toggle under hands-free;
   // only explicit push-to-talk keeps hold semantics.
   const tapMode: 'hold' | 'toggle' = handsFree ? 'toggle' : pttMode;
@@ -93,6 +94,29 @@ export function ConversationPage() {
     },
     onError: (message) => { toast.error(message); },
   });
+
+  // "Still listening…" — in hands-free a long silence is ambiguous: the app
+  // may be broken, the AI may be thinking, or they may simply have finished.
+  // Without a prompt, students talk over the AI to find out. After ~3s of
+  // listening with nothing on the meter we say so quietly, and the hint goes
+  // away the instant they speak.
+  const [waiting, setWaiting] = useState(false);
+  useEffect(() => {
+    if (!handsFree || t.phase !== 'listening') {
+      setWaiting(false);
+      return;
+    }
+    const started = window.setTimeout(() => setWaiting(true), 3000);
+    const interval = window.setInterval(() => {
+      // Amplitude is the same smoothed value the visualizer draws; if it has
+      // moved, they are speaking and the prompt is no longer true.
+      if (t.amplitudeRef.current > 0.04) setWaiting(false);
+    }, 250);
+    return () => {
+      window.clearTimeout(started);
+      window.clearInterval(interval);
+    };
+  }, [handsFree, t.phase, t.amplitudeRef]);
 
   messagesRef.current = t.messages;
   completeRef.current = t.sessionComplete;
@@ -528,7 +552,9 @@ export function ConversationPage() {
     ? 'Click Resume to continue.'
     : t.phase === 'listening'
     ? (handsFree
-        ? 'Listening — a short pause hands your turn over. Space to send now, Esc to discard.'
+        ? waiting
+          ? 'Still listening — speak whenever you are ready, or press space to send.'
+          : 'Listening — a short pause hands your turn over. Space to send now, Esc to discard.'
         : tapMode === 'toggle' ? 'Tap space (or click below) to send.' : 'Release to stop — or let go of the space bar.')
     : t.phase === 'idle'
     ? (handsFree
@@ -678,7 +704,14 @@ export function ConversationPage() {
           </div>
 
           {/* Status label + hint */}
-          <div className="text-center mb-6 lg:mb-10 min-h-[3.5rem] lg:min-h-[4.5rem]">
+          {/* Phase changes are the only thing a screen-reader user is told
+              about in real time, and they need to hear them without moving
+              focus. The visualizer itself stays decorative. */}
+          <div
+            className="text-center mb-6 lg:mb-10 min-h-[3.5rem] lg:min-h-[4.5rem]"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             <p className="font-sans italic text-[2rem] text-ink leading-none mb-3 tracking-display">
               {statusLabel}
             </p>
@@ -686,7 +719,7 @@ export function ConversationPage() {
               <p className="text-[0.82rem] text-ink-muted font-sans">{statusHint}</p>
             )}
             {t.phase === 'speaking' && t.chunkProgress.total > 0 && (
-              <p className="text-[0.72rem] text-ink-muted/70 font-sans mt-1 tabular-nums">
+              <p aria-hidden className="text-[0.72rem] text-ink-muted/70 font-sans mt-1 tabular-nums">
                 {t.chunkProgress.current} of {t.chunkProgress.total}
               </p>
             )}
