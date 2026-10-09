@@ -5,7 +5,14 @@ module.exports = {
   appId: 'com.talkbuddy.desktop',
   productName: 'TalkBuddy',
   directories: {
-    output: 'dist',
+    // NOT 'dist'. vite builds the renderer into dist/, and `files` below
+    // packages dist/** — so an output of 'dist' has electron-builder writing
+    // the packaged app into the very directory it is reading from. That ships
+    // a corrupted app.asar: the packaged package.json is overwritten with
+    // binary data, so the app dies parsing its own manifest before a window
+    // exists — silently, with no crash log. dist_electron/ is separate and
+    // already gitignored.
+    output: 'dist_electron',
   },
   compression: 'maximum',
   files: [
