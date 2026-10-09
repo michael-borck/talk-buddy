@@ -45,6 +45,32 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Own the signing keychain ourselves. electron-builder normally creates
+      # a temporary keychain, imports CSC_LINK into it and calls
+      # `security set-key-partition-list` against a password it generated —
+      # and that call fails on current macOS runners with
+      # "SecKeychainUnlock: The user name or passphrase you entered is not
+      # correct", which fails the macOS build while Windows and Linux pass.
+      # cite-sight works around the same electron-builder 26.x behaviour the
+      # same way: create and import the keychain up front, with a password we
+      # know, so codesign can find the identity. Mirrors that setup.
+      - name: Set up signing keychain (macOS)
+        if: matrix.os == 'macos-latest'
+        env:
+          CSC_LINK_B64: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "$CSC_LINK_B64" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p actions build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p actions build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security import /tmp/cert.p12 -k build.keychain -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
+          rm -f /tmp/cert.p12
+          security find-identity -v -p codesigning
+
       - name: Build Electron app (macOS)
         if: matrix.os == 'macos-latest'
         run: npm run electron:build -- --mac --publish=always
