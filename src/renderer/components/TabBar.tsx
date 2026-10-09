@@ -1,7 +1,8 @@
-// Bottom tab bar — the app's whole navigation. Four destinations; every
+// Bottom tab bar — navigation for narrow windows. Four destinations; every
 // other page hangs off one of them (packs/archive under Explore,
-// help/docs/about/license under Settings). The Conversation route
-// renders without this bar so the live Conversation owns the window.
+// help/docs/about/license under Settings). From 1024px up NavRail carries the
+// same four instead, so the bar hides. The Conversation route renders neither,
+// so the live Conversation owns the window.
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sun, Compass, NotebookPen, Settings } from 'lucide-react';
 
@@ -37,7 +38,7 @@ export function TabBar() {
         );
 
   return (
-    <nav className="shrink-0 border-t border-ink/10 bg-paper-warm relative z-10">
+    <nav className="lg:hidden shrink-0 border-t border-ink/10 bg-paper-warm relative z-10">
       <div className="max-w-[640px] mx-auto grid grid-cols-4">
         {TABS.map((tab) => {
           const Icon = tab.icon;

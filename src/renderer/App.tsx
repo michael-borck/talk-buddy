@@ -19,6 +19,7 @@ import { WelcomePage } from './pages/WelcomePage';
 import { getPreference } from './services/sqlite';
 import { StatusFooter } from './components/StatusFooter';
 import { TabBar } from './components/TabBar';
+import { NavRail } from './components/layout/NavRail';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 
@@ -138,7 +139,11 @@ function AppContent() {
   }
 
   return (
-    <>
+    <div className="flex-1 flex min-h-0">
+      {/* Wide windows get the rail; narrow ones keep the bottom TabBar. The
+          Conversation renders neither, so practising still owns the window. */}
+      {!inConversation && <NavRail />}
+      <div className="flex-1 flex flex-col min-w-0">
       <ErrorBoundary>
         <main className="flex-1 overflow-auto relative z-10">
           <Routes>
@@ -167,7 +172,8 @@ function AppContent() {
       </ErrorBoundary>
       {inSettings && <StatusFooter />}
       {!inConversation && <TabBar />}
-    </>
+      </div>
+    </div>
   );
 }
 

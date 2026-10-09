@@ -70,8 +70,12 @@ Asked whether `sttUrl`/`ttsUrl` were really used — they are, and always were; 
 - [x] **Unify column widths.** The plan estimated ~880–960px; measuring at a 1680px window found four unrelated widths — 640, 896, 1152 and 1280 — with no logic behind which page got which, plus gutters varying from 32px to 64px. At an 820px window the grid pages ran edge-to-edge while prose stayed at 640.
 
   Now two widths and one gutter, declared once as `--measure` (640px), `--canvas` (1152px) and `--gutter` (2rem), applied via `.page` / `.page-measure` / `.page-canvas` so the rule is greppable rather than scattered across fifteen `max-w-*` values. Reading and configuring get the measure; browsing a collection gets the canvas. Conversation keeps its own two-column split — its transcript column lands near 544px, a fine measure in its own right.
-- [ ] **Put the empty rail to work on `xl`.** A left column carrying persistent context (current scenario, last session, streak) turns dead space into the reassurance Studio Calm is built for.
-- [ ] **Bottom tab bar → left rail at ≥1024px**, keeping the bottom bar for narrow windows. Most opinionated change in this plan; do it only after the width unification lands and only if the rail doesn't crowd the reading column.
+- [x] **The rail carries persistent context.** `NavRail` shows the four destinations plus, at the foot, the streak, the last Session and what is next — so the space beside the reading column carries reassurance instead of sitting empty. The streak and suggestion logic moved out of HomePage into `services/practice.ts` (18 tests) so the rail and Today cannot disagree; that also gives Phase 4's "explain the suggestion" one place to change.
+- [x] **Bottom tab bar → left rail at ≥1024px**, keeping the bar for narrow windows. Landed after the width unification, as the plan required.
+
+  The plan's own condition — that the rail must not crowd the reading column — was checked by measurement, not by eye: at 1024px the rail is 220px and the 640px measure is still intact, while canvas pages compress from 1152 to ~800 as they should. Verified at 900/1024/1280/1680 that the rail appears only on wide windows, that the bar is hidden there, and that the Conversation still gets neither.
+
+  Two colour decisions came out of measuring the new UI rather than looking at it: the rail's small labels use `ink-muted` because `ink-quiet` measures 3.3:1 on the dark page and 3.5:1 in light, and the active destination uses `accent-deep` because accent on the accent-soft pill is 3.76:1.
 
 ---
 

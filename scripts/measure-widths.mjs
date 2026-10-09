@@ -12,7 +12,7 @@ const ROUTES = [
   ['archive', '/archive'], ['packs', '/packs'], ['scenarios-new', '/scenarios/new'],
   ['settings', '/settings'], ['setup-check', '/setup-check'],
 ];
-const VIEWPORTS = [[820, 900, 'sm'], [1280, 900, 'lg'], [1680, 1000, 'xl']];
+const VIEWPORTS = [[820, 900, 'sm'], [1024, 900, 'lg-min'], [1280, 900, 'lg'], [1680, 1000, 'xl']];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const res = await fetch(`http://localhost:${PORT}/json/list`);
@@ -55,17 +55,18 @@ for (const [w, h, label] of VIEWPORTS) {
     await send('Page.navigate', { url: BASE + route });
     await sleep(1400);
     const m = await ev(PROBE);
-    if (m) rows.push({ vp: `${label} ${w}`, name, ...m });
+    const rail = await ev("(() => { const r = document.querySelector('nav[aria-label=\"Main\"]'); return r ? Math.round(r.getBoundingClientRect().width) : 0; })()");
+    if (m) rows.push({ vp: `${label} ${w}`, name, rail, ...m });
   }
 }
 await send('Emulation.clearDeviceMetricsOverride');
 
-console.log('viewport   route           rendered  capped-at  padding-left  class');
+console.log('viewport   route           rail  rendered  capped-at  padding-left  class');
 for (const r of rows) {
   const cap = r.maxWidth >= 10000 ? 'none' : r.maxWidth;
   const capped = r.width === cap ? 'yes' : 'no';
   console.log(
-    `${r.vp.padEnd(10)} ${r.name.padEnd(15)} ${String(r.width).padStart(6)}px  ${String(cap).padStart(9)}  ${r.pad.padStart(12)}  ${r.cls}`);
+    `${r.vp.padEnd(10)} ${r.name.padEnd(15)} ${String(r.rail).padStart(4)}  ${String(r.width).padStart(6)}px  ${String(cap).padStart(9)}  ${r.pad.padStart(12)}  ${r.cls}`);
 }
 const widths = {};
 for (const r of rows.filter(r => r.vp.startsWith('xl'))) widths[r.name] = r.width;

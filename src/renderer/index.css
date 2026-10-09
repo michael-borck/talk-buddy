@@ -91,11 +91,13 @@ html[data-theme='dark'] {
   --ink:              #F1EEE6;
   --ink-soft:         #DAD6CC;
   --ink-muted:        #9E9A90;
-  --ink-quiet:        #6F6C63;
+  /* Lifted from #6F6C63, which measured 3.32:1 on the dark page and
+     3.00:1 on paper-warm — below AA for the small labels it carries. */
+  --ink-quiet:        #8D8A81;
   --ink-rgb:          241 238 230;
   --ink-soft-rgb:     218 214 204;
   --ink-muted-rgb:    158 154 144;
-  --ink-quiet-rgb:    111 108 99;
+  --ink-quiet-rgb:    141 138 129;
   --hairline:         rgba(241, 238, 230, 0.10);
   --hairline-strong:  rgba(241, 238, 230, 0.20);
   --hairline-contrast: rgba(241, 238, 230, 0.40);
