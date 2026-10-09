@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getSession } from '../services/sqlite';
+import { getSession, listSessions } from '../services/sqlite';
+import { computeStreak, streakPhrase } from '../services/practice';
 import { analyzeConversation, ConversationAnalysis } from '../services/analysis';
 import { Session } from '../types';
 import { 
@@ -15,7 +16,8 @@ import {
   Target,
   BarChart3,
   Award,
-  BookOpen
+  BookOpen,
+  Flame
 } from 'lucide-react';
 import { LoadingState } from '../components/layout/PageShell';
 
@@ -26,6 +28,10 @@ export function ConversationAnalysisPage() {
   const [analysis, setAnalysis] = useState<ConversationAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Recognition belongs here, right after a Session ends — but only if
+  // there is a streak to recognise, so an old Session reviewed months
+  // later does not claim one.
+  const [streakLine, setStreakLine] = useState('');
 
   useEffect(() => {
     if (sessionId) {
@@ -43,6 +49,9 @@ export function ConversationAnalysisPage() {
         setSession(sessionData);
         const analysisResult = analyzeConversation(sessionData, sessionData.transcript);
         setAnalysis(analysisResult);
+        // One extra query, on the one screen where the answer is worth it.
+        const all = await listSessions().catch(() => []);
+        setStreakLine(streakPhrase(computeStreak(all)));
       } else {
         setError('Session not found or has no transcript data');
       }
@@ -110,6 +119,13 @@ export function ConversationAnalysisPage() {
           </p>
         </div>
       </div>
+
+      {streakLine && (
+        <p className="flex items-center gap-2 text-[0.95rem] text-ink-muted font-sans">
+          <Flame size={15} strokeWidth={1.5} className="text-accent" />
+          {streakLine}
+        </p>
+      )}
 
       {/* Overall Score Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

@@ -477,7 +477,7 @@ function AddScenariosModal({ packId: _, existingScenarioIds, onClose, onAdd }: A
                 <div
                   key={scenario.id}
                   onClick={() => toggleScenario(scenario.id)}
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${
                     selectedIds.includes(scenario.id)
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:bg-gray-50'

@@ -5,6 +5,7 @@ import {
   suggestScenario,
   lastFinishedSession,
   relativeDay,
+  streakPhrase,
   TUTORIAL_SCENARIO_ID,
 } from './practice';
 import { Scenario, Session } from '../types';
@@ -119,5 +120,21 @@ describe('relativeDay', () => {
     expect(relativeDay(undefined)).toBe('');
     expect(relativeDay(null)).toBe('');
     expect(relativeDay('not a date')).toBe('');
+  });
+});
+describe('streakPhrase', () => {
+  it('says nothing at zero rather than claiming a streak', () => {
+    expect(streakPhrase(0)).toBe('');
+    expect(streakPhrase(-1)).toBe('');
+  });
+
+  it('marks the first one differently from a run', () => {
+    expect(streakPhrase(1)).toMatch(/first/i);
+    expect(streakPhrase(2)).toBe('Two days running.');
+  });
+
+  it('spells small numbers and digits beyond', () => {
+    expect(streakPhrase(7)).toBe('Seven days running.');
+    expect(streakPhrase(12)).toBe('12 days running.');
   });
 });

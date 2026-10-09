@@ -255,7 +255,7 @@ export function PracticePacksPage() {
           {packs.map((pack) => (
             <div
               key={pack.id}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer"
+              className="bg-white rounded-lg shadow hover:-translate-y-0.5 transition-all duration-200 hover:shadow-lg cursor-pointer"
               onClick={() => navigate(`/packs/${pack.id}`)}
             >
               <div className="p-6">

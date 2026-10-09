@@ -631,7 +631,7 @@ function ScenarioCard({
 
   if (viewMode === 'list') {
     return (
-      <article className="group border border-ink/10 hover:border-ink/30 bg-paper-warm transition-colors">
+      <article className="group border border-ink/10 hover:border-ink/30 bg-paper-warm transition-colors hover:-translate-y-0.5 transition-all duration-200 hover:shadow-sm">
         <div className="p-6 flex items-start gap-5">
           <button
             onClick={() => onToggleSelect(scenario.id)}
@@ -723,7 +723,7 @@ function ScenarioCard({
   // Grid view — stacked vertical layout, title gets its own row,
   // action icons live in the bottom border row next to the Start link.
   return (
-    <article className="group border border-ink/10 hover:border-ink/30 bg-paper-warm transition-colors flex flex-col">
+    <article className="group border border-ink/10 hover:border-ink/30 bg-paper-warm transition-colors flex flex-col hover:-translate-y-0.5 transition-all duration-200 hover:shadow-sm">
       <div className="p-6 flex-1 flex flex-col">
         {/* Row 1: checkbox + voice marker — a small meta strip */}
         <div className="flex items-center justify-between mb-4">

@@ -120,17 +120,36 @@ export function NavRail() {
       <div className="mt-auto px-7 pb-8 pt-6">
         <div className="editorial-rule mb-5" aria-hidden="true" />
 
-        {streak > 0 && (
-          <div className="mb-5 flex items-baseline gap-2">
-            <Flame size={14} strokeWidth={1.5} className="text-accent translate-y-px" />
-            <span className="font-sans text-[1.5rem] leading-none text-ink font-medium tabular-nums">
+        {/* Always present. Hiding it at zero made the absence of the reward
+            the message; an empty streak should read as an invitation instead. */}
+        <div className="mb-5">
+          <div className="flex items-baseline gap-2">
+            <Flame
+              size={14}
+              strokeWidth={1.5}
+              className={
+                streak > 0
+                  ? 'text-accent translate-y-px'
+                  : 'text-ink-quiet translate-y-px opacity-60'
+              }
+            />
+            <span
+              className={`font-sans text-[1.5rem] leading-none font-medium tabular-nums ${
+                streak > 0 ? 'text-ink' : 'text-ink-quiet'
+              }`}
+            >
               {streak}
             </span>
             <span className="text-[0.68rem] uppercase tracking-[0.14em] text-ink-muted font-sans">
               day{streak === 1 ? '' : 's'}
             </span>
           </div>
-        )}
+          {streak === 0 && (
+            <p className="text-[0.68rem] text-ink-muted mt-1.5 leading-snug">
+              Practise today to start one.
+            </p>
+          )}
+        </div>
 
         {last && (
           <div className="mb-5">

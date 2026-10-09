@@ -86,3 +86,16 @@ export function relativeDay(when: string | number | Date | undefined | null): st
 function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
+const SMALL_NUMBERS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+
+/**
+ * A line of recognition for the analysis screen — the moment the student has
+ * actually earned it. Empty at zero: reviewing an old Session should not claim
+ * a streak the person does not currently hold.
+ */
+export function streakPhrase(streak: number): string {
+  if (streak <= 0) return '';
+  if (streak === 1) return 'First conversation logged.';
+  const n = streak < SMALL_NUMBERS.length ? SMALL_NUMBERS[streak] : String(streak);
+  return `${n[0].toUpperCase()}${n.slice(1)} days running.`;
+}
