@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { EmptyState, LoadingState } from '../components/layout/PageShell';
 import { categoryTone } from '../components/categoryTone';
+import { voiceMarker } from '../components/voiceMarker';
 
 interface ScenarioWithPacks extends Scenario {
   packs?: Pack[];
@@ -578,15 +579,7 @@ function ScenarioCard({
   isSelected,
   deletingId 
 }: ScenarioCardProps) {
-  const getVoiceMarker = (voice?: string): { symbol: string; label: string } => {
-    switch (voice) {
-      case 'female': return { symbol: '♀', label: 'Female voice' };
-      case 'male':   return { symbol: '♂', label: 'Male voice' };
-      default:       return { symbol: '◐', label: 'Default voice' };
-    }
-  };
-
-  const marker = getVoiceMarker(scenario.voice);
+  const marker = voiceMarker(scenario.voice);
   const disabled = deletingId === scenario.id;
 
   // Shared action icon cluster — ink-muted glyphs, accent on hover,
@@ -653,11 +646,10 @@ function ScenarioCard({
                 {scenario.name}
               </h3>
               <span
-                className="text-accent text-base leading-none font-sans"
-                title={marker.label}
-                aria-label={marker.label}
+                className="text-[0.62rem] uppercase tracking-[0.16em] text-ink-quiet font-sans shrink-0"
+                title={`This conversation is spoken by ${marker.name}`}
               >
-                {marker.symbol}
+                {marker.name}
               </span>
               {scenario.isDefault && (
                 <span className="text-[0.6rem] uppercase tracking-[0.18em] text-ink-quiet font-sans">
@@ -742,11 +734,10 @@ function ScenarioCard({
             )}
           </button>
           <span
-            className="text-accent text-xl leading-none font-sans"
-            title={marker.label}
-            aria-label={marker.label}
+            className="text-[0.62rem] uppercase tracking-[0.16em] text-ink-quiet font-sans shrink-0"
+            title={`This conversation is spoken by ${marker.name}`}
           >
-            {marker.symbol}
+            {marker.name}
           </span>
         </div>
 
