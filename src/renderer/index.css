@@ -32,6 +32,26 @@
   --canvas:            1152px;
   --gutter:            2rem;
 
+
+  /* Category index — the tint on a card's leading edge.
+     Hue walks a warm arc (sand -> olive -> moss -> teal -> slate) and skips
+     150-175 entirely so no category lands on the sage accent and reads as
+     "selected". Saturation stays in a 34-42 band and every tone is solved to
+     the same contrast against its background (2.1:1 light, ~2.9:1 dark), so
+     none reads louder than another.
+     Redundant, not load-bearing: the category name is written on the card
+     too, so this aids scanning rather than conveying anything on its own. */
+  --cat-academic: #C7A08D;
+  --cat-business: #C1A476;
+  --cat-customer-service: #B5AB4B;
+  --cat-finance: #A1B05E;
+  --cat-international: #8BB55B;
+  --cat-management: #70BA57;
+  --cat-marketing: #70B973;
+  --cat-networking: #65BA81;
+  --cat-sales: #61B5BE;
+  --cat-technology: #91ABC9;
+
   /* Channel form of the text and status colours. Tailwind's ink and error
      scales resolve from these, so `text-ink` follows the theme and
      `border-ink/10` still carries an alpha — which a plain var() cannot. */
@@ -107,6 +127,18 @@ html[data-theme='dark'] {
   --accent:           #6FA593;
   --accent-deep:      #8BBFAD;
   --accent-soft:      rgba(111, 165, 147, 0.12);
+
+  /* Category index — see the note on the light values above. */
+  --cat-academic: #735647;
+  --cat-business: #6F5C3E;
+  --cat-customer-service: #726D3B;
+  --cat-finance: #646C42;
+  --cat-international: #586F3E;
+  --cat-management: #49723B;
+  --cat-marketing: #426C43;
+  --cat-networking: #3E6F4F;
+  --cat-sales: #3B6D72;
+  --cat-technology: #495E77;
 }
 html[data-theme='dark'][data-app='study'] {
   --accent:      #96A8D0;

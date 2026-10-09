@@ -34,6 +34,7 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { EmptyState, LoadingState } from '../components/layout/PageShell';
+import { categoryTone } from '../components/categoryTone';
 
 interface ScenarioWithPacks extends Scenario {
   packs?: Pack[];
@@ -631,7 +632,8 @@ function ScenarioCard({
 
   if (viewMode === 'list') {
     return (
-      <article className="group border border-ink/10 hover:border-ink/30 bg-paper-warm transition-colors hover:-translate-y-0.5 transition-all duration-200 hover:shadow-sm">
+      <article className="group border border-ink/10 border-l-[3px] hover:border-ink/30 hover:border-l-ink/30 bg-paper-warm transition-colors hover:-translate-y-0.5 transition-all duration-200 hover:shadow-sm"
+      style={{ borderLeftColor: categoryTone(scenario.category) }}>
         <div className="p-6 flex items-start gap-5">
           <button
             onClick={() => onToggleSelect(scenario.id)}
@@ -723,7 +725,8 @@ function ScenarioCard({
   // Grid view — stacked vertical layout, title gets its own row,
   // action icons live in the bottom border row next to the Start link.
   return (
-    <article className="group border border-ink/10 hover:border-ink/30 bg-paper-warm transition-colors flex flex-col hover:-translate-y-0.5 transition-all duration-200 hover:shadow-sm">
+    <article className="group border border-ink/10 border-l-[3px] hover:border-ink/30 hover:border-l-ink/30 bg-paper-warm transition-colors flex flex-col hover:-translate-y-0.5 transition-all duration-200 hover:shadow-sm"
+      style={{ borderLeftColor: categoryTone(scenario.category) }}>
       <div className="p-6 flex-1 flex flex-col">
         {/* Row 1: checkbox + voice marker — a small meta strip */}
         <div className="flex items-center justify-between mb-4">

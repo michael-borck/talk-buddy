@@ -79,6 +79,17 @@ Asked whether `sttUrl`/`ttsUrl` were really used — they are, and always were; 
 
 ---
 
+## Warmth (not fun)
+
+Asked whether the UI reads as fun or too clinical. Verdict: composed, not clinical — but monochrome and inert. `fun` is the wrong target for anxious language learners; `warm` is right. The Conversation already carries the alive feeling (a 280px voice visualiser), so the work belongs in everything around it.
+
+- [x] **Cards have physicality.** The motion budget was 110 `transition-colors` against three transforms and three shadows, and a hovered card changed only its border. Cards now lift — fully when the card *is* the target, 2px plus a soft shadow when it merely contains actions, so hover never advertises a click that does not exist. Verified as `transform: none` → `translateY(-2px)`.
+- [x] **The streak never hides.** Zero read as an invitation ("Practise today to start one.") with a dimmed flame rather than an empty margin.
+- [x] **Recognition on the analysis screen** — "First conversation logged.", "Three days running." — empty at zero so reviewing an old Session claims nothing.
+- [x] **Category tint on the card's leading edge.** A 3px edge, card left paper-coloured. Hue walks a warm arc (sand → olive → moss → teal → slate) and skips 150–175 entirely: a first attempt at an even hue spread put Business at hue 166, within a hair of the sage accent, where it read as *selected*. Every tone is solved to the same contrast against its background (2.1:1 light, ~2.9:1 dark) so none reads louder. Redundant by design — the category name is printed on the card too, so colour aids scanning and never carries meaning alone. Custom categories hash to a stable tone rather than falling back to grey.
+
+---
+
 ## Phase 4 — UX features (each needs its own session + screenshot review)
 
 - [x] **Pre-flight setup check** (highest value for this audience). `/setup-check`: speak a phrase → live level meter → the transcript you just produced → one line of voice played back. Catches permission denial, wrong input device, a quiet mic, and an unready Provider *before* the student invests emotionally in a Scenario. Offered on Home until it has passed once. Walks the real Turn ports, so a pass means a Turn will work.
