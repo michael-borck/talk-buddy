@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,9 +16,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-15, ubuntu-latest, windows-latest]
         include:
-          - os: macos-latest
+          - os: macos-15
             platform: mac
           - os: ubuntu-latest
             platform: linux
@@ -41,7 +42,7 @@ jobs:
 
       - name: Build Electron app (Windows)
         if: matrix.os == 'windows-latest'
-        run: npm run electron:build -- --win --publish=always
+        run: npm run electron:build -- --win --publish=${{ github.event_name == 'push' && 'always' || 'never' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -55,10 +56,10 @@ jobs:
       # same way: create and import the keychain up front, with a password we
       # know, so codesign can find the identity. Mirrors that setup.
       - name: Set up signing keychain (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         env:
-          CSC_LINK_B64: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK_B64: ${{ secrets.APPLE_CERTIFICATE || secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD || secrets.CSC_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           echo "$CSC_LINK_B64" | base64 --decode > /tmp/cert.p12
@@ -71,13 +72,32 @@ jobs:
           rm -f /tmp/cert.p12
           security find-identity -v -p codesigning
 
+      - name: Prepare App Store Connect API key
+        if: matrix.os == 'macos-15'
+        env:
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          if [ -n "$APPLE_API_KEY_CONTENT" ] && [ -n "$APPLE_API_KEY" ]; then
+            mkdir -p "$RUNNER_TEMP/apple-api"
+            KEY_PATH="$RUNNER_TEMP/apple-api/AuthKey_${APPLE_API_KEY}.p8"
+            printf '%s' "$APPLE_API_KEY_CONTENT" | openssl base64 -d -A > "$KEY_PATH"
+            chmod 600 "$KEY_PATH"
+            echo "APPLE_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+          else
+            echo "No API key secrets; notarization will fall back to Apple ID"
+          fi
+
       - name: Build Electron app (macOS)
-        if: matrix.os == 'macos-latest'
-        run: npm run electron:build -- --mac --publish=always
+        if: matrix.os == 'macos-15'
+        run: npm run electron:build -- --mac --publish=${{ github.event_name == 'push' && 'always' || 'never' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE || secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD || secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
           # Renamed from APPLE_* to NOTARIZE_APPLE_* so electron-builder
           # doesn't auto-detect them and trigger its own (buggy) notarize
           # wrapper. Our scripts/notarize.js afterSign hook reads these.
@@ -102,7 +122,7 @@ jobs:
 
       - name: Build Electron app (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: npm run electron:build -- --linux --publish=always
+        run: npm run electron:build -- --linux --publish=${{ github.event_name == 'push' && 'always' || 'never' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -128,6 +148,7 @@ jobs:
     # matrix build has succeeded, so we never publish a partial release
     # missing one or more platforms.
     needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - name: Mark release as published and Latest
