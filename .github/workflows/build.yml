@@ -22,7 +22,7 @@ jobs:
       build-command: npm run build
       package-command: npm run electron:build -- --$PLATFORM --publish always
       notarize-check-command: npm run electron:build -- --mac --publish never
-      notarize-check-artifact-root: dist
+      notarize-check-artifact-root: dist_electron
       signing-mode: custom
       notarize-mode: hook
       publish-mode: builder
