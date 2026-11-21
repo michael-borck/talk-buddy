@@ -23,9 +23,6 @@
 
 ## Next
 
-☐ Bulk operations — select multiple items for batch archive/delete/move.
-   Trash now makes bulk delete safe; ScenariosPage already has multi-select.
-☐ Smart collections — auto-generated groups like "This Week's Practice".
 ☐ Custom tags system — user tags on conversations and projects (Scenarios
    already carry tags; sessions and projects do not).
 ☐ Move Quick Start to the sidebar and rename to "Random Scenario".
