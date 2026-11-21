@@ -6,6 +6,11 @@ import { Download, Loader2, CheckCircle2 } from 'lucide-react';
 import {
   piperStatus, ensurePiper, onPiperProgress, PiperStatus,
 } from '../services/piperTts';
+import {
+  catalogEntry, capabilityLine, formatBytes, catalogVoices,
+} from '../services/modelCatalog';
+
+const MODEL = catalogEntry('piper')!;
 
 const STAGE_LABEL: Record<string, string> = {
   piper: 'Speech engine',
@@ -42,28 +47,42 @@ export function PiperPanel() {
     }
   };
 
-  const voiceLabel = (v: boolean) => (v ? 'Alan ✓ · Amy ✓' : 'not downloaded');
+  const voices = catalogVoices({
+    male: status?.voices.male ?? false,
+    female: status?.voices.female ?? false,
+  });
+  const voiceLine = voices
+    .map((v) => `${v.name} (${v.accent}) ${v.available ? '✓' : '·'}`)
+    .join(' · ');
 
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
-        In-app voice engine
+        {MODEL.name}
       </label>
       {status?.installed ? (
-        <p className="flex items-center gap-2 text-sm text-green-700">
-          <CheckCircle2 size={16} />
-          Installed and ready — Alan &amp; Amy speak entirely inside the app.
-        </p>
+        <div className="space-y-1">
+          <p className="flex items-center gap-2 text-sm text-green-700">
+            <CheckCircle2 size={16} />
+            Installed and ready — Alan &amp; Amy speak entirely inside the app.
+          </p>
+          <p className="text-xs text-gray-500 pl-6">
+            {voices.map((v) => `${v.name} (${v.accent})`).join(' · ')}
+          </p>
+          <p className="text-xs text-gray-500 pl-6">{capabilityLine(MODEL)}</p>
+        </div>
       ) : (
         <div className="space-y-2">
           <p className="text-sm text-gray-600">
-            One-time download of the speech engine and the Alan &amp; Amy voices
-            (~170MB). After that, the voice works offline with no server — and
-            with no Python setup.
+            {MODEL.tagline} One-time download of {formatBytes(MODEL.totalBytes)}.
+            After that, the voice works offline with no server — and no Python setup.
           </p>
+          {capabilityLine(MODEL) && (
+            <p className="text-xs text-gray-500">{capabilityLine(MODEL)}</p>
+          )}
           {status && !status.installed && (
             <p className="text-xs text-gray-500">
-              Engine: {status.piperInstalled ? '✓' : 'missing'} · Voices: {status.voices ? voiceLabel(status.voices.male && status.voices.female) : '…'}
+              Engine: {status.piperInstalled ? '✓' : 'missing'} · {voiceLine}
             </p>
           )}
           <button

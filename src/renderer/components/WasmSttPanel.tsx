@@ -6,6 +6,9 @@ import { Download, Loader2, CheckCircle2 } from 'lucide-react';
 import {
   wasmSttStatus, ensureWasmSttModels, onWasmSttProgress, WasmSttStatus,
 } from '../services/wasmStt';
+import { catalogEntry, capabilityLine, formatBytes } from '../services/modelCatalog';
+
+const MODEL = catalogEntry('wasm')!;
 
 export function WasmSttPanel() {
   const [status, setStatus] = useState<WasmSttStatus | null>(null);
@@ -36,24 +39,30 @@ export function WasmSttPanel() {
     }
   };
 
-  const mb = (bytes: number) => `${(bytes / 1e6).toFixed(0)}MB`;
+  const size = formatBytes(status?.totalBytes ?? MODEL.totalBytes);
 
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
-        In-app speech model
+        {MODEL.name}
       </label>
       {status?.installed ? (
-        <p className="flex items-center gap-2 text-sm text-green-700">
-          <CheckCircle2 size={16} />
-          Installed and ready — speech runs entirely inside the app.
-        </p>
+        <div className="space-y-1">
+          <p className="flex items-center gap-2 text-sm text-green-700">
+            <CheckCircle2 size={16} />
+            Installed and ready — speech runs entirely inside the app.
+          </p>
+          <p className="text-xs text-gray-500 pl-6">{capabilityLine(MODEL)}</p>
+        </div>
       ) : (
         <div className="space-y-2">
           <p className="text-sm text-gray-600">
-            One-time download of the speech model (~{status ? mb(status.totalBytes) : '40'}MB).
-            After that, listening works offline with no server.
+            {MODEL.tagline} One-time download of {size}. After that, listening
+            works offline with no server.
           </p>
+          {capabilityLine(MODEL) && (
+            <p className="text-xs text-gray-500">{capabilityLine(MODEL)}</p>
+          )}
           <button
             type="button"
             onClick={download}
