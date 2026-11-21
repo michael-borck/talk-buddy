@@ -91,7 +91,7 @@ export function ScenarioFormPage() {
           isPublic: scenario.isPublic || false,
           voice: scenario.voice || 'male',
           personas: scenario.personas || [],
-          projectId: (scenario as any).projectId || ''
+          projectId: scenario.projectId || ''
         });
         
         // Load scenario's current packs

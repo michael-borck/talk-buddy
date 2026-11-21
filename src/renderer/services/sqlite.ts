@@ -89,7 +89,9 @@ function parseScenarioRow(scenario: any): Scenario {
     tags: scenario.tags ? JSON.parse(scenario.tags) : [],
     personas: scenario.personas ? JSON.parse(scenario.personas) : undefined,
     isPublic: Boolean(scenario.isPublic),
-    archived: Boolean(scenario.archived)
+    archived: Boolean(scenario.archived),
+    pinned: Boolean(scenario.pinned),
+    projectId: scenario.project_id ?? null
   };
 }
 
@@ -131,7 +133,7 @@ export async function createScenario(scenario: Omit<Scenario, 'id' | 'created' |
     isPublic: scenario.isPublic ? 1 : 0,
     voice: scenario.voice,
     personas: scenario.personas ? JSON.stringify(scenario.personas) : null,
-    projectId: (scenario as any).projectId || null,
+    projectId: scenario.projectId || null,
     created: now,
     updated: now
   });
@@ -173,7 +175,7 @@ export async function updateScenario(id: string, updates: Partial<Scenario>): Pr
       isPublic: updatedScenario.isPublic ? 1 : 0,
       voice: updatedScenario.voice,
       personas: updatedScenario.personas ? JSON.stringify(updatedScenario.personas) : null,
-      project_id: (updatedScenario as any).projectId || null,
+      project_id: updatedScenario.projectId || null,
       updated: now
     }
   });

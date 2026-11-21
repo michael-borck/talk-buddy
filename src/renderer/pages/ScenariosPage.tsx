@@ -161,7 +161,7 @@ export function ScenariosPage() {
 
     // Project filter (from a deep link or the dropdown)
     if (projectFilter) {
-      filtered = filtered.filter((scenario) => (scenario as any).projectId === projectFilter);
+      filtered = filtered.filter((scenario) => scenario.projectId === projectFilter);
     }
 
     // Smart collection filter (from a deep link). Membership is recomputed

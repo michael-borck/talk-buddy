@@ -27,6 +27,7 @@ export interface Scenario {
   personas?: ScenarioPersona[]; // present → the Scenario is a multi-persona role-play
   archived?: boolean;
   pinned?: boolean;
+  projectId?: string | null;
   created: string;
   updated: string;
 }

@@ -86,14 +86,14 @@ export function InsightsPage() {
   const scopedSessions = useMemo(() => {
     if (!projectScope) return sessions;
     const ids = new Set(
-      scenarios.filter((s) => (s as any).projectId === projectScope).map((s) => s.id)
+      scenarios.filter((s) => s.projectId === projectScope).map((s) => s.id)
     );
     return sessionsForScenarios(sessions, ids);
   }, [sessions, scenarios, projectScope]);
 
   const totals = useMemo(() => computeTotals(scopedSessions), [scopedSessions]);
   const activity = useMemo(
-    () => scenarioActivity(scopedSessions, scenarios.filter((s) => !projectScope || (s as any).projectId === projectScope)),
+    () => scenarioActivity(scopedSessions, scenarios.filter((s) => !projectScope || s.projectId === projectScope)),
     [scopedSessions, scenarios, projectScope]
   );
   const weekly = useMemo(() => weeklyMinutes(scopedSessions, 8), [scopedSessions]);

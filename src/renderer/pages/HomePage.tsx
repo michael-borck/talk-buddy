@@ -187,7 +187,7 @@ export function HomePage() {
   // Home reflects what the user is working on rather than a static list.
   const recentProjects = useMemo(() => {
     if (projects.length === 0) return [];
-    const scenarioToProject = new Map(scenarios.map((s) => [s.id, (s as any).projectId]));
+    const scenarioToProject = new Map(scenarios.map((s) => [s.id, s.projectId]));
     const lastByProject = new Map<string, number>();
     for (const s of sessions) {
       if (!s.startTime) continue;
