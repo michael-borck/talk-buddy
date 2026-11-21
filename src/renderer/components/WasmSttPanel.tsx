@@ -1,20 +1,22 @@
 // WasmSttPanel — model status + one-click download for the in-app
 // (transformers.js) Listening Provider. Self-contained, like DiagnosticsPanel.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, Loader2, CheckCircle2 } from 'lucide-react';
 import {
   wasmSttStatus, ensureWasmSttModels, onWasmSttProgress, WasmSttStatus,
 } from '../services/wasmStt';
 import { catalogEntry, capabilityLine, formatBytes } from '../services/modelCatalog';
+import { DownloadMeter, formatSpeed, formatEta } from '../services/downloadMeter';
 
 const MODEL = catalogEntry('wasm')!;
 
 export function WasmSttPanel() {
   const [status, setStatus] = useState<WasmSttStatus | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [progress, setProgress] = useState<{ file: string; pct: number } | null>(null);
+  const [progress, setProgress] = useState<{ file: string; pct: number; downloaded: number; totalBytes: number; speed: string; eta: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const meterRef = useRef(new DownloadMeter());
 
   const refresh = () => {
     wasmSttStatus().then(setStatus).catch((err) => console.error('wasm stt status failed:', err));
@@ -25,7 +27,20 @@ export function WasmSttPanel() {
   const download = async () => {
     setDownloading(true);
     setError(null);
-    const unsub = onWasmSttProgress((p) => setProgress({ file: p.file, pct: p.pct }));
+    meterRef.current.reset();
+    const unsub = onWasmSttProgress((p) => {
+      const meter = meterRef.current;
+      meter.push(p);
+      const s = meter.snapshot();
+      setProgress({
+        file: p.file,
+        pct: s.pct ?? p.pct,
+        downloaded: s.downloaded,
+        totalBytes: s.totalBytes,
+        speed: s.speedBps ? formatSpeed(s.speedBps) : '',
+        eta: s.etaSeconds != null ? formatEta(s.etaSeconds) : '',
+      });
+    });
     try {
       const result = await ensureWasmSttModels();
       if (!result.success) setError(result.error || 'Download failed');
@@ -79,6 +94,11 @@ export function WasmSttPanel() {
               </div>
               <p className="text-xs text-gray-500">
                 {progress.file} — {progress.pct}%
+                {progress.speed && <> · {progress.speed}</>}
+                {progress.eta && <> · {progress.eta} left</>}
+                {progress.totalBytes > 0 && (
+                  <> · {formatBytes(progress.downloaded)} / {formatBytes(progress.totalBytes)}</>
+                )}
               </p>
             </div>
           )}

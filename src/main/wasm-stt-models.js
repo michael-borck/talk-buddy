@@ -86,6 +86,12 @@ async function ensureModels(sender) {
     if (sender && !sender.isDestroyed()) sender.send('wasm-stt:progress', payload);
   };
 
+  // Cumulative bytes across every file, so the renderer can show total
+  // progress and an ETA rather than just "file X — n%".
+  let downloaded = FILES
+    .filter((f) => { try { return fs.statSync(path.join(dir, f.file)).size === f.size; } catch { return false; } })
+    .reduce((sum, f) => sum + f.size, 0);
+
   for (const entry of FILES) {
     const dest = path.join(dir, entry.file);
     let present = false;
@@ -94,7 +100,7 @@ async function ensureModels(sender) {
     } catch { /* missing */ }
     if (present) continue;
 
-    emit({ file: entry.file, received: 0, total: entry.size, pct: 0 });
+    emit({ file: entry.file, received: 0, total: entry.size, pct: 0, downloaded, totalBytes: TOTAL_BYTES });
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     const tmp = dest + '.download';
 
@@ -105,7 +111,8 @@ async function ensureModels(sender) {
       if (buf.length !== entry.size) throw new Error(`mirror size mismatch: ${entry.file}`);
       if (entry.sha256 && sha256(buf) !== entry.sha256) throw new Error(`mirror sha256 mismatch: ${entry.file}`);
       fs.renameSync(tmp, dest);
-      emit({ file: entry.file, received: entry.size, total: entry.size, pct: 100 });
+      downloaded += entry.size;
+      emit({ file: entry.file, received: entry.size, total: entry.size, pct: 100, downloaded, totalBytes: TOTAL_BYTES });
       continue;
     }
 
@@ -124,14 +131,15 @@ async function ensureModels(sender) {
       if (!out.write(value)) {
         await new Promise((resolve) => out.once('drain', resolve));
       }
-      emit({ file: entry.file, received, total: entry.size, pct: Math.min(100, Math.round((received / entry.size) * 100)) });
+      emit({ file: entry.file, received, total: entry.size, pct: Math.min(100, Math.round((received / entry.size) * 100)), downloaded: downloaded + received, totalBytes: TOTAL_BYTES });
     }
     await new Promise((resolve, reject) => { out.end(resolve); out.on('error', reject); });
 
     if (received !== entry.size) throw new Error(`size mismatch for ${entry.file}: ${received} != ${entry.size}`);
     if (entry.sha256 && hash.digest('hex') !== entry.sha256) throw new Error(`sha256 mismatch for ${entry.file}`);
     fs.renameSync(tmp, dest);
-    emit({ file: entry.file, received: entry.size, total: entry.size, pct: 100 });
+    downloaded += entry.size;
+    emit({ file: entry.file, received: entry.size, total: entry.size, pct: 100, downloaded, totalBytes: TOTAL_BYTES });
   }
 
   return { success: true, dir, ...status() };

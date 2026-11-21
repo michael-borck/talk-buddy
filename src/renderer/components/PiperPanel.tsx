@@ -1,7 +1,7 @@
 // PiperPanel — engine + voice status and one-click download for the in-app
 // Voice Provider. Self-contained, like WasmSttPanel.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, Loader2, CheckCircle2 } from 'lucide-react';
 import {
   piperStatus, ensurePiper, onPiperProgress, PiperStatus,
@@ -9,6 +9,7 @@ import {
 import {
   catalogEntry, capabilityLine, formatBytes, catalogVoices,
 } from '../services/modelCatalog';
+import { DownloadMeter, formatSpeed, formatEta } from '../services/downloadMeter';
 
 const MODEL = catalogEntry('piper')!;
 
@@ -21,8 +22,9 @@ const STAGE_LABEL: Record<string, string> = {
 export function PiperPanel() {
   const [status, setStatus] = useState<PiperStatus | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const [progress, setProgress] = useState<{ stage: string; pct: number } | null>(null);
+  const [progress, setProgress] = useState<{ stage: string; pct: number; downloaded: number; totalBytes: number; speed: string; eta: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const meterRef = useRef(new DownloadMeter());
 
   const refresh = () => {
     piperStatus().then(setStatus).catch((err) => console.error('piper status failed:', err));
@@ -33,7 +35,28 @@ export function PiperPanel() {
   const download = async () => {
     setDownloading(true);
     setError(null);
-    const unsub = onPiperProgress((p) => setProgress({ stage: p.stage, pct: p.pct }));
+    meterRef.current.reset();
+    const unsub = onPiperProgress((p) => {
+      const meter = meterRef.current;
+      meter.push({
+        file: p.file,
+        stage: p.stage,
+        received: p.received ?? 0,
+        total: p.total ?? 0,
+        pct: p.pct,
+        downloaded: p.downloaded,
+        totalBytes: p.totalBytes,
+      });
+      const s = meter.snapshot();
+      setProgress({
+        stage: p.stage,
+        pct: s.pct ?? p.pct,
+        downloaded: s.downloaded,
+        totalBytes: s.totalBytes,
+        speed: s.speedBps ? formatSpeed(s.speedBps) : '',
+        eta: s.etaSeconds != null ? formatEta(s.etaSeconds) : '',
+      });
+    });
     try {
       const result = await ensurePiper();
       if (!result.success) setError(result.error || 'Download failed');
@@ -101,6 +124,11 @@ export function PiperPanel() {
               </div>
               <p className="text-xs text-gray-500">
                 {STAGE_LABEL[progress.stage] || progress.stage} — {progress.pct}%
+                {progress.speed && <> · {progress.speed}</>}
+                {progress.eta && <> · {progress.eta} left</>}
+                {progress.totalBytes > 0 && (
+                  <> · {formatBytes(progress.downloaded)} / {formatBytes(progress.totalBytes)}</>
+                )}
               </p>
             </div>
           )}

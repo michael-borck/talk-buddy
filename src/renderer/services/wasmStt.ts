@@ -28,7 +28,10 @@ export function ensureWasmSttModels(): Promise<{ success: boolean; error?: strin
   return window.electronAPI.wasmStt.ensureModels();
 }
 
-export function onWasmSttProgress(cb: (p: { file: string; received: number; total: number; pct: number }) => void): () => void {
+export function onWasmSttProgress(cb: (p: {
+  file: string; received: number; total: number; pct: number;
+  downloaded?: number; totalBytes?: number;
+}) => void): () => void {
   return window.electronAPI.wasmStt.onProgress(cb);
 }
 

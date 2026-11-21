@@ -20,7 +20,10 @@ export function ensurePiper(): Promise<{ success: boolean; error?: string }> {
   return window.electronAPI.piper.ensure();
 }
 
-export function onPiperProgress(cb: (p: { stage: string; file: string; pct: number }) => void): () => void {
+export function onPiperProgress(cb: (p: {
+  stage: string; file: string; pct: number;
+  received?: number; total?: number; downloaded?: number; totalBytes?: number;
+}) => void): () => void {
   return window.electronAPI.piper.onProgress(cb);
 }
 

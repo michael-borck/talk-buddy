@@ -58,16 +58,16 @@ const VOICES = {
     file: 'en_GB-alan-low',
     url: `${HF_BASE}/en/en_GB/alan/low`,
     files: [
-      { file: 'en_GB-alan-low.onnx', sha256: 'a1f60584620a2bed203de823d08f5abb336fb15f3d6f33f8c341e3e2cabf5dde' },
-      { file: 'en_GB-alan-low.onnx.json', sha256: 'c8164cc04b6ce102c651ce4a1e788e8429fa638501fca0723860718d4b44637e' },
+      { file: 'en_GB-alan-low.onnx', size: 63_141_888, sha256: 'a1f60584620a2bed203de823d08f5abb336fb15f3d6f33f8c341e3e2cabf5dde' },
+      { file: 'en_GB-alan-low.onnx.json', size: 1_000, sha256: 'c8164cc04b6ce102c651ce4a1e788e8429fa638501fca0723860718d4b44637e' },
     ],
   },
   female: {
     file: 'en_US-amy-low',
     url: `${HF_BASE}/en/en_US/amy/low`,
     files: [
-      { file: 'en_US-amy-low.onnx', sha256: 'a5a91abb7de0f104358a25aded480ddacf1ff0762886325886ec406a2e86aab3' },
-      { file: 'en_US-amy-low.onnx.json', sha256: '2250a9a605b8dc35a116717fadc5056695dd809e34a15d02f72a0f52d53d3ebb' },
+      { file: 'en_US-amy-low.onnx', size: 63_141_888, sha256: 'a5a91abb7de0f104358a25aded480ddacf1ff0762886325886ec406a2e86aab3' },
+      { file: 'en_US-amy-low.onnx.json', size: 1_000, sha256: '2250a9a605b8dc35a116717fadc5056695dd809e34a15d02f72a0f52d53d3ebb' },
     ],
   },
 };
@@ -155,7 +155,11 @@ function status() {
 
 /**
  * Download + extract everything missing. Progress events via sender:
- * { stage: 'piper'|'phonemize'|'voices', file, pct }.
+ * { stage: 'piper'|'phonemize'|'voices', file, pct, received, total,
+ *   downloaded, totalBytes }. The archives have unknown sizes up front, so
+ * `totalBytes` is a best-effort estimate (sum of known voice sizes + a
+ * per-stage placeholder); the renderer uses it only for a progress bar, and
+ * falls back to per-file percent when it is 0.
  */
 async function ensureModels(sender) {
   const emit = (payload) => {
@@ -166,10 +170,26 @@ async function ensureModels(sender) {
   const assets = archiveAssets();
   const needsBinary = !status().piperInstalled;
 
+  // Best-effort total: voice sizes are known up front; archives are not, so
+  // estimate each missing stage at a nominal size. Good enough for a bar.
+  const VOICE_TOTAL = Object.values(VOICES)
+    .flatMap((v) => v.files)
+    .reduce((sum, f) => sum + (f.size || 0), 0);
+  const ARCHIVE_EST = 60_000_000; // piper/phonemize archives, per stage
+  let totalBytes = VOICE_TOTAL;
+  if (needsBinary) totalBytes += ARCHIVE_EST;
+  if (process.platform !== 'win32') totalBytes += ARCHIVE_EST;
+
+  let downloaded = 0;
+  // Archives have unknown sizes up front, so drive their bar off percent and
+  // fold a nominal chunk into `downloaded` on completion.
+  const ARCHIVE_NOMINAL = 60_000_000;
+
   if (needsBinary) {
-    emit({ stage: 'piper', file: 'archive', pct: 0 });
+    emit({ stage: 'piper', file: 'archive', pct: 0, received: 0, total: 0, downloaded, totalBytes });
     const tmp = await download(assets.piper, path.join(baseDir(), 'piper.archive'), (r, t) =>
-      emit({ stage: 'piper', file: 'archive', pct: Math.round((r / t) * 100) }));
+      emit({ stage: 'piper', file: 'archive', pct: Math.round((r / t) * 100), received: r, total: t, downloaded, totalBytes }));
+    downloaded += ARCHIVE_NOMINAL;
     extract(tmp, baseDir());
     fs.rmSync(tmp, { force: true });
     if (process.platform !== 'win32') fs.chmodSync(binaryPath(), 0o755);
@@ -180,9 +200,10 @@ async function ensureModels(sender) {
   // bundle is harmless and keeps one code path for LD_LIBRARY_PATH.
   const needsPhonemize = !fs.existsSync(path.join(phonemizeLibDir(), process.platform === 'win32' ? 'piper_phonemize.dll' : 'libpiper_phonemize.1.dylib'));
   if (needsPhonemize && process.platform !== 'win32') {
-    emit({ stage: 'phonemize', file: 'archive', pct: 0 });
+    emit({ stage: 'phonemize', file: 'archive', pct: 0, received: 0, total: 0, downloaded, totalBytes });
     const tmp = await download(assets.phonemize, path.join(baseDir(), 'phonemize.archive'), (r, t) =>
-      emit({ stage: 'phonemize', file: 'archive', pct: Math.round((r / t) * 100) }));
+      emit({ stage: 'phonemize', file: 'archive', pct: Math.round((r / t) * 100), received: r, total: t, downloaded, totalBytes }));
+    downloaded += ARCHIVE_NOMINAL;
     extract(tmp, baseDir());
     fs.rmSync(tmp, { force: true });
   }
@@ -197,15 +218,16 @@ async function ensureModels(sender) {
       } catch {
         present = false;
       }
-      if (present) continue;
-      emit({ stage: 'voices', file: f.file, pct: 0 });
+      if (present) { downloaded += f.size || 0; continue; }
+      emit({ stage: 'voices', file: f.file, pct: 0, received: 0, total: f.size || 0, downloaded, totalBytes });
       const tmp = await download(`${v.url}/${f.file}`, dest, (r, t) =>
-        emit({ stage: 'voices', file: f.file, pct: Math.round((r / t) * 100) }));
+        emit({ stage: 'voices', file: f.file, pct: Math.round((r / t) * 100), received: r, total: t || f.size || 0, downloaded: downloaded + r, totalBytes }));
       if (sha256(fs.readFileSync(tmp)) !== f.sha256) {
         fs.rmSync(tmp, { force: true });
         throw new Error(`sha256 mismatch for ${f.file} — refusing to install`);
       }
       fs.renameSync(tmp, dest);
+      downloaded += f.size || 0;
     }
   }
 
