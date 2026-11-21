@@ -4,9 +4,9 @@
 // only proposes and records practice.
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listScenarios, listSessions, startStandaloneSession } from '../services/sqlite';
+import { listScenarios, listSessions, startStandaloneSession, listProjectsWithCounts } from '../services/sqlite';
 import { loadPreferences, resolveChat } from '../services/config';
-import { Scenario, Session } from '../types';
+import { Scenario, Session, Project } from '../types';
 import { OllamaSetupCard } from '../components/OllamaSetupCard';
 import { hasPassedSetupCheck } from '../services/setupCheck';
 import { suggestScenarioWithReason } from '../services/practice';
@@ -93,6 +93,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [starting, setStarting] = useState(false);
   const [chatConfigured, setChatConfigured] = useState(true);
   const [readiness, setReadiness] = useState<Readiness>({ ready: true, issues: [] });
@@ -111,13 +112,15 @@ export function HomePage() {
   useEffect(() => {
     (async () => {
       try {
-        const [allScenarios, allSessions, prefs] = await Promise.all([
+        const [allScenarios, allSessions, prefs, allProjects] = await Promise.all([
           listScenarios(),
           listSessions(),
           loadPreferences(),
+          listProjectsWithCounts(),
         ]);
         setScenarios(allScenarios.filter((s) => !s.archived));
         setSessions(allSessions);
+        setProjects(allProjects);
         setChatConfigured(Boolean(resolveChat(prefs).url));
       } catch (error) {
         console.error('Failed to load home data:', error);
@@ -179,6 +182,24 @@ export function HomePage() {
     [sessions]
   );
   const hasPinned = pinnedScenarios.length > 0 || pinnedSessions.length > 0;
+
+  // Recent projects — the three with the most recent practice activity, so the
+  // Home reflects what the user is working on rather than a static list.
+  const recentProjects = useMemo(() => {
+    if (projects.length === 0) return [];
+    const scenarioToProject = new Map(scenarios.map((s) => [s.id, (s as any).projectId]));
+    const lastByProject = new Map<string, number>();
+    for (const s of sessions) {
+      if (!s.startTime) continue;
+      const pid = scenarioToProject.get(s.scenario);
+      if (!pid) continue;
+      const t = new Date(s.startTime).getTime();
+      if (t > (lastByProject.get(pid) ?? 0)) lastByProject.set(pid, t);
+    }
+    return [...projects]
+      .sort((a, b) => (lastByProject.get(b.id) ?? 0) - (lastByProject.get(a.id) ?? 0))
+      .slice(0, 3);
+  }, [projects, scenarios, sessions]);
 
   const startSuggested = async () => {
     if (!suggested) return;
@@ -418,6 +439,36 @@ export function HomePage() {
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+
+        {/* Recent projects */}
+        {recentProjects.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-baseline justify-between mb-5">
+              <h2 className="font-sans text-[1.3rem] text-ink font-medium">Recent projects</h2>
+              <button
+                onClick={() => navigate('/projects')}
+                className="text-[0.8rem] text-ink-muted hover:text-accent transition-colors font-sans"
+              >
+                All projects →
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {recentProjects.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => navigate(`/scenarios?project=${encodeURIComponent(p.id)}`)}
+                  className="text-left bg-paper-warm border border-ink/10 rounded-soft p-4 hover:border-accent transition-colors"
+                  style={{ borderLeftWidth: 4, borderLeftColor: p.color }}
+                >
+                  <h3 className="font-sans text-[0.95rem] text-ink font-medium truncate">{p.name}</h3>
+                  <p className="text-[0.72rem] text-ink-muted font-sans mt-1">
+                    {p.scenarioCount ?? 0} scenario{(p.scenarioCount ?? 0) === 1 ? '' : 's'}
+                  </p>
+                </button>
+              ))}
+            </div>
           </section>
         )}
 
