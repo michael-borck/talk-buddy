@@ -23,8 +23,6 @@
 
 ## Next
 
-☐ Custom tags system — user tags on conversations and projects (Scenarios
-   already carry tags; sessions and projects do not).
 ☐ Move Quick Start to the sidebar and rename to "Random Scenario".
 ☐ Redesign home layout — show recent projects (last 3) explicitly (pinned
    and journal ship today; a dedicated "recent projects" strip is the gap).
