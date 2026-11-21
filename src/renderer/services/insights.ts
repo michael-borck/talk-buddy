@@ -226,3 +226,18 @@ export function computeImprovement(
     earlierSessions: earlier.length,
   };
 }
+
+/**
+ * Restrict Sessions to those belonging to a set of Scenario ids — the basis of
+ * project-level analysis. A Project owns Scenarios, Scenarios own Sessions, so
+ * a project's practice history is exactly the sessions of its Scenarios.
+ * An empty set means "no sessions" (not "all"), so an empty project reports
+ * zeros rather than borrowing the whole library.
+ */
+export function sessionsForScenarios(
+  sessions: Session[],
+  scenarioIds: Set<string>
+): Session[] {
+  if (scenarioIds.size === 0) return [];
+  return sessions.filter((s) => scenarioIds.has(s.scenario));
+}

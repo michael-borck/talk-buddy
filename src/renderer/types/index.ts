@@ -118,3 +118,14 @@ export interface PackScenario {
   orderIndex: number;
   created: string;
 }
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  scenarioCount?: number;
+  archived?: boolean;
+  created: string;
+  updated: string;
+}

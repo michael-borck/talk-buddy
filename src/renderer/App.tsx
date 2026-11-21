@@ -5,6 +5,7 @@ import { ScenariosPage } from './pages/ScenariosPage';
 import { ScenarioFormPage } from './pages/ScenarioFormPage';
 import { SessionHistoryPage } from './pages/SessionHistoryPage';
 import { InsightsPage } from './pages/InsightsPage';
+import { ProjectsPage } from './pages/ProjectsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SetupCheckPage } from './pages/SetupCheckPage';
 import { ConversationAnalysisPage } from './pages/ConversationAnalysisPage';
@@ -151,6 +152,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/scenarios" element={<ScenariosPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/scenarios/new" element={<ScenarioFormPage />} />
             <Route path="/scenarios/edit/:scenarioId" element={<ScenarioFormPage />} />
             <Route path="/scenarios/local" element={<Navigate to="/scenarios" replace />} />

@@ -1,5 +1,5 @@
 // Client-side SQLite service that communicates with Electron main process
-import { Scenario, Session, Pack, PackWithScenarios, SessionPack, SessionPackWithSessions } from '../types';
+import { Scenario, Session, Pack, PackWithScenarios, SessionPack, SessionPackWithSessions, Project } from '../types';
 
 // Type definitions for Electron API
 interface ElectronAPI {
@@ -131,6 +131,7 @@ export async function createScenario(scenario: Omit<Scenario, 'id' | 'created' |
     isPublic: scenario.isPublic ? 1 : 0,
     voice: scenario.voice,
     personas: scenario.personas ? JSON.stringify(scenario.personas) : null,
+    projectId: (scenario as any).projectId || null,
     created: now,
     updated: now
   });
@@ -172,6 +173,7 @@ export async function updateScenario(id: string, updates: Partial<Scenario>): Pr
       isPublic: updatedScenario.isPublic ? 1 : 0,
       voice: updatedScenario.voice,
       personas: updatedScenario.personas ? JSON.stringify(updatedScenario.personas) : null,
+      project_id: (updatedScenario as any).projectId || null,
       updated: now
     }
   });
@@ -1169,3 +1171,64 @@ export async function emptyTrash(): Promise<PurgeCounts> {
 
 /** The retention window for Trash, in days. Items older than this are purged. */
 export const TRASH_RETENTION_DAYS = 30;
+
+// --- Projects ---
+
+export async function listProjects(): Promise<Project[]> {
+  const result = await window.electronAPI.database.op('projects:list', {});
+  if (!result.success || !result.data) return [];
+  return result.data as Project[];
+}
+
+export async function listProjectsWithCounts(): Promise<Project[]> {
+  const result = await window.electronAPI.database.op('projects:listWithCounts', {});
+  if (!result.success || !result.data) return [];
+  return result.data as Project[];
+}
+
+export async function getProject(id: string): Promise<Project | null> {
+  const result = await window.electronAPI.database.op('projects:get', { id });
+  if (!result.success || !result.data || result.data.length === 0) return null;
+  return result.data[0] as Project;
+}
+
+export async function createProject(input: {
+  name: string;
+  description?: string;
+  color?: string;
+}): Promise<Project> {
+  const id = `proj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const now = new Date().toISOString();
+  const result = await window.electronAPI.database.op('projects:create', {
+    id,
+    name: input.name,
+    description: input.description ?? null,
+    color: input.color ?? '#3B82F6',
+    created: now,
+    updated: now,
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to create project');
+  return { id, name: input.name, description: input.description, color: input.color ?? '#3B82F6', created: now, updated: now };
+}
+
+export async function updateProject(
+  id: string,
+  fields: Partial<Pick<Project, 'name' | 'description' | 'color' | 'archived'>>
+): Promise<void> {
+  const result = await window.electronAPI.database.op('projects:update', {
+    id,
+    fields: { ...fields, updated: new Date().toISOString() },
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to update project');
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  const result = await window.electronAPI.database.op('projects:delete', { id });
+  if (!result.success) throw new Error(result.error || 'Failed to delete project');
+}
+
+export async function listScenariosByProject(projectId: string): Promise<Scenario[]> {
+  const result = await window.electronAPI.database.op('scenarios:listByProject', { projectId });
+  if (!result.success || !result.data) return [];
+  return result.data as Scenario[];
+}

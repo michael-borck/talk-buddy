@@ -7,9 +7,10 @@ import {
   listPacks,
   getScenarioPacks,
   addScenarioToPack,
-  removeScenarioFromPack
+  removeScenarioFromPack,
+  listProjects
 } from '../services/sqlite';
-import { Pack, ScenarioPersona } from '../types';
+import { Pack, ScenarioPersona, Project } from '../types';
 import { Save, X, Plus, Package, UserPlus, Trash2, Users } from 'lucide-react';
 import { notify, notifyCaught } from '../services/notices';
 import { LoadingState, PageHeader } from '../components/layout/PageShell';
@@ -34,6 +35,7 @@ export function ScenarioFormPage() {
   const [availablePacks, setAvailablePacks] = useState<Pack[]>([]);
   const [selectedPacks, setSelectedPacks] = useState<string[]>([]);
   const [originalPacks, setOriginalPacks] = useState<string[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -47,11 +49,13 @@ export function ScenarioFormPage() {
     tags: [] as string[],
     isPublic: true,
     voice: 'male' as 'male' | 'female',
-    personas: [] as ScenarioPersona[]
+    personas: [] as ScenarioPersona[],
+    projectId: '' as string
   });
 
   useEffect(() => {
     loadPacks();
+    listProjects().then(setProjects).catch((e) => console.error('Failed to load projects:', e));
     if (isEditing && scenarioId) {
       loadScenario();
     }
@@ -86,7 +90,8 @@ export function ScenarioFormPage() {
           tags: scenario.tags || [],
           isPublic: scenario.isPublic || false,
           voice: scenario.voice || 'male',
-          personas: scenario.personas || []
+          personas: scenario.personas || [],
+          projectId: (scenario as any).projectId || ''
         });
         
         // Load scenario's current packs
@@ -280,6 +285,26 @@ export function ScenarioFormPage() {
                 <option value="advanced">Advanced</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Project <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <select
+              value={formData.projectId}
+              onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">No project</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Group related Scenarios so you can practise and review them together.
+              Manage projects from the Explore page.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

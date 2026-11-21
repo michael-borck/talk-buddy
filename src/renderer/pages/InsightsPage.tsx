@@ -9,11 +9,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Clock, Flame, MessageSquare, TrendingUp, TrendingDown, Target } from 'lucide-react';
-import { listScenarios, listSessions } from '../services/sqlite';
-import { Scenario, Session } from '../types';
+import { listScenarios, listSessions, listProjects } from '../services/sqlite';
+import { Scenario, Session, Project } from '../types';
 import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 import {
-  computeTotals, scenarioActivity, weeklyMinutes, computeImprovement,
+  computeTotals, scenarioActivity, weeklyMinutes, computeImprovement, sessionsForScenarios,
 } from '../services/insights';
 import { notifyCaught } from '../services/notices';
 
@@ -62,14 +62,17 @@ export function InsightsPage() {
   const navigate = useNavigate();
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectScope, setProjectScope] = useState(''); // '' = all
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [scn, ses] = await Promise.all([listScenarios(), listSessions()]);
+        const [scn, ses, proj] = await Promise.all([listScenarios(), listSessions(), listProjects()]);
         setScenarios(scn);
         setSessions(ses);
+        setProjects(proj);
       } catch (error) {
         notifyCaught('sessions.loadFailed', error, { detail: 'Could not load insights.' });
       } finally {
@@ -78,10 +81,23 @@ export function InsightsPage() {
     })();
   }, []);
 
-  const totals = useMemo(() => computeTotals(sessions), [sessions]);
-  const activity = useMemo(() => scenarioActivity(sessions, scenarios), [sessions, scenarios]);
-  const weekly = useMemo(() => weeklyMinutes(sessions, 8), [sessions]);
-  const improvement = useMemo(() => computeImprovement(sessions), [sessions]);
+  // Scope everything to the selected project, if any. A project's practice is
+  // the sessions of its Scenarios (sessionsForScenarios).
+  const scopedSessions = useMemo(() => {
+    if (!projectScope) return sessions;
+    const ids = new Set(
+      scenarios.filter((s) => (s as any).projectId === projectScope).map((s) => s.id)
+    );
+    return sessionsForScenarios(sessions, ids);
+  }, [sessions, scenarios, projectScope]);
+
+  const totals = useMemo(() => computeTotals(scopedSessions), [scopedSessions]);
+  const activity = useMemo(
+    () => scenarioActivity(scopedSessions, scenarios.filter((s) => !projectScope || (s as any).projectId === projectScope)),
+    [scopedSessions, scenarios, projectScope]
+  );
+  const weekly = useMemo(() => weeklyMinutes(scopedSessions, 8), [scopedSessions]);
+  const improvement = useMemo(() => computeImprovement(scopedSessions), [scopedSessions]);
 
   const topScenarios = activity.slice(0, 8);
   const maxActivity = Math.max(...topScenarios.map((a) => a.minutes), 1);
@@ -94,15 +110,31 @@ export function InsightsPage() {
         title="Insights"
         subtitle="Your practice over time — time spent, what you practise, and how it is trending."
         icon={<BarChart3 size={28} />}
+        actions={
+          projects.length > 0 ? (
+            <select
+              value={projectScope}
+              onChange={(e) => setProjectScope(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All practice</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          ) : undefined
+        }
       />
 
       {totals.sessions === 0 ? (
         <EmptyState
           icon={<BarChart3 size={40} />}
-          message="No practice to summarise yet."
+          message={projectScope ? 'No practice in this project yet.' : 'No practice to summarise yet.'}
         >
           <p className="text-gray-500">
-            Finish a conversation and your practice will start appearing here.
+            {projectScope
+              ? 'Practise a Scenario in this project and its sessions will appear here.'
+              : 'Finish a conversation and your practice will start appearing here.'}
           </p>
         </EmptyState>
       ) : (

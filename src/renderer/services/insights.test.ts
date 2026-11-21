@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  computeTotals, scenarioActivity, weeklyMinutes, computeImprovement,
+  computeTotals, scenarioActivity, weeklyMinutes, computeImprovement, sessionsForScenarios,
 } from './insights';
 import { Scenario, Session } from '../types';
 
@@ -107,5 +107,18 @@ describe('computeImprovement', () => {
     const imp = computeImprovement([]);
     expect(imp.paceDelta).toBeNull();
     expect(imp.fillerDelta).toBeNull();
+  });
+});
+
+describe('sessionsForScenarios', () => {
+  it('keeps only sessions whose scenario is in the set', () => {
+    const sessions = [ended('a', 's1', 1), ended('b', 's2', 1), ended('c', 's1', 2)];
+    const scoped = sessionsForScenarios(sessions, new Set(['s1']));
+    expect(scoped.map((s) => s.id)).toEqual(['a', 'c']);
+  });
+
+  it('returns nothing for an empty set (not everything)', () => {
+    const sessions = [ended('a', 's1', 1)];
+    expect(sessionsForScenarios(sessions, new Set())).toEqual([]);
   });
 });

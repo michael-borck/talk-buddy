@@ -9,6 +9,7 @@ import {
   startStandaloneSession,
   archiveScenario,
   setScenarioPinned,
+  listProjects,
   exportScenario,
   exportScenarios,
   importFromFile
@@ -62,6 +63,12 @@ export function ScenariosPage() {
   });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Filter by project from a deep link (?project=). A Scenario's project_id
+  // arrives on the row; an empty value means "show all".
+  const [projectFilter, setProjectFilter] = useState(
+    () => new URLSearchParams(location.search).get('project') ?? ''
+  );
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
 
   const handleTogglePin = async (id: string, pinned: boolean) => {
     try {
@@ -77,11 +84,12 @@ export function ScenariosPage() {
 
   useEffect(() => {
     loadScenarios();
+    listProjects().then(setProjects).catch((e) => console.error('Failed to load projects:', e));
   }, []);
 
   useEffect(() => {
     filterScenarios();
-  }, [scenarios, searchTerm, filter]);
+  }, [scenarios, searchTerm, filter, projectFilter]);
 
   const loadScenarios = async () => {
     setLoading(true);
@@ -138,6 +146,11 @@ export function ScenariosPage() {
       } else if (filter.source === 'custom') {
         filtered = filtered.filter(scenario => !scenario.isDefault);
       }
+    }
+
+    // Project filter (from a deep link or the dropdown)
+    if (projectFilter) {
+      filtered = filtered.filter((scenario) => (scenario as any).projectId === projectFilter);
     }
 
     setFilteredScenarios(filtered);
@@ -404,7 +417,26 @@ export function ScenariosPage() {
             <Filter size={16} className="text-gray-500" />
             <span className="text-sm font-medium text-gray-700">Filter:</span>
           </div>
-          
+
+          {projects.length > 0 && (
+            <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => navigate('/projects')}
+            className="text-sm text-blue-600 hover:text-blue-700"
+          >
+            Manage projects →
+          </button>
+
           <select
             value={filter.category}
             onChange={(e) => setFilter({ ...filter, category: e.target.value })}
