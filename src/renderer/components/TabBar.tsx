@@ -17,7 +17,7 @@ interface Tab {
 const TABS: Tab[] = [
   { label: 'Today', path: '/', icon: Sun, also: [] },
   { label: 'Explore', path: '/scenarios', icon: Compass, also: ['/packs', '/archive', '/trash'] },
-  { label: 'Journal', path: '/sessions', icon: NotebookPen, also: ['/analysis'] },
+  { label: 'Journal', path: '/sessions', icon: NotebookPen, also: ['/analysis', '/insights'] },
   {
     label: 'Settings',
     path: '/settings',

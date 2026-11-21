@@ -4,6 +4,7 @@ import { ConversationPage } from './pages/ConversationPage';
 import { ScenariosPage } from './pages/ScenariosPage';
 import { ScenarioFormPage } from './pages/ScenarioFormPage';
 import { SessionHistoryPage } from './pages/SessionHistoryPage';
+import { InsightsPage } from './pages/InsightsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SetupCheckPage } from './pages/SetupCheckPage';
 import { ConversationAnalysisPage } from './pages/ConversationAnalysisPage';
@@ -156,6 +157,7 @@ function AppContent() {
             <Route path="/packs" element={<PracticePacksPage />} />
             <Route path="/packs/:packId" element={<PackDetailPage />} />
             <Route path="/sessions" element={<SessionHistoryPage />} />
+            <Route path="/insights" element={<InsightsPage />} />
             <Route path="/archive" element={<ArchivePage />} />
             <Route path="/trash" element={<TrashPage />} />
             <Route path="/conversation/:scenarioId" element={<ConversationPage />} />

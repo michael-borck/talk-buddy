@@ -359,7 +359,15 @@ export function HomePage() {
                 )}
               </p>
             </div>
-            <Sparkline values={pace.slice(-10)} />
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/insights')}
+                className="text-[0.78rem] text-ink-muted hover:text-accent transition-colors font-sans"
+              >
+                View insights →
+              </button>
+              <Sparkline values={pace.slice(-10)} />
+            </div>
           </div>
         )}
 
