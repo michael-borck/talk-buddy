@@ -28,10 +28,13 @@ import {
   Pause,
   CheckCircle,
   Circle,
-  PlayCircle
+  PlayCircle,
+  Search,
+  X
 } from 'lucide-react';
 import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 import { transcriptExcerpt } from '../services/practice';
+import { sessionMatchesQuery, sessionSearchText } from '../services/search';
 
 interface SessionWithScenario extends Session {
   scenarioData?: Scenario;
@@ -55,6 +58,7 @@ export function SessionHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'standalone' | 'packs'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'not_started' | 'active' | 'paused' | 'ended'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -212,11 +216,24 @@ export function SessionHistoryPage() {
     if (filter === 'standalone' && session.sessionPackId) return false;
     if (filter === 'packs' && !session.sessionPackId) return false;
     if (statusFilter !== 'all' && session.status !== statusFilter) return false;
+    if (searchTerm.trim() &&
+        !sessionMatchesQuery(searchTerm, {
+          scenarioName: session.scenarioData?.name,
+          packName: session.packName,
+          transcript: sessionSearchText(session.transcript),
+        })) return false;
     return true;
   });
 
-  const filteredSessionPacks = sessionPacks.filter(() => {
+  const filteredSessionPacks = sessionPacks.filter((sp) => {
     if (filter === 'standalone') return false;
+    if (searchTerm.trim() &&
+        !sessionMatchesQuery(searchTerm, {
+          scenarioName: sp.name,
+          transcript: sessionSearchText(
+            sp.sessions.flatMap((s) => s.transcript ?? [])
+          ),
+        })) return false;
     return true;
   });
 
@@ -230,6 +247,27 @@ export function SessionHistoryPage() {
         title="Session History"
         subtitle="Review your conversation practice sessions and track progress"
       />
+
+      {/* Search */}
+      <div className="mb-6 relative">
+        <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search by scenario, pack, or something you said…"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            aria-label="Clear search"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
 
       {/* Filters */}
       <div className="mb-6 flex flex-wrap items-center gap-4">
@@ -268,8 +306,15 @@ export function SessionHistoryPage() {
       </div>
 
       {filteredSessions.length === 0 && filteredSessionPacks.length === 0 ? (
-        <EmptyState icon={<MessageSquare size={48} />} message="No sessions found.">
-          <p className="text-gray-500">Start a conversation scenario to see your history here.</p>
+        <EmptyState
+          icon={searchTerm ? <Search size={48} /> : <MessageSquare size={48} />}
+          message={searchTerm ? `No sessions match “${searchTerm}”.` : 'No sessions found.'}
+        >
+          <p className="text-gray-500">
+            {searchTerm
+              ? 'Try a different word, or clear the search.'
+              : 'Start a conversation scenario to see your history here.'}
+          </p>
         </EmptyState>
       ) : (
         <div className="space-y-6">
