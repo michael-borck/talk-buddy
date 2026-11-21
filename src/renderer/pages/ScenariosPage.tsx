@@ -10,6 +10,7 @@ import {
   archiveScenario,
   setScenarioPinned,
   listProjects,
+  listSessions,
   exportScenario,
   exportScenarios,
   importFromFile,
@@ -17,7 +18,8 @@ import {
   bulkArchiveScenarios,
   bulkMoveScenarios
 } from '../services/sqlite';
-import { Scenario, Pack } from '../types';
+import { Scenario, Pack, Session } from '../types';
+import { smartCollections } from '../services/smartCollections';
 // ScenarioCardSkeleton component available but not currently used
 import {
   Trophy,
@@ -72,6 +74,11 @@ export function ScenariosPage() {
     () => new URLSearchParams(location.search).get('project') ?? ''
   );
   const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
+  // Filter by a smart collection from a deep link (?collection=). The set is
+  // computed from current practice data, then treated as a scenario id filter.
+  const collectionFilter =
+    new URLSearchParams(location.search).get('collection') ?? '';
+  const [sessions, setSessions] = useState<Session[]>([]);
 
   const handleTogglePin = async (id: string, pinned: boolean) => {
     try {
@@ -88,11 +95,12 @@ export function ScenariosPage() {
   useEffect(() => {
     loadScenarios();
     listProjects().then(setProjects).catch((e) => console.error('Failed to load projects:', e));
+    listSessions().then(setSessions).catch((e) => console.error('Failed to load sessions:', e));
   }, []);
 
   useEffect(() => {
     filterScenarios();
-  }, [scenarios, searchTerm, filter, projectFilter]);
+  }, [scenarios, searchTerm, filter, projectFilter, collectionFilter, sessions]);
 
   const loadScenarios = async () => {
     setLoading(true);
@@ -154,6 +162,14 @@ export function ScenariosPage() {
     // Project filter (from a deep link or the dropdown)
     if (projectFilter) {
       filtered = filtered.filter((scenario) => (scenario as any).projectId === projectFilter);
+    }
+
+    // Smart collection filter (from a deep link). Membership is recomputed
+    // from current practice data, so it never goes stale.
+    if (collectionFilter) {
+      const collection = smartCollections(scenarios, sessions).find((c) => c.rule === collectionFilter);
+      const ids = new Set((collection?.scenarios ?? []).map((s) => s.id));
+      filtered = filtered.filter((scenario) => ids.has(scenario.id));
     }
 
     setFilteredScenarios(filtered);
@@ -473,6 +489,12 @@ export function ScenariosPage() {
             className="text-sm text-blue-600 hover:text-blue-700"
           >
             Manage projects →
+          </button>
+          <button
+            onClick={() => navigate('/collections')}
+            className="text-sm text-blue-600 hover:text-blue-700"
+          >
+            Smart collections →
           </button>
 
           <select

@@ -6,6 +6,7 @@ import { ScenarioFormPage } from './pages/ScenarioFormPage';
 import { SessionHistoryPage } from './pages/SessionHistoryPage';
 import { InsightsPage } from './pages/InsightsPage';
 import { ProjectsPage } from './pages/ProjectsPage';
+import { SmartCollectionsPage } from './pages/SmartCollectionsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SetupCheckPage } from './pages/SetupCheckPage';
 import { ConversationAnalysisPage } from './pages/ConversationAnalysisPage';
@@ -153,6 +154,7 @@ function AppContent() {
             <Route path="/" element={<HomePage />} />
             <Route path="/scenarios" element={<ScenariosPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/collections" element={<SmartCollectionsPage />} />
             <Route path="/scenarios/new" element={<ScenarioFormPage />} />
             <Route path="/scenarios/edit/:scenarioId" element={<ScenarioFormPage />} />
             <Route path="/scenarios/local" element={<Navigate to="/scenarios" replace />} />

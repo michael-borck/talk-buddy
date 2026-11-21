@@ -7,7 +7,7 @@
 // Scenarios, filtered by project, where they can be reordered and practised.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FolderOpen, Trash2 } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, Sparkles } from 'lucide-react';
 import { listProjectsWithCounts, createProject, deleteProject } from '../services/sqlite';
 import { Project } from '../types';
 import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
@@ -71,6 +71,15 @@ export function ProjectsPage() {
         title="Projects"
         subtitle="Group Scenarios that belong together so you can practise and review them as one."
         icon={<FolderOpen size={28} />}
+        actions={
+          <button
+            onClick={() => navigate('/collections')}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+          >
+            <Sparkles size={16} />
+            Smart collections
+          </button>
+        }
       />
 
       {/* Create form */}
