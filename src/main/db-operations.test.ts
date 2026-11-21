@@ -252,4 +252,24 @@ describe('runOperation', () => {
     expect(calls[0].sql).toContain('UPDATE sessions SET deleted_at = ?');
     expect(calls[0].values).toEqual(['now', 'now', 's1']);
   });
+
+  it('sessions:update allowlists tags', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'sessions:update', {
+      id: 'ses_1',
+      fields: { tags: '["a","b"]', updated: 'now' },
+    });
+    expect(calls[0].sql).toBe('UPDATE sessions SET tags = ?, updated = ? WHERE id = ?');
+    expect(calls[0].values).toEqual(['["a","b"]', 'now', 'ses_1']);
+  });
+
+  it('projects:update allowlists tags', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'projects:update', {
+      id: 'proj_1',
+      fields: { tags: '["x"]', updated: 'now' },
+    });
+    expect(calls[0].sql).toBe('UPDATE projects SET tags = ?, updated = ? WHERE id = ?');
+    expect(calls[0].values).toEqual(['["x"]', 'now', 'proj_1']);
+  });
 });

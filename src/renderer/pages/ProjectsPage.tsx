@@ -7,11 +7,12 @@
 // Scenarios, filtered by project, where they can be reordered and practised.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FolderOpen, Trash2, Sparkles } from 'lucide-react';
-import { listProjectsWithCounts, createProject, deleteProject } from '../services/sqlite';
+import { Plus, FolderOpen, Trash2, Sparkles, Tag } from 'lucide-react';
+import { listProjectsWithCounts, createProject, deleteProject, setProjectTags } from '../services/sqlite';
 import { Project } from '../types';
 import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 import { notify, notifyCaught } from '../services/notices';
+import { TagInput } from '../components/TagInput';
 
 const PROJECT_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -22,6 +23,16 @@ export function ProjectsPage() {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [color, setColor] = useState(PROJECT_COLORS[0]);
+  const [editingTags, setEditingTags] = useState<string | null>(null);
+
+  const saveTags = async (p: Project, tags: string[]) => {
+    try {
+      await setProjectTags(p.id, tags);
+      await load();
+    } catch (error) {
+      notifyCaught('scenario.saveFailed', error, { detail: 'Could not save tags.' });
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -132,7 +143,7 @@ export function ProjectsPage() {
           {projects.map((p) => (
             <li key={p.id}>
               <div
-                className="bg-white rounded-lg shadow p-5 flex items-center gap-4 border-l-4 cursor-pointer hover:shadow-md transition-shadow"
+                className="relative bg-white rounded-lg shadow p-5 flex items-center gap-4 border-l-4 cursor-pointer hover:shadow-md transition-shadow"
                 style={{ borderLeftColor: p.color }}
                 onClick={() => navigate(`/scenarios?project=${encodeURIComponent(p.id)}`)}
               >
@@ -144,7 +155,24 @@ export function ProjectsPage() {
                   <p className="text-xs text-gray-400 mt-1">
                     {p.scenarioCount ?? 0} scenario{(p.scenarioCount ?? 0) === 1 ? '' : 's'}
                   </p>
+                  {(p.tags ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {(p.tags ?? []).map((t) => (
+                        <span key={t} className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setEditingTags(editingTags === p.id ? null : p.id); }}
+                  className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                  title="Edit tags"
+                  aria-label={`Edit tags for ${p.name}`}
+                >
+                  <Tag size={16} />
+                </button>
                 <button
                   onClick={(e) => remove(p, e)}
                   className="p-2 text-gray-400 hover:text-red-600 transition-colors"
@@ -153,6 +181,11 @@ export function ProjectsPage() {
                 >
                   <Trash2 size={16} />
                 </button>
+                {editingTags === p.id && (
+                  <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded-lg shadow p-3" onClick={(e) => e.stopPropagation()}>
+                    <TagInput tags={p.tags ?? []} onChange={(tags) => saveTags(p, tags)} />
+                  </div>
+                )}
               </div>
             </li>
           ))}

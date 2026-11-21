@@ -9,8 +9,10 @@ import {
   deleteSessionPack,
   updateSession,
   setSessionPinned,
-  bulkDeleteSessions
+  bulkDeleteSessions,
+  setSessionTags
 } from '../services/sqlite';
+import { TagInput } from '../components/TagInput';
 import { Session, Scenario, SessionPackWithSessions } from '../types';
 import { downloadSessionReport } from '../services/sessionReport';
 import {
@@ -522,6 +524,7 @@ export function SessionHistoryPage() {
                     onTogglePin={handleTogglePin}
                     onToggleSelect={toggleSessionSelection}
                     isSelected={selectedSessions.includes(session.id)}
+                    onRefresh={loadData}
                     deletingId={deletingId}
                     formatDuration={formatDuration}
                     getStatusIcon={getStatusIcon}
@@ -549,6 +552,7 @@ interface SessionCardProps {
   onTogglePin: (id: string, pinned: boolean) => void;
   onToggleSelect: (id: string) => void;
   isSelected: boolean;
+  onRefresh: () => void;
   deletingId: string | null;
   formatDuration: (seconds?: number) => string;
   getStatusIcon: (status: Session['status']) => JSX.Element;
@@ -566,6 +570,7 @@ function SessionCard({
   onTogglePin,
   onToggleSelect,
   isSelected,
+  onRefresh,
   deletingId, 
   formatDuration,
   getStatusIcon,
@@ -722,7 +727,16 @@ function SessionCard({
       
       {isExpanded && session.transcript && session.transcript.length > 0 && (
         <div className="border-t border-gray-200 p-6">
-          <h4 className="font-medium text-gray-800 mb-3">Conversation Transcript</h4>
+          <h4 className="font-medium text-gray-800 mb-3">Tags</h4>
+          <TagInput
+            tags={session.tags ?? []}
+            onChange={(tags) => {
+              setSessionTags(session.id, tags)
+                .then(onRefresh)
+                .catch((err) => notifyCaught('session.saveFailed', err, { detail: 'Could not save tags.' }));
+            }}
+          />
+          <h4 className="font-medium text-gray-800 mb-3 mt-4">Conversation Transcript</h4>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {session.transcript.map((message) => (
               <div

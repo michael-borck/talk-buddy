@@ -60,6 +60,7 @@ export interface Session {
   metadata?: SessionMetadata;
   status: 'not_started' | 'active' | 'paused' | 'ended';
   pinned?: boolean;
+  tags?: string[];
   created: string;
   updated: string;
 }
@@ -126,6 +127,7 @@ export interface Project {
   color: string;
   scenarioCount?: number;
   archived?: boolean;
+  tags?: string[];
   created: string;
   updated: string;
 }

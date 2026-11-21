@@ -261,8 +261,17 @@ export async function listSessions(scenarioId?: string): Promise<Session[]> {
     ...session,
     transcript: session.transcript ? JSON.parse(session.transcript) : undefined,
     metadata: session.metadata ? JSON.parse(session.metadata) : undefined,
+    tags: session.tags ? JSON.parse(session.tags) : [],
     packName: session.packName || undefined
   }));
+}
+
+export async function setSessionTags(id: string, tags: string[]): Promise<void> {
+  const result = await window.electronAPI.database.op('sessions:update', {
+    id,
+    fields: { tags: JSON.stringify(tags), updated: new Date().toISOString() },
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to update session tags');
 }
 
 export async function deleteSession(id: string): Promise<void> {
@@ -1192,22 +1201,44 @@ export const TRASH_RETENTION_DAYS = 30;
 
 // --- Projects ---
 
+function parseTags(raw: unknown): string[] {
+  if (typeof raw !== 'string' || !raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+function withTags<T extends { tags?: unknown }>(row: T): T & { tags: string[] } {
+  return { ...row, tags: parseTags(row.tags) };
+}
+
 export async function listProjects(): Promise<Project[]> {
   const result = await window.electronAPI.database.op('projects:list', {});
   if (!result.success || !result.data) return [];
-  return result.data as Project[];
+  return result.data.map(withTags) as Project[];
 }
 
 export async function listProjectsWithCounts(): Promise<Project[]> {
   const result = await window.electronAPI.database.op('projects:listWithCounts', {});
   if (!result.success || !result.data) return [];
-  return result.data as Project[];
+  return result.data.map(withTags) as Project[];
 }
 
 export async function getProject(id: string): Promise<Project | null> {
   const result = await window.electronAPI.database.op('projects:get', { id });
   if (!result.success || !result.data || result.data.length === 0) return null;
-  return result.data[0] as Project;
+  return withTags(result.data[0]) as Project;
+}
+
+export async function setProjectTags(id: string, tags: string[]): Promise<void> {
+  const result = await window.electronAPI.database.op('projects:update', {
+    id,
+    fields: { tags: JSON.stringify(tags), updated: new Date().toISOString() },
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to update project tags');
 }
 
 export async function createProject(input: {

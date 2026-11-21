@@ -488,6 +488,14 @@ app.whenReady().then(() => {
   try {
     db.exec('ALTER TABLE scenarios ADD COLUMN position INTEGER');
   } catch (e) { /* column already exists */ }
+  // Custom tags on Sessions and Projects (Scenarios already carry tags). Stored
+  // as a JSON array of strings, matching the scenarios.tags convention.
+  try {
+    db.exec('ALTER TABLE sessions ADD COLUMN tags TEXT');
+  } catch (e) { /* column already exists */ }
+  try {
+    db.exec('ALTER TABLE projects ADD COLUMN tags TEXT');
+  } catch (e) { /* column already exists */ }
 
   // Provider-slot migration for the post-Python world (see function comment).
   migrateEmbeddedProviderPrefs();
@@ -545,6 +553,7 @@ app.whenReady().then(() => {
       updated DATETIME DEFAULT CURRENT_TIMESTAMP,
       deleted_at DATETIME,
       pinned INTEGER DEFAULT 0,
+      tags TEXT,
       FOREIGN KEY (scenario_id) REFERENCES scenarios(id),
       FOREIGN KEY (session_pack_id) REFERENCES session_packs(id) ON DELETE CASCADE
     );
@@ -585,6 +594,7 @@ app.whenReady().then(() => {
       description TEXT,
       color TEXT DEFAULT '#3B82F6',
       archived BOOLEAN DEFAULT 0,
+      tags TEXT,
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP
     );

@@ -48,6 +48,7 @@ const SESSION_UPDATE_COLUMNS = [
   'status',
   'deleted_at',
   'pinned',
+  'tags',
   'updated',
 ];
 
@@ -56,6 +57,7 @@ const PROJECT_UPDATE_COLUMNS = [
   'description',
   'color',
   'archived',
+  'tags',
   'updated',
 ];
 
@@ -187,7 +189,7 @@ const operations = {
     const scenarioId = params && params.scenarioId;
     let query = `SELECT s.id, s.scenario_id as scenario, s.session_pack_id as sessionPackId,
                s.startTime, s.endTime, s.duration, s.transcript, s.metadata, s.status,
-               s.pinned, s.created, s.updated, sp.name as packName
+               s.pinned, s.tags, s.created, s.updated, sp.name as packName
                FROM sessions s
                LEFT JOIN session_packs sp ON s.session_pack_id = sp.id
                LEFT JOIN packs p ON sp.pack_id = p.id
