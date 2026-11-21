@@ -12,9 +12,9 @@
 // Studio Calm wants this quiet: hairlines, ink-quiet labels, sage only for
 // the destination you are actually on. Nothing here competes with the page.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Sun, Compass, NotebookPen, Settings, Flame } from 'lucide-react';
+import { Sun, Compass, NotebookPen, Settings, Flame, Search, X } from 'lucide-react';
 import { listScenarios, listSessions } from '../../services/sqlite';
 import {
   computeStreak,
@@ -22,6 +22,7 @@ import {
   relativeDay,
   suggestScenario,
 } from '../../services/practice';
+import { searchScenarios } from '../../services/search';
 import { Scenario, Session } from '../../types';
 
 interface Destination {
@@ -50,6 +51,14 @@ export function NavRail() {
 
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+
+  // Quick search. Cmd/Ctrl+K focuses it; typing filters scenarios by name and
+  // sessions by scenario name / transcript excerpt. Arrow keys move, Enter
+  // opens the highlighted result, Escape clears.
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Refreshed whenever the route changes so the context reflects what was
   // just practised rather than what was true when the rail first mounted.
@@ -80,6 +89,62 @@ export function NavRail() {
   const lastName = last
     ? scenarios.find((s) => s.id === last.scenario)?.name ?? last.packName
     : undefined;
+
+  // Search results: scenarios by name/description/category/tags, plus sessions
+  // whose scenario name matches. Capped — the rail is a jump-off, not a list.
+  const results = useMemo(() => {
+    const q = query.trim();
+    if (!q) return [] as Array<{ kind: 'scenario' | 'session'; id: string; label: string; run: () => void }>;
+    const scenarioName = (id: string) => scenarios.find((s) => s.id === id)?.name ?? '';
+    const scn = searchScenarios(q, scenarios).slice(0, 5).map((s) => ({
+      kind: 'scenario' as const,
+      id: s.id,
+      label: s.name,
+      run: () => navigate(`/scenarios?q=${encodeURIComponent(s.name)}`),
+    }));
+    const ses = sessions
+      .filter((s) => scenarioName(s.scenario).toLowerCase().includes(q.toLowerCase()))
+      .slice(0, 5)
+      .map((s) => ({
+        kind: 'session' as const,
+        id: s.id,
+        label: scenarioName(s.scenario) || s.packName || 'Session',
+        run: () => navigate(s.status === 'ended' ? `/analysis/${s.id}` : `/sessions?q=${encodeURIComponent(scenarioName(s.scenario) || s.packName || '')}`),
+      }));
+    return [...scn, ...ses];
+  }, [query, scenarios, sessions, navigate]);
+
+  // Cmd/Ctrl+K focuses search from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const resetActive = () => setActiveIndex(0);
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') { setOpen(false); setQuery(''); inputRef.current?.blur(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      const picked = results[activeIndex];
+      if (picked) { picked.run(); setOpen(false); setQuery(''); }
+    }
+  };
+
+  const choose = (i: number) => {
+    results[i]?.run();
+    setOpen(false);
+    setQuery('');
+  };
 
   return (
     <nav
@@ -115,6 +180,63 @@ export function NavRail() {
           );
         })}
       </ul>
+
+      {/* Quick search */}
+      <div className="px-3 pt-4 relative">
+        <div className="flex items-center gap-2 px-3 rounded-soft border border-ink/10 bg-paper focus-within:border-accent transition-colors">
+          <Search size={14} strokeWidth={1.5} className="text-ink-quiet shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); resetActive(); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKeyDown}
+            placeholder="Search"
+            aria-label="Search scenarios and sessions"
+            className="w-full bg-transparent text-[0.8rem] text-ink placeholder:text-ink-quiet py-2 outline-none"
+          />
+          {query ? (
+            <button
+              onClick={() => { setQuery(''); inputRef.current?.focus(); }}
+              aria-label="Clear search"
+              className="text-ink-quiet hover:text-ink"
+            >
+              <X size={13} />
+            </button>
+          ) : (
+            <kbd className="text-[0.6rem] text-ink-quiet font-sans border border-ink/15 rounded px-1 py-0.5">⌘K</kbd>
+          )}
+        </div>
+
+        {open && query.trim() && (
+          <div className="absolute z-20 left-3 right-3 top-full mt-1 bg-paper border border-ink/10 rounded-soft shadow-lg max-h-80 overflow-auto">
+            {results.length === 0 ? (
+              <p className="px-3 py-3 text-[0.72rem] text-ink-muted">No matches for “{query.trim()}”.</p>
+            ) : (
+              <ul className="py-1">
+                {results.map((r, i) => (
+                  <li key={`${r.kind}:${r.id}`}>
+                    <button
+                      onMouseEnter={() => setActiveIndex(i)}
+                      onClick={() => choose(i)}
+                      className={`w-full text-left px-3 py-2 text-[0.78rem] flex items-center gap-2 ${
+                        i === activeIndex ? 'bg-accent-soft text-accent-deep' : 'text-ink hover:bg-ink/5'
+                      }`}
+                    >
+                      <span className="shrink-0 text-ink-quiet">
+                        {r.kind === 'scenario' ? <Compass size={13} /> : <NotebookPen size={13} />}
+                      </span>
+                      <span className="truncate">{r.label}</span>
+                      <span className="ml-auto text-[0.6rem] uppercase tracking-wide text-ink-quiet">{r.kind}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Persistent context — the reason the rail is worth the width. */}
       <div className="mt-auto px-7 pb-8 pt-6">

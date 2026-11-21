@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { notifyCaught } from '../services/notices';
 import { 
   listSessions, 
@@ -53,12 +53,16 @@ function getVoiceMarker(voice?: string): { symbol: string; label: string } {
 
 export function SessionHistoryPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sessions, setSessions] = useState<SessionWithScenario[]>([]);
   const [sessionPacks, setSessionPacks] = useState<SessionPackWithSessions[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'standalone' | 'packs'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'not_started' | 'active' | 'paused' | 'ended'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  // Seed search from a deep link (?q=) so the rail's result lands filtered.
+  const [searchTerm, setSearchTerm] = useState(
+    () => new URLSearchParams(location.search).get('q') ?? ''
+  );
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);

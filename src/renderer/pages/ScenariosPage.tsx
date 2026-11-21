@@ -48,7 +48,11 @@ export function ScenariosPage() {
   const [scenarios, setScenarios] = useState<ScenarioWithPacks[]>([]);
   const [filteredScenarios, setFilteredScenarios] = useState<ScenarioWithPacks[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  // Seed search from a deep link (?q=) so the rail's search result lands here
+  // already filtered rather than on the full list.
+  const [searchTerm, setSearchTerm] = useState(
+    () => new URLSearchParams(location.search).get('q') ?? ''
+  );
   const [filter, setFilter] = useState({ 
     category: '', 
     difficulty: '',
