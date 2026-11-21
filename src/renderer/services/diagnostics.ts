@@ -7,6 +7,7 @@
 // report includes whatever went wrong before the user opened this panel.
 
 import { resolveChat, resolveSTT, resolveTTS, loadPreferences } from './config';
+import { getNotices } from './notices';
 
 // Ring buffer of recent console errors/warnings (most recent last).
 const LOG_LIMIT = 60;
@@ -42,6 +43,8 @@ export interface DiagnosticsReport {
   app: { version: string; platform: string };
   checks: CheckResult[];
   logs: Array<{ level: string; message: string; time: string }>;
+  /** Notices raised this session (code → message), oldest first. */
+  notices: Array<{ at: string; code: string; level: string; message: string }>;
 }
 
 async function check(name: string, fn: () => Promise<string>): Promise<CheckResult> {
@@ -133,6 +136,12 @@ export async function collectDiagnostics(): Promise<DiagnosticsReport> {
     app: { version, platform: window.electronAPI.platform },
     checks,
     logs: [...recentLogs],
+    notices: getNotices().map((n) => ({
+      at: new Date(n.at).toISOString(),
+      code: n.code,
+      level: n.level,
+      message: n.message,
+    })),
   };
 }
 
@@ -151,6 +160,13 @@ export function formatDiagnostics(report: DiagnosticsReport): string {
     lines.push(`Recent errors/warnings (last ${report.logs.length}):`);
     for (const l of report.logs) {
       lines.push(`  ${l.time} [${l.level}] ${l.message}`);
+    }
+  }
+  if (report.notices.length > 0) {
+    lines.push('');
+    lines.push(`Notices raised this session (last ${report.notices.length}):`);
+    for (const n of report.notices) {
+      lines.push(`  ${n.at} [${n.level}] ${n.code}: ${n.message}`);
     }
   }
   return lines.join('\n');

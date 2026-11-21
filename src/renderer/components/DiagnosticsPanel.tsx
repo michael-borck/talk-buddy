@@ -92,6 +92,25 @@ export function DiagnosticsPanel() {
               </pre>
             </details>
           )}
+          {report.notices.length > 0 && (
+            <details className="mt-2">
+              <summary className="text-sm text-gray-600 cursor-pointer">
+                Notices raised this session ({report.notices.length})
+              </summary>
+              <ul className="mt-2 space-y-1 text-xs">
+                {report.notices.map((n, i) => (
+                  <li key={`${n.at}-${i}`} className="flex gap-2">
+                    <span className={n.level === 'error' ? 'text-red-700 shrink-0' : n.level === 'success' ? 'text-green-700 shrink-0' : 'text-gray-600 shrink-0'}>
+                      {n.level}
+                    </span>
+                    <span className="text-gray-800">
+                      <code className="text-gray-500">{n.code}</code> — {n.message}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
       )}
     </section>
