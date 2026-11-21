@@ -23,6 +23,8 @@ const SCENARIO_UPDATE_COLUMNS = [
   'voice',
   'personas',
   'pinned',
+  'project_id',
+  'position',
   'updated',
 ];
 
@@ -46,6 +48,14 @@ const SESSION_UPDATE_COLUMNS = [
   'status',
   'deleted_at',
   'pinned',
+  'updated',
+];
+
+const PROJECT_UPDATE_COLUMNS = [
+  'name',
+  'description',
+  'color',
+  'archived',
   'updated',
 ];
 
@@ -94,8 +104,8 @@ const operations = {
     return db
       .prepare(
         `INSERT INTO scenarios (id, name, description, category, difficulty, estimatedMinutes,
-     systemPrompt, initialMessage, tags, vocabulary, isPublic, voice, personas, created, updated)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     systemPrompt, initialMessage, tags, vocabulary, isPublic, voice, personas, project_id, position, created, updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         params.id,
@@ -111,6 +121,8 @@ const operations = {
         params.isPublic,
         params.voice,
         params.personas ?? null,
+        params.projectId ?? null,
+        params.position ?? null,
         params.created,
         params.updated
       );
@@ -448,6 +460,62 @@ const operations = {
     return db
       .prepare('UPDATE session_packs SET deleted_at = NULL, updated = ? WHERE id = ?')
       .run(updated, id);
+  },
+
+  // --- Projects ---
+
+  'projects:list': (db) => {
+    return db
+      .prepare('SELECT * FROM projects WHERE archived = 0 ORDER BY name')
+      .all();
+  },
+
+  'projects:get': (db, { id }) => {
+    return db.prepare('SELECT * FROM projects WHERE id = ?').all(id);
+  },
+
+  'projects:create': (db, params) => {
+    return db
+      .prepare(
+        `INSERT INTO projects (id, name, description, color, created, updated)
+     VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .run(params.id, params.name, params.description ?? null, params.color ?? '#3B82F6', params.created, params.updated);
+  },
+
+  'projects:update': (db, { id, fields }) => {
+    const { setClause, values } = buildSetClause(fields, PROJECT_UPDATE_COLUMNS);
+    values.push(id);
+    return db
+      .prepare(`UPDATE projects SET ${setClause.join(', ')} WHERE id = ?`)
+      .run(...values);
+  },
+
+  'projects:delete': (db, { id }) => {
+    // A Project owns no rows of its own — deleting it detaches its Scenarios
+    // (project_id → NULL), which then return to the ungrouped library.
+    db.prepare('UPDATE scenarios SET project_id = NULL WHERE project_id = ?').run(id);
+    return db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+  },
+
+  'projects:listWithCounts': (db) => {
+    return db
+      .prepare(
+        `SELECT p.*, COUNT(s.id) AS scenario_count
+     FROM projects p
+     LEFT JOIN scenarios s ON s.project_id = p.id AND s.deleted_at IS NULL
+     WHERE p.archived = 0
+     GROUP BY p.id
+     ORDER BY p.name`
+      )
+      .all();
+  },
+
+  // Scenarios in one Project, in position order then natural name.
+  'scenarios:listByProject': (db, { projectId }) => {
+    return db
+      .prepare("SELECT * FROM scenarios WHERE project_id = ? AND deleted_at IS NULL ORDER BY position IS NULL, position, name")
+      .all(projectId);
   },
 
   // --- Trash (soft-deleted rows) ---

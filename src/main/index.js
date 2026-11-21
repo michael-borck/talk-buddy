@@ -479,6 +479,15 @@ app.whenReady().then(() => {
   try {
     db.exec('ALTER TABLE sessions ADD COLUMN pinned INTEGER DEFAULT 0');
   } catch (e) { /* column already exists */ }
+  // Projects: a Scenario can belong to one Project. Sessions inherit their
+  // Project from their Scenario, so project-level analysis needs no extra
+  // column on sessions. `position` orders Scenarios within a Project.
+  try {
+    db.exec('ALTER TABLE scenarios ADD COLUMN project_id TEXT');
+  } catch (e) { /* column already exists */ }
+  try {
+    db.exec('ALTER TABLE scenarios ADD COLUMN position INTEGER');
+  } catch (e) { /* column already exists */ }
 
   // Provider-slot migration for the post-Python world (see function comment).
   migrateEmbeddedProviderPrefs();
@@ -504,6 +513,8 @@ app.whenReady().then(() => {
       archived BOOLEAN DEFAULT 0,
       deleted_at DATETIME,
       pinned INTEGER DEFAULT 0,
+      project_id TEXT,
+      position INTEGER,
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -566,6 +577,16 @@ app.whenReady().then(() => {
       PRIMARY KEY (pack_id, scenario_id),
       FOREIGN KEY (pack_id) REFERENCES packs(id) ON DELETE CASCADE,
       FOREIGN KEY (scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      color TEXT DEFAULT '#3B82F6',
+      archived BOOLEAN DEFAULT 0,
+      created DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
     -- Non-network defaults only. Server URLs are deliberately NOT seeded:

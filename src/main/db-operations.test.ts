@@ -187,4 +187,43 @@ describe('runOperation', () => {
     expect(calls[0].sql).toBe('UPDATE sessions SET pinned = ?, updated = ? WHERE id = ?');
     expect(calls[0].values).toEqual([1, 'now', 'ses_1']);
   });
+
+  it('scenarios:listByProject scopes to one project, trashed rows hidden', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'scenarios:listByProject', { projectId: 'proj_1' });
+    expect(calls[0].sql).toContain('WHERE project_id = ? AND deleted_at IS NULL');
+    expect(calls[0].sql).toContain('ORDER BY position IS NULL, position, name');
+    expect(calls[0].values).toEqual(['proj_1']);
+  });
+
+  it('projects:create binds the name and defaults the colour', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'projects:create', {
+      id: 'proj_1', name: 'Interviews', created: 'now', updated: 'now',
+    });
+    expect(calls[0].sql).toContain('INSERT INTO projects');
+    expect(calls[0].values).toEqual(['proj_1', 'Interviews', null, '#3B82F6', 'now', 'now']);
+  });
+
+  it('projects:update only writes allowlisted columns', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'projects:update', {
+      id: 'proj_1',
+      fields: { name: 'Renamed', 'evil = 1; DROP TABLE x': 'pwned', updated: 'now' },
+    });
+    expect(calls[0].sql).toBe('UPDATE projects SET name = ?, updated = ? WHERE id = ?');
+    expect(calls[0].values).toEqual(['Renamed', 'now', 'proj_1']);
+  });
+
+  it('scenarios:create accepts project_id and position', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'scenarios:create', {
+      id: 'scn_1', name: 'Step 2', description: '', category: '', difficulty: 'beginner',
+      estimatedMinutes: 10, systemPrompt: '', initialMessage: '', tags: [], isPublic: 1,
+      voice: 'female', projectId: 'proj_1', position: 2, created: 'now', updated: 'now',
+    });
+    expect(calls[0].sql).toContain('project_id, position');
+    expect(calls[0].values).toContain('proj_1');
+    expect(calls[0].values).toContain(2);
+  });
 });
