@@ -14,8 +14,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Sun, Compass, NotebookPen, Settings, Flame, Search, X } from 'lucide-react';
-import { listScenarios, listSessions } from '../../services/sqlite';
+import { Sun, Compass, NotebookPen, Settings, Flame, Search, X, Shuffle } from 'lucide-react';
+import { listScenarios, listSessions, startStandaloneSession } from '../../services/sqlite';
 import {
   computeStreak,
   lastFinishedSession,
@@ -146,6 +146,20 @@ export function NavRail() {
     setQuery('');
   };
 
+  // "Random scenario" — start a fresh Session on a Scenario picked to rotate
+  // practice (never-practised first, then least-recently-practised), so the
+  // sidebar carries the same nudge the Home card does.
+  const startRandom = async () => {
+    const pick = suggestScenario(scenarios, sessions);
+    if (!pick) return;
+    try {
+      const session = await startStandaloneSession(pick.id);
+      navigate(`/conversation/${pick.id}?sessionId=${session.id}`);
+    } catch (err) {
+      console.error('Failed to start random scenario:', err);
+    }
+  };
+
   return (
     <nav
       aria-label="Main"
@@ -180,6 +194,19 @@ export function NavRail() {
           );
         })}
       </ul>
+
+      {/* Random scenario — a one-click nudge to practise something */}
+      <div className="px-3 pt-3">
+        <button
+          onClick={startRandom}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-soft text-left transition-colors text-ink-muted hover:text-ink hover:bg-ink/5"
+        >
+          <Shuffle size={17} strokeWidth={1.5} className="shrink-0" />
+          <span className="text-[0.78rem] uppercase tracking-[0.16em] font-sans">
+            Random scenario
+          </span>
+        </button>
+      </div>
 
       {/* Quick search */}
       <div className="px-3 pt-4 relative">
