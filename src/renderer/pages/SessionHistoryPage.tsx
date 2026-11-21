@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { notifyCaught } from '../services/notices';
+import { notify, notifyCaught } from '../services/notices';
 import {
   listSessions,
   getScenario,
@@ -8,7 +8,8 @@ import {
   listSessionPacksWithSessions,
   deleteSessionPack,
   updateSession,
-  setSessionPinned
+  setSessionPinned,
+  bulkDeleteSessions
 } from '../services/sqlite';
 import { Session, Scenario, SessionPackWithSessions } from '../types';
 import { downloadSessionReport } from '../services/sessionReport';
@@ -32,7 +33,9 @@ import {
   PlayCircle,
   Search,
   X,
-  Pin
+  Pin,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 import { transcriptExcerpt } from '../services/practice';
@@ -65,6 +68,26 @@ export function SessionHistoryPage() {
   const [searchTerm, setSearchTerm] = useState(
     () => new URLSearchParams(location.search).get('q') ?? ''
   );
+  const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
+
+  const toggleSessionSelection = (id: string) => {
+    setSelectedSessions((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDeleteSessions = async () => {
+    if (selectedSessions.length === 0) return;
+    if (!confirm(`Move ${selectedSessions.length} session(s) to Trash? You can restore them for 30 days.`)) return;
+    try {
+      await bulkDeleteSessions(selectedSessions);
+      notify('session.deleteFailed', { detail: `${selectedSessions.length} moved to Trash` });
+      setSelectedSessions([]);
+      await loadData();
+    } catch (error) {
+      notifyCaught('session.deleteFailed', error);
+    }
+  };
 
   const handleTogglePin = async (id: string, pinned: boolean) => {
     try {
@@ -329,6 +352,39 @@ export function SessionHistoryPage() {
         </div>
       </div>
 
+      {/* Bulk bar */}
+      {filteredSessions.length > 0 && (
+        <div className="mb-6 flex items-center gap-3">
+          <button
+            onClick={() =>
+              setSelectedSessions(
+                selectedSessions.length === filteredSessions.length
+                  ? []
+                  : filteredSessions.map((s) => s.id)
+              )
+            }
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
+          >
+            {selectedSessions.length === filteredSessions.length ? <CheckSquare size={16} /> : <Square size={16} />}
+            {selectedSessions.length === filteredSessions.length ? 'Deselect all' : 'Select all'}
+          </button>
+          {selectedSessions.length > 0 && (
+            <>
+              <span className="text-sm text-gray-600">
+                {selectedSessions.length} selected
+              </span>
+              <button
+                onClick={handleBulkDeleteSessions}
+                className="ml-auto flex items-center gap-2 px-4 py-2 text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+              >
+                <Trash2 size={16} />
+                Delete ({selectedSessions.length})
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {filteredSessions.length === 0 && filteredSessionPacks.length === 0 ? (
         <EmptyState
           icon={searchTerm ? <Search size={48} /> : <MessageSquare size={48} />}
@@ -464,6 +520,8 @@ export function SessionHistoryPage() {
                     onEndSession={handleEndSession}
                     onDelete={handleDeleteSession}
                     onTogglePin={handleTogglePin}
+                    onToggleSelect={toggleSessionSelection}
+                    isSelected={selectedSessions.includes(session.id)}
                     deletingId={deletingId}
                     formatDuration={formatDuration}
                     getStatusIcon={getStatusIcon}
@@ -489,6 +547,8 @@ interface SessionCardProps {
   onEndSession: (session: Session, e: React.MouseEvent) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
   onTogglePin: (id: string, pinned: boolean) => void;
+  onToggleSelect: (id: string) => void;
+  isSelected: boolean;
   deletingId: string | null;
   formatDuration: (seconds?: number) => string;
   getStatusIcon: (status: Session['status']) => JSX.Element;
@@ -504,6 +564,8 @@ function SessionCard({
   onEndSession,
   onDelete, 
   onTogglePin,
+  onToggleSelect,
+  isSelected,
   deletingId, 
   formatDuration,
   getStatusIcon,
@@ -521,6 +583,13 @@ function SessionCard({
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleSelect(session.id); }}
+                className="text-gray-400 hover:text-gray-700 shrink-0"
+                aria-label={isSelected ? 'Deselect session' : 'Select session'}
+              >
+                {isSelected ? <CheckSquare size={16} className="text-blue-600" /> : <Square size={16} />}
+              </button>
               {getStatusIcon(session.status)}
               <h3 className="text-lg font-semibold text-gray-800">
                 {session.scenarioData?.name || 'Unknown Scenario'}

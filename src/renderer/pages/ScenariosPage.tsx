@@ -12,7 +12,10 @@ import {
   listProjects,
   exportScenario,
   exportScenarios,
-  importFromFile
+  importFromFile,
+  bulkDeleteScenarios,
+  bulkArchiveScenarios,
+  bulkMoveScenarios
 } from '../services/sqlite';
 import { Scenario, Pack } from '../types';
 // ScenarioCardSkeleton component available but not currently used
@@ -247,6 +250,41 @@ export function ScenariosPage() {
       notifyCaught('export.failed', error);
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedScenarios.length === 0) return;
+    if (!confirm(`Move ${selectedScenarios.length} scenario(s) to Trash? You can restore them for 30 days.`)) return;
+    try {
+      await bulkDeleteScenarios(selectedScenarios);
+      notify('scenario.deleteFailed', { detail: `${selectedScenarios.length} moved to Trash` });
+      setSelectedScenarios([]);
+      await loadScenarios();
+    } catch (error) {
+      notifyCaught('scenario.deleteFailed', error);
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedScenarios.length === 0) return;
+    try {
+      await bulkArchiveScenarios(selectedScenarios);
+      setSelectedScenarios([]);
+      await loadScenarios();
+    } catch (error) {
+      notifyCaught('scenario.archiveFailed', error);
+    }
+  };
+
+  const handleBulkMove = async (projectId: string) => {
+    if (selectedScenarios.length === 0) return;
+    try {
+      await bulkMoveScenarios(selectedScenarios, projectId);
+      setSelectedScenarios([]);
+      await loadScenarios();
+    } catch (error) {
+      notifyCaught('scenario.saveFailed', error, { detail: 'Could not move the scenarios.' });
     }
   };
 
@@ -531,14 +569,43 @@ export function ScenariosPage() {
           </div>
           
           {selectedScenarios.length > 0 && (
-            <button
-              onClick={handleExportSelected}
-              disabled={isExporting}
-              className="flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
-            >
-              <Download size={16} />
-              Export Selected ({selectedScenarios.length})
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2 px-4 py-2 text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+              >
+                <Trash2 size={16} />
+                Delete ({selectedScenarios.length})
+              </button>
+              <button
+                onClick={handleBulkArchive}
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+              >
+                <Archive size={16} />
+                Archive
+              </button>
+              {projects.length > 0 && (
+                <select
+                  onChange={(e) => { if (e.target.value) handleBulkMove(e.target.value === '__none__' ? '' : e.target.value); e.target.value = ''; }}
+                  defaultValue=""
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                >
+                  <option value="" disabled>Move to…</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                  <option value="__none__">No project</option>
+                </select>
+              )}
+              <button
+                onClick={handleExportSelected}
+                disabled={isExporting}
+                className="flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 text-sm font-medium"
+              >
+                <Download size={16} />
+                Export
+              </button>
+            </div>
           )}
         </div>
       )}
