@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { notifyCaught } from '../services/notices';
-import { 
-  listSessions, 
-  getScenario, 
-  deleteSession, 
+import {
+  listSessions,
+  getScenario,
+  deleteSession,
   listSessionPacksWithSessions,
   deleteSessionPack,
-  updateSession
+  updateSession,
+  setSessionPinned
 } from '../services/sqlite';
 import { Session, Scenario, SessionPackWithSessions } from '../types';
 import { downloadSessionReport } from '../services/sessionReport';
@@ -30,7 +31,8 @@ import {
   Circle,
   PlayCircle,
   Search,
-  X
+  X,
+  Pin
 } from 'lucide-react';
 import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 import { transcriptExcerpt } from '../services/practice';
@@ -63,6 +65,15 @@ export function SessionHistoryPage() {
   const [searchTerm, setSearchTerm] = useState(
     () => new URLSearchParams(location.search).get('q') ?? ''
   );
+
+  const handleTogglePin = async (id: string, pinned: boolean) => {
+    try {
+      await setSessionPinned(id, pinned);
+      await loadData();
+    } catch (error) {
+      notifyCaught('session.saveFailed', error, { detail: 'Could not pin the session.' });
+    }
+  };
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [expandedPack, setExpandedPack] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -443,6 +454,7 @@ export function SessionHistoryPage() {
                     onStartResume={handleStartOrResumeSession}
                     onEndSession={handleEndSession}
                     onDelete={handleDeleteSession}
+                    onTogglePin={handleTogglePin}
                     deletingId={deletingId}
                     formatDuration={formatDuration}
                     getStatusIcon={getStatusIcon}
@@ -467,6 +479,7 @@ interface SessionCardProps {
   onStartResume: (session: Session) => void;
   onEndSession: (session: Session, e: React.MouseEvent) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
+  onTogglePin: (id: string, pinned: boolean) => void;
   deletingId: string | null;
   formatDuration: (seconds?: number) => string;
   getStatusIcon: (status: Session['status']) => JSX.Element;
@@ -481,6 +494,7 @@ function SessionCard({
   onStartResume,
   onEndSession,
   onDelete, 
+  onTogglePin,
   deletingId, 
   formatDuration,
   getStatusIcon,
@@ -522,6 +536,15 @@ function SessionCard({
               <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                 {getStatusText(session.status)}
               </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onTogglePin(session.id, !session.pinned); }}
+                className={`ml-auto p-1 rounded transition-colors ${session.pinned ? 'text-accent' : 'text-gray-400 hover:text-accent'}`}
+                title={session.pinned ? 'Unpin' : 'Pin to top'}
+                aria-label={session.pinned ? 'Unpin session' : 'Pin session'}
+                aria-pressed={!!session.pinned}
+              >
+                <Pin size={14} strokeWidth={1.5} fill={session.pinned ? 'currentColor' : 'none'} />
+              </button>
             </div>
             
             {/* The journal is a learning artefact, so it should read like one:

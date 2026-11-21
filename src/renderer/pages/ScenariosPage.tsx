@@ -8,6 +8,7 @@ import {
   getAllScenarioPacks,
   startStandaloneSession,
   archiveScenario,
+  setScenarioPinned,
   exportScenario,
   exportScenarios,
   importFromFile
@@ -31,7 +32,8 @@ import {
   CheckSquare,
   Square,
   Package,
-  MoreHorizontal
+  MoreHorizontal,
+  Pin
 } from 'lucide-react';
 import { EmptyState, LoadingState } from '../components/layout/PageShell';
 import { categoryTone } from '../components/categoryTone';
@@ -60,6 +62,15 @@ export function ScenariosPage() {
   });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleTogglePin = async (id: string, pinned: boolean) => {
+    try {
+      await setScenarioPinned(id, pinned);
+      await loadScenarios();
+    } catch (error) {
+      notifyCaught('scenario.saveFailed', error, { detail: 'Could not pin the scenario.' });
+    }
+  };
   const [restoring, setRestoring] = useState(false);
   const [selectedScenarios, setSelectedScenarios] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -549,6 +560,7 @@ export function ScenariosPage() {
               onStart={handleStartScenario}
               onExport={handleExportScenario}
               onToggleSelect={toggleScenarioSelection}
+              onTogglePin={handleTogglePin}
               isSelected={selectedScenarios.includes(scenario.id)}
               deletingId={deletingId}
             />
@@ -568,6 +580,7 @@ interface ScenarioCardProps {
   onStart: (id: string) => void;
   onExport: (id: string) => void;
   onToggleSelect: (id: string) => void;
+  onTogglePin: (id: string, pinned: boolean) => void;
   isSelected: boolean;
   deletingId: string | null;
 }
@@ -581,6 +594,7 @@ function ScenarioCard({
   onStart, 
   onExport,
   onToggleSelect,
+  onTogglePin,
   isSelected,
   deletingId 
 }: ScenarioCardProps) {
@@ -591,6 +605,15 @@ function ScenarioCard({
   // no colored backgrounds. Used in both grid and list view.
   const actionIcons = (
     <div className="flex items-center gap-1">
+      <button
+        onClick={(e) => { e.stopPropagation(); onTogglePin(scenario.id, !scenario.pinned); }}
+        className={`p-1.5 transition-colors ${scenario.pinned ? 'text-accent' : 'text-ink-muted hover:text-accent'}`}
+        title={scenario.pinned ? 'Unpin' : 'Pin to top'}
+        aria-label={scenario.pinned ? 'Unpin scenario' : 'Pin scenario'}
+        aria-pressed={!!scenario.pinned}
+      >
+        <Pin size={14} strokeWidth={1.5} fill={scenario.pinned ? 'currentColor' : 'none'} />
+      </button>
       <button
         onClick={() => onEdit(scenario.id)}
         className="p-1.5 text-ink-muted hover:text-accent transition-colors"
@@ -656,6 +679,11 @@ function ScenarioCard({
               >
                 {marker.name}
               </span>
+              {scenario.pinned && (
+                <span className="text-accent shrink-0" title="Pinned to the top">
+                  <Pin size={12} strokeWidth={1.5} fill="currentColor" />
+                </span>
+              )}
               {scenario.isDefault && (
                 <span className="text-[0.6rem] uppercase tracking-[0.18em] text-ink-quiet font-sans">
                   Default
@@ -744,6 +772,11 @@ function ScenarioCard({
           >
             {marker.name}
           </span>
+          {scenario.pinned && (
+            <span className="text-accent shrink-0" title="Pinned to the top">
+              <Pin size={12} strokeWidth={1.5} fill="currentColor" />
+            </span>
+          )}
         </div>
 
         {/* Title — gets its own row, can wrap freely */}

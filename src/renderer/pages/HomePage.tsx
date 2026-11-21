@@ -11,7 +11,7 @@ import { OllamaSetupCard } from '../components/OllamaSetupCard';
 import { hasPassedSetupCheck } from '../services/setupCheck';
 import { suggestScenarioWithReason } from '../services/practice';
 import { checkSpeechReadiness, Readiness } from '../services/readiness';
-import { Flame, NotebookPen, Sun, TrendingUp } from 'lucide-react';
+import { Flame, NotebookPen, Sun, TrendingUp, Pin } from 'lucide-react';
 import { notifyCaught } from '../services/notices';
 
 export const TUTORIAL_SCENARIO_ID = 'seed_tutorial_1';
@@ -162,6 +162,23 @@ export function HomePage() {
   const streak = computeStreak(sessions);
   const minutes = minutesThisWeek(sessions);
   const conversationCount = sessions.filter((s) => s.status === 'ended').length;
+
+  // Pinned Scenarios and Sessions — the two or three things the user has
+  // marked to keep close. Shown above the journal so a pinned review is one
+  // click away instead of buried by recency.
+  const pinnedScenarios = useMemo(
+    () => scenarios.filter((s) => s.pinned).slice(0, 4),
+    [scenarios]
+  );
+  const pinnedSessions = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.pinned && s.startTime)
+        .sort((a, b) => new Date(b.startTime!).getTime() - new Date(a.startTime!).getTime())
+        .slice(0, 4),
+    [sessions]
+  );
+  const hasPinned = pinnedScenarios.length > 0 || pinnedSessions.length > 0;
 
   const startSuggested = async () => {
     if (!suggested) return;
@@ -344,6 +361,56 @@ export function HomePage() {
             </div>
             <Sparkline values={pace.slice(-10)} />
           </div>
+        )}
+
+        {/* Pinned — what the user marked to keep close */}
+        {hasPinned && (
+          <section className="mb-12">
+            <div className="flex items-baseline justify-between mb-5">
+              <h2 className="font-sans text-[1.3rem] text-ink font-medium flex items-center gap-2">
+                <Pin size={16} strokeWidth={1.5} className="text-accent" />
+                Pinned
+              </h2>
+            </div>
+            <ul className="divide-y divide-ink/10">
+              {pinnedScenarios.map((s) => (
+                <li key={`scn:${s.id}`}>
+                  <button
+                    onClick={() => navigate(`/scenarios?q=${encodeURIComponent(s.name)}`)}
+                    className="group w-full text-left py-3 flex items-center gap-4"
+                  >
+                    <span className="text-[0.72rem] text-ink-quiet font-sans w-16 shrink-0 uppercase tracking-wide">
+                      Scenario
+                    </span>
+                    <span className="font-sans text-[1rem] text-ink group-hover:text-accent transition-colors leading-snug flex-1 min-w-0 truncate">
+                      {s.name}
+                    </span>
+                    <span className="text-[0.72rem] text-ink-quiet font-sans shrink-0">
+                      {s.estimatedMinutes} min
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {pinnedSessions.map((s) => (
+                <li key={`ses:${s.id}`}>
+                  <button
+                    onClick={() => openJournalEntry(s)}
+                    className="group w-full text-left py-3 flex items-center gap-4"
+                  >
+                    <span className="text-[0.72rem] text-ink-quiet font-sans tabular-nums w-16 shrink-0">
+                      {new Date(s.startTime!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                    <span className="font-sans text-[1rem] text-ink group-hover:text-accent transition-colors leading-snug flex-1 min-w-0 truncate">
+                      {scenarioNames.get(s.scenario) ?? 'Practice session'}
+                    </span>
+                    <span className="text-[0.72rem] text-ink-quiet font-sans shrink-0">
+                      {s.status === 'ended' ? `${Math.round((s.duration ?? 0) / 60)} min` : 'in progress'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {/* Journal */}

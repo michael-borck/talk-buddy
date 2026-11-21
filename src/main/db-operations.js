@@ -22,6 +22,7 @@ const SCENARIO_UPDATE_COLUMNS = [
   'isPublic',
   'voice',
   'personas',
+  'pinned',
   'updated',
 ];
 
@@ -44,6 +45,7 @@ const SESSION_UPDATE_COLUMNS = [
   'metadata',
   'status',
   'deleted_at',
+  'pinned',
   'updated',
 ];
 
@@ -83,7 +85,7 @@ const operations = {
       values.push(filter.difficulty);
     }
 
-    query += ' ORDER BY name';
+    query += ' ORDER BY pinned DESC, name';
 
     return db.prepare(query).all(...values);
   },
@@ -136,6 +138,12 @@ const operations = {
       .run(updated, id);
   },
 
+  'scenarios:pin': (db, { id, pinned, updated }) => {
+    return db
+      .prepare('UPDATE scenarios SET pinned = ?, updated = ? WHERE id = ?')
+      .run(pinned ? 1 : 0, updated, id);
+  },
+
   'scenarios:archive': (db, { id, updated }) => {
     return db
       .prepare('UPDATE scenarios SET archived = 1, updated = ? WHERE id = ?')
@@ -167,7 +175,7 @@ const operations = {
     const scenarioId = params && params.scenarioId;
     let query = `SELECT s.id, s.scenario_id as scenario, s.session_pack_id as sessionPackId,
                s.startTime, s.endTime, s.duration, s.transcript, s.metadata, s.status,
-               s.created, s.updated, sp.name as packName
+               s.pinned, s.created, s.updated, sp.name as packName
                FROM sessions s
                LEFT JOIN session_packs sp ON s.session_pack_id = sp.id
                LEFT JOIN packs p ON sp.pack_id = p.id
@@ -180,7 +188,7 @@ const operations = {
       values.push(scenarioId);
     }
 
-    query += ' ORDER BY s.created DESC';
+    query += ' ORDER BY s.pinned DESC, s.created DESC';
 
     return db.prepare(query).all(...values);
   },
@@ -204,6 +212,12 @@ const operations = {
     return db
       .prepare('UPDATE sessions SET deleted_at = NULL, updated = ? WHERE id = ?')
       .run(updated, id);
+  },
+
+  'sessions:pin': (db, { id, pinned, updated }) => {
+    return db
+      .prepare('UPDATE sessions SET pinned = ?, updated = ? WHERE id = ?')
+      .run(pinned ? 1 : 0, updated, id);
   },
 
   'sessions:createInPack': (db, params) => {

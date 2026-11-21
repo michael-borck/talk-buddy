@@ -471,6 +471,14 @@ app.whenReady().then(() => {
   try {
     db.exec('ALTER TABLE session_packs ADD COLUMN deleted_at DATETIME');
   } catch (e) { /* column already exists */ }
+  // Pinned / favourited rows. A pinned Scenario or Session sorts to the top
+  // of its list and surfaces on the Home dashboard.
+  try {
+    db.exec('ALTER TABLE scenarios ADD COLUMN pinned INTEGER DEFAULT 0');
+  } catch (e) { /* column already exists */ }
+  try {
+    db.exec('ALTER TABLE sessions ADD COLUMN pinned INTEGER DEFAULT 0');
+  } catch (e) { /* column already exists */ }
 
   // Provider-slot migration for the post-Python world (see function comment).
   migrateEmbeddedProviderPrefs();
@@ -495,6 +503,7 @@ app.whenReady().then(() => {
       voice TEXT,
       archived BOOLEAN DEFAULT 0,
       deleted_at DATETIME,
+      pinned INTEGER DEFAULT 0,
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -524,6 +533,7 @@ app.whenReady().then(() => {
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP,
       deleted_at DATETIME,
+      pinned INTEGER DEFAULT 0,
       FOREIGN KEY (scenario_id) REFERENCES scenarios(id),
       FOREIGN KEY (session_pack_id) REFERENCES session_packs(id) ON DELETE CASCADE
     );

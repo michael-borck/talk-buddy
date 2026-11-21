@@ -55,7 +55,7 @@ describe('runOperation', () => {
       filter: { category: 'Business', difficulty: 'beginner' },
     });
     expect(calls[0].sql).toBe(
-      'SELECT * FROM scenarios WHERE archived = 0 AND deleted_at IS NULL AND category = ? AND difficulty = ? ORDER BY name'
+      'SELECT * FROM scenarios WHERE archived = 0 AND deleted_at IS NULL AND category = ? AND difficulty = ? ORDER BY pinned DESC, name'
     );
     expect(calls[0].values).toEqual(['Business', 'beginner']);
   });
@@ -64,7 +64,7 @@ describe('runOperation', () => {
     const calls: Call[] = [];
     runOperation(makeStubDb(calls), 'scenarios:list', {});
     expect(calls[0].sql).toBe(
-      'SELECT * FROM scenarios WHERE archived = 0 AND deleted_at IS NULL ORDER BY name'
+      'SELECT * FROM scenarios WHERE archived = 0 AND deleted_at IS NULL ORDER BY pinned DESC, name'
     );
     expect(calls[0].values).toEqual([]);
   });
@@ -159,5 +159,32 @@ describe('runOperation', () => {
     });
     expect(calls[0].sql).toBe('UPDATE sessions SET deleted_at = ?, updated = ? WHERE id = ?');
     expect(calls[0].values).toEqual([null, 'now', 'ses_1']);
+  });
+
+  it('scenarios:pin sets the pinned flag to 1 or 0, never interpolates it', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'scenarios:pin', { id: 'scn_1', pinned: true, updated: 'now' });
+    expect(calls[0].sql).toBe('UPDATE scenarios SET pinned = ?, updated = ? WHERE id = ?');
+    expect(calls[0].values).toEqual([1, 'now', 'scn_1']);
+
+    runOperation(makeStubDb(calls), 'scenarios:pin', { id: 'scn_1', pinned: false, updated: 'now' });
+    expect(calls[1].values).toEqual([0, 'now', 'scn_1']);
+  });
+
+  it('sessions:pin is the same shape for sessions', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'sessions:pin', { id: 'ses_1', pinned: true, updated: 'now' });
+    expect(calls[0].sql).toBe('UPDATE sessions SET pinned = ?, updated = ? WHERE id = ?');
+    expect(calls[0].values).toEqual([1, 'now', 'ses_1']);
+  });
+
+  it('sessions:update allowlists pinned', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'sessions:update', {
+      id: 'ses_1',
+      fields: { pinned: 1, updated: 'now' },
+    });
+    expect(calls[0].sql).toBe('UPDATE sessions SET pinned = ?, updated = ? WHERE id = ?');
+    expect(calls[0].values).toEqual([1, 'now', 'ses_1']);
   });
 });

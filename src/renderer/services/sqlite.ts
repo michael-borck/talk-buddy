@@ -1082,6 +1082,20 @@ export async function unarchivePack(id: string): Promise<void> {
   }
 }
 
+export async function setScenarioPinned(id: string, pinned: boolean): Promise<void> {
+  const result = await window.electronAPI.database.op('scenarios:pin', {
+    id, pinned, updated: new Date().toISOString(),
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to pin scenario');
+}
+
+export async function setSessionPinned(id: string, pinned: boolean): Promise<void> {
+  const result = await window.electronAPI.database.op('sessions:pin', {
+    id, pinned, updated: new Date().toISOString(),
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to pin session');
+}
+
 export async function bulkArchiveScenarios(ids: string[]): Promise<void> {
   const now = new Date().toISOString();
   

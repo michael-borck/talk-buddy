@@ -26,6 +26,7 @@ export interface Scenario {
   voice?: 'male' | 'female';
   personas?: ScenarioPersona[]; // present → the Scenario is a multi-persona role-play
   archived?: boolean;
+  pinned?: boolean;
   created: string;
   updated: string;
 }
@@ -58,6 +59,7 @@ export interface Session {
   transcript?: ConversationMessage[];
   metadata?: SessionMetadata;
   status: 'not_started' | 'active' | 'paused' | 'ended';
+  pinned?: boolean;
   created: string;
   updated: string;
 }
