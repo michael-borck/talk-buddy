@@ -11,7 +11,7 @@ import {
 } from '../services/sqlite';
 import { Pack, ScenarioPersona } from '../types';
 import { Save, X, Plus, Package, UserPlus, Trash2, Users } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notify, notifyCaught } from '../services/notices';
 import { LoadingState, PageHeader } from '../components/layout/PageShell';
 
 // New persona rows get a locally-unique id; persisted on save with the scenario.
@@ -63,6 +63,7 @@ export function ScenarioFormPage() {
       setAvailablePacks(packs);
     } catch (error) {
       console.error('Failed to load packs:', error);
+      notifyCaught('packs.loadFailed', error);
     }
   };
 
@@ -94,12 +95,12 @@ export function ScenarioFormPage() {
         setSelectedPacks(packIds);
         setOriginalPacks(packIds);
       } else {
-        toast.error('Scenario not found');
+        notify('scenario.notFound');
         navigate('/scenarios/local', { replace: true });
       }
     } catch (error) {
       console.error('Failed to load scenario:', error);
-      toast.error('Failed to load scenario');
+      notifyCaught('scenario.loadFailed', error);
       navigate('/scenarios/local', { replace: true });
     } finally {
       setLoading(false);
@@ -138,7 +139,7 @@ export function ScenarioFormPage() {
       navigate('/scenarios');
     } catch (error) {
       console.error('Failed to save scenario:', error);
-      toast.error('Failed to save scenario. Please try again.');
+      notifyCaught('scenario.saveFailed', error);
     } finally {
       setSaving(false);
     }

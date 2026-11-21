@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { notifyCaught } from '../services/notices';
 import { 
   listSessions, 
   getScenario, 
@@ -86,6 +86,7 @@ export function SessionHistoryPage() {
       setSessionPacks(sessionPackList);
     } catch (error) {
       console.error('Failed to load session data:', error);
+      notifyCaught('sessions.loadFailed', error);
     } finally {
       setLoading(false);
     }
@@ -104,7 +105,7 @@ export function SessionHistoryPage() {
       await loadData();
     } catch (error) {
       console.error('Failed to delete session:', error);
-      toast.error('Failed to delete session. Please try again.');
+      notifyCaught('session.deleteFailed', error);
     } finally {
       setDeletingId(null);
     }
@@ -123,7 +124,7 @@ export function SessionHistoryPage() {
       await loadData();
     } catch (error) {
       console.error('Failed to delete session pack:', error);
-      toast.error('Failed to delete session pack. Please try again.');
+      notifyCaught('session.packDeleteFailed', error);
     } finally {
       setDeletingId(null);
     }
@@ -143,7 +144,7 @@ export function SessionHistoryPage() {
       navigate(`/conversation/${session.scenario}?sessionId=${session.id}`);
     } catch (error) {
       console.error('Failed to start/resume session:', error);
-      toast.error('Failed to start session. Please try again.');
+      notifyCaught('conversation.resumeFailed', error, { detail: 'Could not start the session.' });
     }
   };
 
@@ -175,7 +176,7 @@ export function SessionHistoryPage() {
       await loadData();
     } catch (error) {
       console.error('Failed to end session:', error);
-      toast.error('Failed to end session. Please try again.');
+      notifyCaught('session.endFailed', error);
     }
   };
 

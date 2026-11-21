@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { notifyCaught } from '../services/notices';
 import { 
   getPack,
   getPackScenarios,
@@ -57,6 +57,7 @@ export function PackDetailPage() {
       setPackScenarios(scenarios);
     } catch (error) {
       console.error('Failed to load pack data:', error);
+      notifyCaught('packs.loadFailed', error);
     } finally {
       setLoading(false);
     }
@@ -75,7 +76,7 @@ export function PackDetailPage() {
       await loadPackData();
     } catch (error) {
       console.error('Failed to remove scenario:', error);
-      toast.error('Failed to remove scenario. Please try again.');
+      notifyCaught('pack.removeScenarioFailed', error);
     } finally {
       setRemovingId(null);
     }
@@ -92,7 +93,7 @@ export function PackDetailPage() {
       await loadPackData();
     } catch (error) {
       console.error('Failed to add scenarios:', error);
-      toast.error('Failed to add scenarios. Please try again.');
+      notifyCaught('pack.addScenariosFailed', error);
     }
   };
 
@@ -104,7 +105,7 @@ export function PackDetailPage() {
       navigate(`/conversation/${scenarioId}?sessionId=${session.id}`);
     } catch (error) {
       console.error('Failed to start session:', error);
-      toast.error('Failed to start session. Please try again.');
+      notifyCaught('conversation.startFailed', error, { detail: 'Could not start the session.' });
     }
   };
 

@@ -12,7 +12,7 @@ import { hasPassedSetupCheck } from '../services/setupCheck';
 import { suggestScenarioWithReason } from '../services/practice';
 import { checkSpeechReadiness, Readiness } from '../services/readiness';
 import { Flame, NotebookPen, Sun, TrendingUp } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notifyCaught } from '../services/notices';
 
 export const TUTORIAL_SCENARIO_ID = 'seed_tutorial_1';
 
@@ -121,6 +121,7 @@ export function HomePage() {
         setChatConfigured(Boolean(resolveChat(prefs).url));
       } catch (error) {
         console.error('Failed to load home data:', error);
+        notifyCaught('home.loadFailed', error);
       }
     })();
   }, []);
@@ -170,7 +171,7 @@ export function HomePage() {
       navigate(`/conversation/${suggested.id}?sessionId=${session.id}`);
     } catch (error) {
       console.error('Failed to start session:', error);
-      toast.error('Failed to start session. Please try again.');
+      notifyCaught('conversation.startFailed', error, { detail: 'Could not start the session.' });
     } finally {
       setStarting(false);
     }

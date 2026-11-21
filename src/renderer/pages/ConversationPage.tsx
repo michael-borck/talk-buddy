@@ -11,7 +11,7 @@ import { HandsFreeController } from '../turn/handsFree';
 import { splitSpeakerPrefix, parsePersonaTag } from '../turn/personaStream';
 import { EndReason } from '../turn/turnEngine';
 import { loadPreferences, resolveChat } from '../services/config';
-import toast from 'react-hot-toast';
+import { notify, notifyCaught } from '../services/notices';
 
 type InputMode = 'hands-free' | 'ptt';
 
@@ -57,8 +57,6 @@ export function ConversationPage() {
   elapsedRef.current = elapsedTime;
   const messagesRef = useRef<ConversationMessage[]>([]);
   const completeRef = useRef(false);
-  const phaseRef = useRef(t.phase);
-  phaseRef.current = t.phase;
 
   const handsFree = inputMode === 'hands-free';
 
@@ -77,7 +75,7 @@ export function ConversationPage() {
       if (sessionRef.current) await updateSession(sessionRef.current.id, { transcript: messages });
     },
     onComplete: async (reason: EndReason) => {
-      if (reason === 'natural') toast.success('Great conversation! Session ending naturally.');
+      if (reason === 'natural') notify('session.endedNaturally');
       if (sessionRef.current) {
         await updateSession(sessionRef.current.id, {
           status: 'ended',
@@ -89,11 +87,19 @@ export function ConversationPage() {
             wordsSpoken: wordsSpokenOf(messagesRef.current),
             encouragementShown: false,
           },
-        }).catch((err) => console.error('Failed to finalise session:', err));
+        }).catch((err) => {
+          // Transcript is persisted per-turn; still surface that the final
+          // save (status/duration) did not land.
+          console.error('Failed to finalise session:', err);
+          notifyCaught('session.saveFailed', err);
+        });
       }
     },
-    onError: (message) => { toast.error(message); },
+    onError: (message) => { notify('session.endFailed', { detail: message }); },
   });
+
+  const phaseRef = useRef(t.phase);
+  phaseRef.current = t.phase;
 
   // "Still listening…" — in hands-free a long silence is ambiguous: the app
   // may be broken, the AI may be thinking, or they may simply have finished.
@@ -201,7 +207,10 @@ export function ConversationPage() {
   const switchInputMode = (mode: InputMode) => {
     setInputMode(mode);
     void setPreference('inputMode', mode);
-    toast.success(mode === 'hands-free' ? 'Hands-free on — just talk.' : 'Push-to-talk on.', { id: 'input-mode' });
+    notify('inputMode.changed', {
+      detail: mode === 'hands-free' ? 'Hands-free on — just talk.' : 'Push-to-talk on.',
+      id: 'input-mode',
+    });
   };
 
   // Save the transcript on unmount as a safety net (per-turn saves cover the
@@ -333,6 +342,7 @@ export function ConversationPage() {
       startTimeRef.current = startTime;
     } catch (err) {
       console.error('Failed to resume session:', err);
+      notifyCaught('conversation.resumeFailed', err);
     }
   };
 
@@ -343,12 +353,12 @@ export function ConversationPage() {
       const newSession = await createSession(scenario.id);
       setSession(newSession);
       sessionRef.current = newSession;
-      toast.success('Session started! Begin speaking when ready.');
+      notify('session.started');
       if (scenario.initialMessage) await t.greet(greetingFor(scenario));
       else t.markReady();
     } catch (err) {
       console.error('Failed to start conversation:', err);
-      toast.error('Failed to start conversation. Please try again.');
+      notifyCaught('conversation.startFailed', err);
       setError('Failed to start conversation');
     }
   };
@@ -361,14 +371,21 @@ export function ConversationPage() {
   const saveAndExitSession = async () => {
     t.abort();
     if (sessionRef.current) {
-      await updateSession(sessionRef.current.id, {
-        status: 'paused',
-        duration: elapsedTime,
-        metadata: {
-          endReason: 'user_paused',
-          wordsSpoken: wordsSpokenOf(t.messages),
-        },
-      }).catch((err) => console.error('Failed to save session:', err));
+      try {
+        await updateSession(sessionRef.current.id, {
+          status: 'paused',
+          duration: elapsedTime,
+          metadata: {
+            endReason: 'user_paused',
+            wordsSpoken: wordsSpokenOf(t.messages),
+          },
+        });
+      } catch (err) {
+        // The transcript is also persisted per-turn, so a failed pause-save
+        // does not lose the words — but say so rather than leaving silently.
+        console.error('Failed to save session:', err);
+        notifyCaught('session.saveFailed', err);
+      }
     }
     navigate('/sessions');
   };
@@ -406,7 +423,7 @@ export function ConversationPage() {
       navigate(`/conversation/${scenarioId}?sessionId=${next.id}`, { replace: true });
     } catch (err) {
       console.error('Failed to start new session:', err);
-      toast.error('Could not start a new session.');
+      notifyCaught('conversation.startFailed', err, { detail: 'Could not start a new session.' });
     }
   };
 

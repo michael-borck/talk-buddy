@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { listScenarios, deleteScenario } from '../services/sqlite';
 import { Scenario } from '../types';
 import { Plus, Edit, Trash2, Play, Clock } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { notifyCaught } from '../services/notices';
 import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 
 export function LocalScenariosPage() {
@@ -24,6 +24,7 @@ export function LocalScenariosPage() {
       setScenarios(data);
     } catch (error) {
       console.error('Failed to load scenarios:', error);
+      notifyCaught('scenarios.loadFailed', error);
     } finally {
       setLoading(false);
     }
@@ -40,7 +41,7 @@ export function LocalScenariosPage() {
       await loadScenarios();
     } catch (error) {
       console.error('Failed to delete scenario:', error);
-      toast.error('Failed to delete scenario. Please try again.');
+      notifyCaught('scenario.deleteFailed', error);
     } finally {
       setDeletingId(null);
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import { notifyCaught } from '../services/notices';
 import { 
   listArchivedScenarios, 
   listArchivedPacks,
@@ -48,6 +48,7 @@ export function ArchivePage() {
       setPacks(packList);
     } catch (error) {
       console.error('Failed to load archived data:', error);
+      notifyCaught('archive.loadFailed', error);
     } finally {
       setLoading(false);
     }
@@ -60,7 +61,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to unarchive scenario:', error);
-      toast.error('Failed to unarchive scenario. Please try again.');
+      notifyCaught('scenario.unarchiveFailed', error);
     } finally {
       setActionLoading(null);
     }
@@ -73,7 +74,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to unarchive pack:', error);
-      toast.error('Failed to unarchive pack. Please try again.');
+      notifyCaught('pack.unarchiveFailed', error);
     } finally {
       setActionLoading(null);
     }
@@ -90,7 +91,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to delete scenario:', error);
-      toast.error('Failed to delete scenario. Please try again.');
+      notifyCaught('scenario.deleteFailed', error);
     } finally {
       setActionLoading(null);
     }
@@ -107,7 +108,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to delete pack:', error);
-      toast.error('Failed to delete pack. Please try again.');
+      notifyCaught('pack.deleteFailed', error);
     } finally {
       setActionLoading(null);
     }
@@ -133,7 +134,7 @@ export function ArchivePage() {
       await loadData();
     } catch (error) {
       console.error('Failed to bulk unarchive:', error);
-      toast.error('Failed to unarchive items. Please try again.');
+      notifyCaught('bulk.unarchiveFailed', error);
     } finally {
       setActionLoading(null);
     }

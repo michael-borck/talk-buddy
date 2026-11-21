@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { notify, notifyCaught } from '../services/notices';
 import { 
   listPacksWithScenarios, 
   deletePack,
@@ -48,6 +48,7 @@ export function PracticePacksPage() {
       setPacks(packList);
     } catch (error) {
       console.error('Failed to load packs:', error);
+      notifyCaught('packs.loadFailed', error);
     } finally {
       setLoading(false);
     }
@@ -66,7 +67,7 @@ export function PracticePacksPage() {
       await loadPacks();
     } catch (error) {
       console.error('Failed to delete pack:', error);
-      toast.error('Failed to delete pack. Please try again.');
+      notifyCaught('pack.deleteFailed', error);
     } finally {
       setDeletingId(null);
     }
@@ -81,7 +82,7 @@ export function PracticePacksPage() {
       await loadPacks();
     } catch (error) {
       console.error('Failed to archive pack:', error);
-      toast.error('Failed to archive pack. Please try again.');
+      notifyCaught('pack.archiveFailed', error);
     } finally {
       setDeletingId(null);
     }
@@ -94,7 +95,7 @@ export function PracticePacksPage() {
       await loadPacks();
     } catch (error) {
       console.error('Failed to create pack:', error);
-      toast.error('Failed to create pack. Please try again.');
+      notifyCaught('pack.createFailed', error);
     }
   };
 
@@ -103,7 +104,7 @@ export function PracticePacksPage() {
       await exportPackage(packId);
     } catch (error) {
       console.error('Failed to export pack:', error);
-      toast.error('Failed to export pack. Please try again.');
+      notifyCaught('export.failed', error);
     }
   };
 
@@ -120,14 +121,14 @@ export function PracticePacksPage() {
         const result = await importFromFile(content);
 
         if (result.success) {
-          toast.success(result.message);
+          notify('import.succeeded', { detail: result.message });
           await loadPacks();
         } else {
-          toast.error(`Import failed: ${result.message}`);
+          notify('import.failed', { detail: result.message });
         }
       } catch (error) {
         console.error('Import error:', error);
-        toast.error('Failed to import file. Please check the file format.');
+        notifyCaught('import.failed', error);
       }
     };
     input.click();
@@ -142,21 +143,21 @@ export function PracticePacksPage() {
     try {
       const fetched = await window.electronAPI.fetchText(url);
       if (!fetched.ok || !fetched.text) {
-        toast.error(`Could not fetch the pack: ${fetched.error || 'unknown error'}`);
+        notify('import.failed', { detail: fetched.error || 'Could not fetch the pack.' });
         return;
       }
       const result = await importFromFile(fetched.text);
       if (result.success) {
-        toast.success(result.message);
+        notify('import.succeeded', { detail: result.message });
         setShowUrlImport(false);
         setImportUrl('');
         await loadPacks();
       } else {
-        toast.error(`Import failed: ${result.message}`);
+        notify('import.failed', { detail: result.message });
       }
     } catch (error) {
       console.error('URL import error:', error);
-      toast.error('Failed to import from URL. Check the link points to a Talk Buddy export file.');
+      notifyCaught('import.failed', error, { detail: 'Check the link points to a Talk Buddy export file.' });
     } finally {
       setImportingUrl(false);
     }

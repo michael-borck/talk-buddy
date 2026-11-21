@@ -12,6 +12,7 @@ import { DiagnosticsPanel } from '../components/DiagnosticsPanel';
 import * as speechProvider from '../services/speechProvider';
 import { CHAT_PROVIDER_URLS, resolveApiKey } from '../services/chat';
 import { DEFAULTS } from '../services/config';
+import { notify, notifyCaught } from '../services/notices';
 
 // Module scope so the ?tab= lookup can validate a deep link against the real
 // tab list before any state exists.
@@ -62,7 +63,6 @@ export function SettingsPage() {
     addModelOptimizations: false
   });
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
   // ?tab= lets the setup check (and anywhere else) send someone straight to
   // the tab that fixes their problem.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -159,12 +159,12 @@ export function SettingsPage() {
       });
     } catch (error) {
       console.error('Failed to load preferences:', error);
+      notifyCaught('settings.loadFailed', error);
     }
   };
 
   const savePreferences = async () => {
     setSaving(true);
-    setMessage('');
     try {
       await setPreference('sttUrl', preferences.sttUrl);
       await setPreference('ttsUrl', preferences.ttsUrl);
@@ -197,11 +197,10 @@ export function SettingsPage() {
       await setPreference('promptBehavior', preferences.promptBehavior);
       await setPreference('includeResponseFormat', preferences.includeResponseFormat ? 'true' : 'false');
       await setPreference('addModelOptimizations', preferences.addModelOptimizations ? 'true' : 'false');
-      setMessage('Settings saved successfully!');
-      setTimeout(() => setMessage(''), 3000);
+      notify('settings.saved');
     } catch (error) {
       console.error('Failed to save preferences:', error);
-      setMessage('Failed to save settings. Please try again.');
+      notifyCaught('settings.saveFailed', error);
     } finally {
       setSaving(false);
     }
@@ -209,21 +208,21 @@ export function SettingsPage() {
 
   const exportData = async () => {
     try {
-      // This would be implemented in the sqlite service
-      setMessage('Export feature coming soon!');
-      setTimeout(() => setMessage(''), 3000);
+      // Export is not implemented yet; say so rather than leaving silently.
+      notify('settings.exportFailed', { detail: 'Export is not available in this build yet.' });
     } catch (error) {
       console.error('Export failed:', error);
+      notifyCaught('settings.exportFailed', error);
     }
   };
 
   const importData = async () => {
     try {
-      // This would be implemented in the sqlite service
-      setMessage('Import feature coming soon!');
-      setTimeout(() => setMessage(''), 3000);
+      // Import is not implemented yet; say so rather than leaving silently.
+      notify('settings.importFailed', { detail: 'Import is not available in this build yet.' });
     } catch (error) {
       console.error('Import failed:', error);
+      notifyCaught('settings.importFailed', error);
     }
   };
 
@@ -249,16 +248,16 @@ export function SettingsPage() {
     try {
       const result = await resetDatabase();
       if (result.success) {
-        setMessage('Database reset successfully! The app will reload...');
+        notify('settings.saved', { detail: 'Database reset — reloading…' });
         setTimeout(() => {
           window.location.reload();
         }, 2000);
       } else {
-        setMessage('Failed to reset database. Please try again.');
+        notify('settings.resetFailed');
       }
     } catch (error) {
       console.error('Database reset failed:', error);
-      setMessage('Failed to reset database. Please try again.');
+      notifyCaught('settings.resetFailed', error);
     }
   };
 
@@ -656,14 +655,6 @@ export function SettingsPage() {
       <h1 className="font-sans text-ink font-medium leading-[0.95] tracking-display text-[clamp(2.5rem,5vw,4rem)] mb-10">
         Settings
       </h1>
-
-      {message && (
-        <div className={`mb-8 px-4 py-3 border-l-2 ${
-          message.includes('Failed') ? 'border-accent bg-paper-warm' : 'border-ink bg-paper-warm'
-        }`}>
-          <p className="text-[0.9rem] text-ink font-sans">{message}</p>
-        </div>
-      )}
 
       {/* Tab Navigation — editorial: hairline baseline, ink active marker */}
       <div className="mb-10">
