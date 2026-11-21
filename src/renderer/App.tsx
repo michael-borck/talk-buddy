@@ -10,6 +10,7 @@ import { ConversationAnalysisPage } from './pages/ConversationAnalysisPage';
 import { PracticePacksPage } from './pages/PracticePacksPage';
 import { PackDetailPage } from './pages/PackDetailPage';
 import { ArchivePage } from './pages/ArchivePage';
+import { TrashPage } from './pages/TrashPage';
 import { AboutPage } from './pages/AboutPage';
 import { LicensePage } from './pages/LicensePage';
 import { HelpPage } from './pages/HelpPage';
@@ -156,6 +157,7 @@ function AppContent() {
             <Route path="/packs/:packId" element={<PackDetailPage />} />
             <Route path="/sessions" element={<SessionHistoryPage />} />
             <Route path="/archive" element={<ArchivePage />} />
+            <Route path="/trash" element={<TrashPage />} />
             <Route path="/conversation/:scenarioId" element={<ConversationPage />} />
             <Route path="/analysis/:sessionId" element={<ConversationAnalysisPage />} />
             <Route path="/settings" element={<SettingsPage />} />

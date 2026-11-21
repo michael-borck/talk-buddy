@@ -184,8 +184,9 @@ export async function updateScenario(id: string, updates: Partial<Scenario>): Pr
 }
 
 export async function deleteScenario(id: string): Promise<void> {
-  const result = await window.electronAPI.database.op('scenarios:delete', { id });
-  
+  // Soft-delete: move to Trash (restorable for the retention window).
+  const result = await window.electronAPI.database.op('scenarios:delete', { id, deletedAt: new Date().toISOString() });
+
   if (!result.success) {
     throw new Error(result.error || 'Failed to delete scenario');
   }
@@ -263,8 +264,8 @@ export async function listSessions(scenarioId?: string): Promise<Session[]> {
 }
 
 export async function deleteSession(id: string): Promise<void> {
-  const result = await window.electronAPI.database.op('sessions:delete', { id });
-  
+  const result = await window.electronAPI.database.op('sessions:delete', { id, deletedAt: new Date().toISOString() });
+
   if (!result.success) {
     throw new Error(result.error || 'Failed to delete session');
   }
@@ -716,8 +717,8 @@ export async function updatePack(id: string, updates: Partial<Pack>): Promise<Pa
 }
 
 export async function deletePack(id: string): Promise<void> {
-  const result = await window.electronAPI.database.op('packs:delete', { id });
-  
+  const result = await window.electronAPI.database.op('packs:delete', { id, deletedAt: new Date().toISOString() });
+
   if (!result.success) {
     throw new Error(result.error || 'Failed to delete pack');
   }
@@ -930,12 +931,12 @@ export async function getSessionPackSessions(sessionPackId: string): Promise<Ses
 }
 
 export async function deleteSessionPack(id: string): Promise<void> {
-  const result = await window.electronAPI.database.op('sessionPacks:delete', { id });
-  
+  const result = await window.electronAPI.database.op('sessionPacks:delete', { id, deletedAt: new Date().toISOString() });
+
   if (!result.success) {
     throw new Error(result.error || 'Failed to delete session pack');
   }
-  // Sessions are automatically deleted due to CASCADE constraint
+  // Sessions are hidden with their pack via deleted_at joins; purged later.
 }
 
 // Enhanced session functions for new workflow
@@ -1104,3 +1105,53 @@ export async function bulkArchivePacks(ids: string[]): Promise<void> {
     }
   }
 }
+
+// --- Trash (soft-deleted rows) ---
+
+export type TrashKind = 'scenario' | 'pack' | 'session' | 'session_pack';
+
+export interface TrashItem {
+  id: string;
+  name: string;
+  kind: TrashKind;
+  deletedAt: string;
+}
+
+export interface PurgeCounts {
+  scenarios: number;
+  packs: number;
+  sessionPacks: number;
+  sessions: number;
+}
+
+export async function listTrash(): Promise<TrashItem[]> {
+  const result = await window.electronAPI.database.op('trash:list', {});
+  if (!result.success || !result.data) return [];
+  return result.data as TrashItem[];
+}
+
+export async function restoreTrashItem(kind: TrashKind, id: string): Promise<void> {
+  const result = await window.electronAPI.database.op('trash:restore', {
+    kind,
+    id,
+    updated: new Date().toISOString(),
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to restore item');
+}
+
+/** Purge rows soft-deleted before `cutoff` (ISO date). Returns per-table counts. */
+export async function purgeTrash(cutoff: string): Promise<PurgeCounts> {
+  const result = await window.electronAPI.database.op('trash:purge', { cutoff });
+  if (!result.success) throw new Error(result.error || 'Failed to empty trash');
+  return result.data as PurgeCounts;
+}
+
+/** Permanently delete every soft-deleted row, regardless of age. */
+export async function emptyTrash(): Promise<PurgeCounts> {
+  const result = await window.electronAPI.database.op('trash:empty', {});
+  if (!result.success) throw new Error(result.error || 'Failed to empty trash');
+  return result.data as PurgeCounts;
+}
+
+/** The retention window for Trash, in days. Items older than this are purged. */
+export const TRASH_RETENTION_DAYS = 30;

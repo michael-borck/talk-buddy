@@ -43,6 +43,7 @@ const SESSION_UPDATE_COLUMNS = [
   'transcript',
   'metadata',
   'status',
+  'deleted_at',
   'updated',
 ];
 
@@ -69,7 +70,7 @@ const operations = {
 
   'scenarios:list': (db, params) => {
     const filter = (params && params.filter) || {};
-    let query = 'SELECT * FROM scenarios WHERE archived = 0';
+    let query = 'SELECT * FROM scenarios WHERE archived = 0 AND deleted_at IS NULL';
     const values = [];
 
     if (filter.category) {
@@ -121,8 +122,18 @@ const operations = {
       .run(...values);
   },
 
-  'scenarios:delete': (db, { id }) => {
-    return db.prepare('DELETE FROM scenarios WHERE id = ?').run(id);
+  'scenarios:delete': (db, { id, deletedAt }) => {
+    // Soft-delete: move to Trash rather than destroying the row, so it can be
+    // restored until the retention purge runs.
+    return db
+      .prepare('UPDATE scenarios SET deleted_at = ?, updated = ? WHERE id = ?')
+      .run(deletedAt, deletedAt, id);
+  },
+
+  'scenarios:restore': (db, { id, updated }) => {
+    return db
+      .prepare('UPDATE scenarios SET deleted_at = NULL, updated = ? WHERE id = ?')
+      .run(updated, id);
   },
 
   'scenarios:archive': (db, { id, updated }) => {
@@ -138,7 +149,7 @@ const operations = {
   },
 
   'scenarios:listArchived': (db) => {
-    return db.prepare('SELECT * FROM scenarios WHERE archived = 1 ORDER BY name').all();
+    return db.prepare('SELECT * FROM scenarios WHERE archived = 1 AND deleted_at IS NULL ORDER BY name').all();
   },
 
   // --- Sessions ---
@@ -160,7 +171,8 @@ const operations = {
                FROM sessions s
                LEFT JOIN session_packs sp ON s.session_pack_id = sp.id
                LEFT JOIN packs p ON sp.pack_id = p.id
-               WHERE (s.session_pack_id IS NULL OR p.archived = 0)`;
+               WHERE s.deleted_at IS NULL AND sp.deleted_at IS NULL
+                 AND (s.session_pack_id IS NULL OR p.archived = 0)`;
     const values = [];
 
     if (scenarioId) {
@@ -181,8 +193,17 @@ const operations = {
       .run(...values);
   },
 
-  'sessions:delete': (db, { id }) => {
-    return db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
+  'sessions:delete': (db, { id, deletedAt }) => {
+    // Soft-delete to Trash; purged after the retention window.
+    return db
+      .prepare('UPDATE sessions SET deleted_at = ?, updated = ? WHERE id = ?')
+      .run(deletedAt, deletedAt, id);
+  },
+
+  'sessions:restore': (db, { id, updated }) => {
+    return db
+      .prepare('UPDATE sessions SET deleted_at = NULL, updated = ? WHERE id = ?')
+      .run(updated, id);
   },
 
   'sessions:createInPack': (db, params) => {
@@ -205,7 +226,7 @@ const operations = {
 
   'sessions:findInPack': (db, { sessionPackId, scenarioId }) => {
     return db
-      .prepare('SELECT * FROM sessions WHERE session_pack_id = ? AND scenario_id = ?')
+      .prepare('SELECT * FROM sessions WHERE session_pack_id = ? AND scenario_id = ? AND deleted_at IS NULL')
       .all(sessionPackId, scenarioId);
   },
 
@@ -222,7 +243,7 @@ const operations = {
       .prepare(
         `SELECT id, scenario_id as scenario, session_pack_id as sessionPackId, startTime, endTime,
      duration, transcript, metadata, status, created, updated
-     FROM sessions WHERE session_pack_id = ? ORDER BY created ASC`
+     FROM sessions WHERE session_pack_id = ? AND deleted_at IS NULL ORDER BY created ASC`
       )
       .all(sessionPackId);
   },
@@ -251,7 +272,7 @@ const operations = {
 
   'packs:list': (db) => {
     return db
-      .prepare('SELECT * FROM packs WHERE archived = 0 ORDER BY order_index, name')
+      .prepare('SELECT * FROM packs WHERE archived = 0 AND deleted_at IS NULL ORDER BY order_index, name')
       .all();
   },
 
@@ -283,8 +304,16 @@ const operations = {
       .run(...values);
   },
 
-  'packs:delete': (db, { id }) => {
-    return db.prepare('DELETE FROM packs WHERE id = ?').run(id);
+  'packs:delete': (db, { id, deletedAt }) => {
+    return db
+      .prepare('UPDATE packs SET deleted_at = ?, updated = ? WHERE id = ?')
+      .run(deletedAt, deletedAt, id);
+  },
+
+  'packs:restore': (db, { id, updated }) => {
+    return db
+      .prepare('UPDATE packs SET deleted_at = NULL, updated = ? WHERE id = ?')
+      .run(updated, id);
   },
 
   'packs:archive': (db, { id, updated }) => {
@@ -300,7 +329,7 @@ const operations = {
   },
 
   'packs:listArchived': (db) => {
-    return db.prepare('SELECT * FROM packs WHERE archived = 1 ORDER BY name').all();
+    return db.prepare('SELECT * FROM packs WHERE archived = 1 AND deleted_at IS NULL ORDER BY name').all();
   },
 
   // --- Pack-scenario relationships ---
@@ -385,7 +414,7 @@ const operations = {
       .prepare(
         `SELECT sp.* FROM session_packs sp
      JOIN packs p ON sp.pack_id = p.id
-     WHERE p.archived = 0
+     WHERE p.archived = 0 AND sp.deleted_at IS NULL AND p.deleted_at IS NULL
      ORDER BY sp.updated DESC`
       )
       .all();
@@ -395,8 +424,69 @@ const operations = {
     return db.prepare('SELECT * FROM session_packs WHERE pack_id = ?').all(packId);
   },
 
-  'sessionPacks:delete': (db, { id }) => {
-    return db.prepare('DELETE FROM session_packs WHERE id = ?').run(id);
+  'sessionPacks:delete': (db, { id, deletedAt }) => {
+    return db
+      .prepare('UPDATE session_packs SET deleted_at = ?, updated = ? WHERE id = ?')
+      .run(deletedAt, deletedAt, id);
+  },
+
+  'sessionPacks:restore': (db, { id, updated }) => {
+    return db
+      .prepare('UPDATE session_packs SET deleted_at = NULL, updated = ? WHERE id = ?')
+      .run(updated, id);
+  },
+
+  // --- Trash (soft-deleted rows) ---
+
+  'trash:list': (db) => {
+    const scenarios = db
+      .prepare('SELECT id, name, \'scenario\' AS kind, deleted_at FROM scenarios WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC')
+      .all();
+    const packs = db
+      .prepare('SELECT id, name, \'pack\' AS kind, deleted_at FROM packs WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC')
+      .all();
+    const sessions = db
+      .prepare('SELECT id, scenario_id AS name, \'session\' AS kind, deleted_at FROM sessions WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC')
+      .all();
+    const sessionPacks = db
+      .prepare('SELECT id, name, \'session_pack\' AS kind, deleted_at FROM session_packs WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC')
+      .all();
+    return [...scenarios, ...packs, ...sessions, ...sessionPacks].sort(
+      (a, b) => new Date(b.deleted_at) - new Date(a.deleted_at)
+    );
+  },
+
+  // Hard-delete rows whose deleted_at is older than the cutoff. Returns the
+  // per-table counts so the UI can say how many were purged.
+  'trash:purge': (db, { cutoff }) => {
+    const scenarios = db.prepare('DELETE FROM scenarios WHERE deleted_at IS NOT NULL AND deleted_at < ?').run(cutoff).changes;
+    const packs = db.prepare('DELETE FROM packs WHERE deleted_at IS NOT NULL AND deleted_at < ?').run(cutoff).changes;
+    const sessionPacks = db.prepare('DELETE FROM session_packs WHERE deleted_at IS NOT NULL AND deleted_at < ?').run(cutoff).changes;
+    const sessions = db.prepare('DELETE FROM sessions WHERE deleted_at IS NOT NULL AND deleted_at < ?').run(cutoff).changes;
+    return { scenarios, packs, sessionPacks, sessions };
+  },
+
+  // Empty the Trash immediately (every soft-deleted row, regardless of age).
+  'trash:empty': (db) => {
+    const scenarios = db.prepare('DELETE FROM scenarios WHERE deleted_at IS NOT NULL').run().changes;
+    const packs = db.prepare('DELETE FROM packs WHERE deleted_at IS NOT NULL').run().changes;
+    const sessionPacks = db.prepare('DELETE FROM session_packs WHERE deleted_at IS NOT NULL').run().changes;
+    const sessions = db.prepare('DELETE FROM sessions WHERE deleted_at IS NOT NULL').run().changes;
+    return { scenarios, packs, sessionPacks, sessions };
+  },
+
+  // Restore a single soft-deleted row by kind + id.
+  'trash:restore': (db, { kind, id, updated }) => {
+    const table = {
+      scenario: 'scenarios',
+      pack: 'packs',
+      session: 'sessions',
+      session_pack: 'session_packs',
+    }[kind];
+    if (!table) throw new Error(`Unknown trash kind: ${kind}`);
+    return db
+      .prepare(`UPDATE ${table} SET deleted_at = NULL, updated = ? WHERE id = ?`)
+      .run(updated, id);
   },
 };
 

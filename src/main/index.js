@@ -456,6 +456,21 @@ app.whenReady().then(() => {
   } catch (e) {
     // Column already exists, ignore error
   }
+  // Trash: soft-delete columns. A NULL deleted_at means the row is live; a
+  // timestamp means it is in the Trash, purgeable after the retention window.
+  // Adding a column is the migration — existing rows default to NULL (live).
+  try {
+    db.exec('ALTER TABLE scenarios ADD COLUMN deleted_at DATETIME');
+  } catch (e) { /* column already exists */ }
+  try {
+    db.exec('ALTER TABLE sessions ADD COLUMN deleted_at DATETIME');
+  } catch (e) { /* column already exists */ }
+  try {
+    db.exec('ALTER TABLE packs ADD COLUMN deleted_at DATETIME');
+  } catch (e) { /* column already exists */ }
+  try {
+    db.exec('ALTER TABLE session_packs ADD COLUMN deleted_at DATETIME');
+  } catch (e) { /* column already exists */ }
 
   // Provider-slot migration for the post-Python world (see function comment).
   migrateEmbeddedProviderPrefs();
@@ -479,6 +494,7 @@ app.whenReady().then(() => {
       isDefault BOOLEAN DEFAULT 0,
       voice TEXT,
       archived BOOLEAN DEFAULT 0,
+      deleted_at DATETIME,
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -491,6 +507,7 @@ app.whenReady().then(() => {
       color TEXT,
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+      deleted_at DATETIME,
       FOREIGN KEY (pack_id) REFERENCES packs(id)
     );
 
@@ -506,6 +523,7 @@ app.whenReady().then(() => {
       status TEXT CHECK(status IN ('not_started', 'active', 'paused', 'ended')) DEFAULT 'not_started',
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+      deleted_at DATETIME,
       FOREIGN KEY (scenario_id) REFERENCES scenarios(id),
       FOREIGN KEY (session_pack_id) REFERENCES session_packs(id) ON DELETE CASCADE
     );
@@ -525,6 +543,7 @@ app.whenReady().then(() => {
       estimatedMinutes INTEGER,
       order_index INTEGER DEFAULT 0,
       archived BOOLEAN DEFAULT 0,
+      deleted_at DATETIME,
       created DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated DATETIME DEFAULT CURRENT_TIMESTAMP
     );

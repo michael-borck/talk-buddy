@@ -34,7 +34,7 @@ interface Destination {
 
 const DESTINATIONS: Destination[] = [
   { label: 'Today', path: '/', icon: Sun, also: [] },
-  { label: 'Explore', path: '/scenarios', icon: Compass, also: ['/packs', '/archive'] },
+  { label: 'Explore', path: '/scenarios', icon: Compass, also: ['/packs', '/archive', '/trash'] },
   { label: 'Journal', path: '/sessions', icon: NotebookPen, also: ['/analysis'] },
   {
     label: 'Settings',

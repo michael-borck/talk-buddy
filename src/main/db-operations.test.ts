@@ -55,7 +55,7 @@ describe('runOperation', () => {
       filter: { category: 'Business', difficulty: 'beginner' },
     });
     expect(calls[0].sql).toBe(
-      'SELECT * FROM scenarios WHERE archived = 0 AND category = ? AND difficulty = ? ORDER BY name'
+      'SELECT * FROM scenarios WHERE archived = 0 AND deleted_at IS NULL AND category = ? AND difficulty = ? ORDER BY name'
     );
     expect(calls[0].values).toEqual(['Business', 'beginner']);
   });
@@ -63,7 +63,9 @@ describe('runOperation', () => {
   it('omits filter conditions when no filter is provided', () => {
     const calls: Call[] = [];
     runOperation(makeStubDb(calls), 'scenarios:list', {});
-    expect(calls[0].sql).toBe('SELECT * FROM scenarios WHERE archived = 0 ORDER BY name');
+    expect(calls[0].sql).toBe(
+      'SELECT * FROM scenarios WHERE archived = 0 AND deleted_at IS NULL ORDER BY name'
+    );
     expect(calls[0].values).toEqual([]);
   });
 
@@ -107,5 +109,55 @@ describe('runOperation', () => {
     runOperation(makeStubDb(calls), 'packScenarios:listPacks', { scenarioId: 'scn_1' });
     expect(calls[0].sql).toContain('WHERE ps.scenario_id = ?');
     expect(calls[0].values).toEqual(['scn_1']);
+  });
+
+  it('scenarios:delete is a soft-delete that stamps deleted_at, not a DELETE', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'scenarios:delete', { id: 'scn_1', deletedAt: '2026-01-01' });
+    expect(calls[0].sql).toContain('UPDATE scenarios SET deleted_at = ?');
+    expect(calls[0].sql).not.toContain('DELETE FROM');
+    expect(calls[0].values).toEqual(['2026-01-01', '2026-01-01', 'scn_1']);
+  });
+
+  it('scenarios:restore clears deleted_at', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'scenarios:restore', { id: 'scn_1', updated: 'now' });
+    expect(calls[0].sql).toContain('SET deleted_at = NULL');
+    expect(calls[0].values).toEqual(['now', 'scn_1']);
+  });
+
+  it('trash:purge hard-deletes rows older than the cutoff', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'trash:purge', { cutoff: '2026-01-01' });
+    const sqls = calls.map((c) => c.sql).join('\n');
+    expect(sqls).toContain('DELETE FROM scenarios WHERE deleted_at IS NOT NULL AND deleted_at < ?');
+    expect(sqls).toContain('DELETE FROM sessions WHERE deleted_at IS NOT NULL AND deleted_at < ?');
+    // Four tables, four binds.
+    expect(calls).toHaveLength(4);
+  });
+
+  it('trash:restore rejects an unknown kind rather than interpolating it', () => {
+    const calls: Call[] = [];
+    expect(() =>
+      runOperation(makeStubDb(calls), 'trash:restore', { kind: 'evil; DROP TABLE x', id: '1', updated: 'now' })
+    ).toThrow('Unknown trash kind');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('trash:restore maps a known kind to its table with a bound id', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'trash:restore', { kind: 'session', id: 'ses_1', updated: 'now' });
+    expect(calls[0].sql).toBe('UPDATE sessions SET deleted_at = NULL, updated = ? WHERE id = ?');
+    expect(calls[0].values).toEqual(['now', 'ses_1']);
+  });
+
+  it('sessions:update allowlists deleted_at so a restore can flow through update', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'sessions:update', {
+      id: 'ses_1',
+      fields: { deleted_at: null, updated: 'now' },
+    });
+    expect(calls[0].sql).toBe('UPDATE sessions SET deleted_at = ?, updated = ? WHERE id = ?');
+    expect(calls[0].values).toEqual([null, 'now', 'ses_1']);
   });
 });

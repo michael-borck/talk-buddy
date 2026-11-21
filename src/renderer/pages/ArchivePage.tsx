@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { notifyCaught } from '../services/notices';
 import { 
   listArchivedScenarios, 
@@ -24,6 +25,7 @@ import {
 import { EmptyState, LoadingState, PageHeader } from '../components/layout/PageShell';
 
 export function ArchivePage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'scenarios' | 'packs'>('scenarios');
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [packs, setPacks] = useState<Pack[]>([]);
@@ -195,6 +197,15 @@ export function ArchivePage() {
         title="Archive"
         icon={<Archive size={32} className="text-gray-600" />}
         subtitle="Manage your archived scenarios and practice packs"
+        actions={
+          <button
+            onClick={() => navigate('/trash')}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+          >
+            <Trash2 size={16} />
+            Trash
+          </button>
+        }
       />
 
       {/* Search Bar */}
