@@ -226,4 +226,30 @@ describe('runOperation', () => {
     expect(calls[0].values).toContain('proj_1');
     expect(calls[0].values).toContain(2);
   });
+
+  it('scenarios:bulkDelete soft-deletes each id, no DELETE', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'scenarios:bulkDelete', { ids: ['a', 'b'], deletedAt: 'now' });
+    expect(calls).toHaveLength(2);
+    expect(calls[0].sql).toContain('UPDATE scenarios SET deleted_at = ?');
+    expect(calls[0].sql).not.toContain('DELETE FROM');
+    expect(calls[0].values).toEqual(['now', 'now', 'a']);
+  });
+
+  it('scenarios:bulkMove binds the target project (null when empty)', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'scenarios:bulkMove', { ids: ['a'], projectId: 'proj_1', updated: 'now' });
+    expect(calls[0].sql).toContain('SET project_id = ?');
+    expect(calls[0].values).toEqual(['proj_1', 'now', 'a']);
+
+    runOperation(makeStubDb(calls), 'scenarios:bulkMove', { ids: ['a'], projectId: '', updated: 'now' });
+    expect(calls[1].values[0]).toBeNull();
+  });
+
+  it('sessions:bulkDelete soft-deletes each id', () => {
+    const calls: Call[] = [];
+    runOperation(makeStubDb(calls), 'sessions:bulkDelete', { ids: ['s1'], deletedAt: 'now' });
+    expect(calls[0].sql).toContain('UPDATE sessions SET deleted_at = ?');
+    expect(calls[0].values).toEqual(['now', 'now', 's1']);
+  });
 });

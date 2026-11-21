@@ -518,6 +518,42 @@ const operations = {
       .all(projectId);
   },
 
+  // --- Bulk operations ---
+
+  // Soft-delete many Scenarios to Trash in one round trip.
+  'scenarios:bulkDelete': (db, { ids, deletedAt }) => {
+    const stmt = db.prepare('UPDATE scenarios SET deleted_at = ?, updated = ? WHERE id = ?');
+    let changes = 0;
+    for (const id of ids) changes += stmt.run(deletedAt, deletedAt, id).changes;
+    return { changes };
+  },
+
+  // Archive many Scenarios in one round trip.
+  'scenarios:bulkArchive': (db, { ids, updated }) => {
+    const stmt = db.prepare('UPDATE scenarios SET archived = 1, updated = ? WHERE id = ?');
+    let changes = 0;
+    for (const id of ids) changes += stmt.run(updated, id).changes;
+    return { changes };
+  },
+
+  // Move many Scenarios to a Project (empty string → ungrouped) in one round
+  // trip. position is left untouched so the target's natural order applies.
+  'scenarios:bulkMove': (db, { ids, projectId, updated }) => {
+    const stmt = db.prepare('UPDATE scenarios SET project_id = ?, updated = ? WHERE id = ?');
+    const target = projectId || null;
+    let changes = 0;
+    for (const id of ids) changes += stmt.run(target, updated, id).changes;
+    return { changes };
+  },
+
+  // Soft-delete many Sessions to Trash in one round trip.
+  'sessions:bulkDelete': (db, { ids, deletedAt }) => {
+    const stmt = db.prepare('UPDATE sessions SET deleted_at = ?, updated = ? WHERE id = ?');
+    let changes = 0;
+    for (const id of ids) changes += stmt.run(deletedAt, deletedAt, id).changes;
+    return { changes };
+  },
+
   // --- Trash (soft-deleted rows) ---
 
   'trash:list': (db) => {

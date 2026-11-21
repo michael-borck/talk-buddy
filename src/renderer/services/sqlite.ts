@@ -1100,19 +1100,37 @@ export async function setSessionPinned(id: string, pinned: boolean): Promise<voi
 
 export async function bulkArchiveScenarios(ids: string[]): Promise<void> {
   const now = new Date().toISOString();
-  
-  for (const id of ids) {
-    const result = await window.electronAPI.database.op('scenarios:archive', { id, updated: now });
+  const result = await window.electronAPI.database.op('scenarios:bulkArchive', { ids, updated: now });
+  if (!result.success) throw new Error(result.error || 'Failed to archive scenarios');
+}
 
-    if (!result.success) {
-      throw new Error(result.error || `Failed to archive scenario ${id}`);
-    }
-  }
+/** Soft-delete many Scenarios to Trash in one call. */
+export async function bulkDeleteScenarios(ids: string[]): Promise<void> {
+  const result = await window.electronAPI.database.op('scenarios:bulkDelete', {
+    ids, deletedAt: new Date().toISOString(),
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to delete scenarios');
+}
+
+/** Move many Scenarios to a Project (empty string → ungrouped). */
+export async function bulkMoveScenarios(ids: string[], projectId: string): Promise<void> {
+  const result = await window.electronAPI.database.op('scenarios:bulkMove', {
+    ids, projectId, updated: new Date().toISOString(),
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to move scenarios');
+}
+
+/** Soft-delete many Sessions to Trash in one call. */
+export async function bulkDeleteSessions(ids: string[]): Promise<void> {
+  const result = await window.electronAPI.database.op('sessions:bulkDelete', {
+    ids, deletedAt: new Date().toISOString(),
+  });
+  if (!result.success) throw new Error(result.error || 'Failed to delete sessions');
 }
 
 export async function bulkArchivePacks(ids: string[]): Promise<void> {
   const now = new Date().toISOString();
-  
+
   for (const id of ids) {
     const result = await window.electronAPI.database.op('packs:archive', { id, updated: now });
 
